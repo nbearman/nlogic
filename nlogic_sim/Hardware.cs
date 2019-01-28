@@ -1,28 +1,69 @@
-﻿namespace nlogic_sim
+﻿using System.Collections.Generic;
+
+namespace nlogic_sim
 {
-    public class Register
+    public class Processor
+    {
+        private struct state
+        {
+            bool halted;
+            ushort current_instruction;
+        }
+
+        public Dictionary<byte, I_Register> registers;
+
+        public Processor()
+        {
+            registers = new Dictionary<byte, I_Register>();
+        }
+    }
+
+    public interface I_Register
+    {
+        byte[] data_array
+        {
+            get;
+            set;
+        }
+
+        uint size_in_bytes
+        {
+            get;
+        }
+
+    }
+
+    public class Register_32 : I_Register
     {
         public readonly string name_short;
         public readonly string name_full;
 
-        public readonly uint size;
-
-        private uint _internal_data_uint32;
+        private readonly uint size;
+        private uint _internal_data;
         private byte[] _internal_data_array;
 
-        public uint data_uint32
+        public uint size_in_bytes
         {
             get
             {
-                return _internal_data_uint32;
+                return size;
+            }
+        }
+
+        public uint data
+        {
+            get
+            {
+                return _internal_data;
             }
 
             set
             {
-                _internal_data_uint32 = value;
-                //update data array
+                _internal_data = value;
+                update_array_from_data();
             }
         }
+
 
         public byte[] data_array
         {
@@ -38,7 +79,7 @@
             }
         }
 
-        public Register(uint size_in_bytes, string name_full, string name_short)
+        public Register_32(string name_full, string name_short)
         {
             size = size_in_bytes;
             this.name_full = name_full;
@@ -50,24 +91,16 @@
                 data_array[i] = 0;
             }
 
-            update_data_from_array();
         }
 
-        /// <summary>
-        /// Update all data fields based on the contents of the data array
-        /// </summary>
-        private void update_data_from_array()
-        {
-            _internal_data_uint32 = Utility.uint32_from_byte_array(data_array);
-        }
-
-        /// <summary>
-        /// Update the array from the internal uint32 data field
-        /// </summary>
         private void update_array_from_data()
         {
-            _internal_data_array = Utility.byte_array_from_uint32(size, _internal_data_uint32);
-            update_data_from_array();
+            _internal_data_array = Utility.byte_array_from_uint32(4, _internal_data);
+        }
+
+        private void update_data_from_array()
+        {
+            _internal_data = Utility.uint32_from_byte_array(_internal_data_array);
         }
     }
 }

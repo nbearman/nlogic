@@ -14,13 +14,17 @@ namespace nlogic_sim
             uint number = Utility.uint32_from_byte_array(data);
             Console.WriteLine(number);
 
-            Register r = new Register(4, "nothing", "TEST");
-            r.data_uint32 = 32;
-            Console.WriteLine(r.data_uint32);
+            Register_32 r = new Register_32("nothing", "TEST");
+            //r.data_uint32 = 32;
+            //Console.WriteLine(r.data_uint32);
 
             uint test = 913402;
             byte[] ta = Utility.byte_array_from_uint32(4, test);
             Console.WriteLine(Utility.byte_array_string(ta));
+
+            Console.WriteLine();
+            Console.WriteLine();
+            Console.WriteLine();
 
             Console.ReadKey();
         }
