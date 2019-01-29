@@ -10,11 +10,18 @@ namespace nlogic_sim
     {
         static void Main(string[] args)
         {
-            byte[] data = new byte[] { 0x0B, 0x70 };
+            byte[] data = new byte[] { 0x0B, 0x70, 0xAA, 0xAA, 0xAA, 0xAA };
             uint number = Utility.uint32_from_byte_array(data);
             Console.WriteLine(number);
 
-            Register_32 r = new Register_32("nothing", "TEST");
+            Console.WriteLine();
+            Console.WriteLine();
+            Console.WriteLine();
+            uint n = 0xAABBCCDD;
+            byte[] d2 = Utility.byte_array_from_uint32(2, n);
+            Console.WriteLine(Utility.byte_array_string(d2));
+
+            Register_32 r = new Register_32("nothing", "TEST", true);
             //r.data_uint32 = 32;
             //Console.WriteLine(r.data_uint32);
 
@@ -25,6 +32,12 @@ namespace nlogic_sim
             Console.WriteLine();
             Console.WriteLine();
             Console.WriteLine();
+
+            uint b = 0x0000FFFF;
+            byte[] arr = Utility.byte_array_from_uint32(4, b);
+            float c = Utility.float_from_byte_array(arr);
+            Console.WriteLine(BitConverter.IsLittleEndian);
+            Console.WriteLine(c);
 
             Console.ReadKey();
         }
