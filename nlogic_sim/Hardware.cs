@@ -331,6 +331,8 @@ namespace nlogic_sim
             halted = false;
             current_instruction = 0;
 
+            memory = new byte[65536];
+
             registers = new Dictionary<byte, I_Register>
                 {
                     {FLAG, (new Register_32(

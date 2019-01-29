@@ -10,7 +10,7 @@ namespace nlogic_sim
         /// <summary>
         /// Maps register short names to register location codes.
         /// </summary>
-        Dictionary<string, byte> register_name_to_location = new Dictionary<string, byte>
+        public static Dictionary<string, byte> register_name_to_location = new Dictionary<string, byte>
         {
             {"IMM" , Processor.IMM },
             {"//" , 0x00 },
