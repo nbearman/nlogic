@@ -10,7 +10,7 @@ namespace nlogic_sim
     {
         static void Main(string[] args)
         {
-            Assembler.assemble("program.txt");
+            Assembler.assemble("fptest.txt");
             string output = Assembler.dump_assembly();
             Console.WriteLine(output);
 
@@ -22,13 +22,13 @@ namespace nlogic_sim
 
             p.print_current_state();
 
-
             while (true)
             {
                 Console.ReadKey();
                 p.cycle();
                 p.print_current_state();
             }
+
 
         }
     }

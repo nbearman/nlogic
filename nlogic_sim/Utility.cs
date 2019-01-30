@@ -123,11 +123,21 @@ namespace nlogic_sim
         public static float float_from_byte_array(byte[] data_array)
         {
             Debug.Assert(data_array.Length == 4);
+            bool flipped = false;
             if (BitConverter.IsLittleEndian)
+            {
+                flipped = true;
+                Array.Reverse(data_array);
+            }
+
+            float result = BitConverter.ToSingle(data_array, 0);
+
+            if (flipped)
             {
                 Array.Reverse(data_array);
             }
-            return BitConverter.ToSingle(data_array, 0);
+
+            return result;
         }
 
         /// <summary>

@@ -229,7 +229,7 @@ namespace nlogic_sim
 
             byte[] data_array = Utility.byte_array_from_float(result);
             uint data = Utility.uint32_from_byte_array(data_array);
-            ((Register_32)registers[ALUR]).data = data;
+            ((Register_32)registers[FPUR]).data = data;
         }
 
         private void update_alu()
