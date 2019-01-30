@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Threading;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -10,7 +11,8 @@ namespace nlogic_sim
     {
         static void Main(string[] args)
         {
-            Assembler.assemble("fptest.txt");
+
+            Assembler.assemble("programs/alu_shift_test.txt");
             string output = Assembler.dump_assembly();
             Console.WriteLine(output);
 
