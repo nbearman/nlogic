@@ -36,6 +36,15 @@ namespace nlogic_sim
             {"WBASE", Processor.WBASE},
             {"WOFST", Processor.WOFST},
             {"WMEM", Processor.WMEM},
+
+            {"GPA", Processor.GPA },
+            {"GPB", Processor.GPB },
+            {"GPC", Processor.GPC },
+            {"GPD", Processor.GPD },
+            {"GPE", Processor.GPE },
+            {"GPF", Processor.GPF },
+            {"GPG", Processor.GPG },
+            {"GPH", Processor.GPH },
         };
 
         /// <summary>
@@ -66,6 +75,15 @@ namespace nlogic_sim
             { Processor.WBASE, "WBASE"},
             { Processor.WOFST, "WOFST"},
             {Processor.WMEM, "WMEM"},
+
+            {Processor.GPA, "GPA" },
+            {Processor.GPB, "GPB" },
+            {Processor.GPC, "GPC" },
+            {Processor.GPD, "GPD" },
+            {Processor.GPE, "GPE" },
+            {Processor.GPF, "GPF" },
+            {Processor.GPG, "GPG" },
+            {Processor.GPH, "GPH" },
         };
 
         /// <summary>

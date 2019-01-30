@@ -6,7 +6,7 @@ namespace nlogic_sim
 {
     class Assembler
     {
-        private static byte[] program_data;
+        public static byte[] program_data;
 
         public static string dump_assembly()
         {
@@ -52,8 +52,8 @@ namespace nlogic_sim
                 else
                 {
                     byte number;
-                    bool result = byte.TryParse(next, out number);
-                    //bool result = byte.TryParse(next, System.Globalization.NumberStyles.HexNumber, null, out number);
+                    //bool result = byte.TryParse(next, out number);
+                    bool result = byte.TryParse(next, System.Globalization.NumberStyles.HexNumber, null, out number);
 
                     if (result)
                     {

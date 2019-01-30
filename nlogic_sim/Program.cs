@@ -15,9 +15,21 @@ namespace nlogic_sim
             Console.WriteLine(output);
 
             Processor p = new Processor();
+            for (int i = 0; i < Assembler.program_data.Length; i++)
+            {
+                p.memory[i] = Assembler.program_data[i];
+            }
+
             p.print_current_state();
-            
-            Console.Read();
+
+
+            while (true)
+            {
+                Console.ReadKey();
+                p.cycle();
+                p.print_current_state();
+            }
+
         }
     }
 }

@@ -48,6 +48,14 @@ namespace nlogic_sim
         public const byte WBASE = 0x8E;
         public const byte WOFST = 0x8F;
         public const byte WMEM = 0x90;
+        public const byte GPA = 0x91;
+        public const byte GPB = 0x92;
+        public const byte GPC = 0x93;
+        public const byte GPD = 0x94;
+        public const byte GPE = 0x95;
+        public const byte GPF = 0x96;
+        public const byte GPG = 0x97;
+        public const byte GPH = 0x98;
 
         public bool halted;
         public ushort current_instruction;
@@ -101,13 +109,14 @@ namespace nlogic_sim
             }
 
             //store to the destination
+            //if not writeable, do nothing
 
             if (registers.ContainsKey(destination) && registers[destination].writeable)
             {
                 ((Register_32)registers[destination]).data = source_data;
             }
 
-            //update result registers
+            //update result registers as needed
 
             if (
                 destination == ALUM ||
@@ -407,6 +416,38 @@ namespace nlogic_sim
                     {WMEM, (new Register_32(
                         "Memory Accessor B Result",
                         "WMEM",
+                        true))},
+                    {GPA, (new Register_32(
+                        "General Purpose Register A",
+                        "GPA",
+                        true))},
+                    {GPB, (new Register_32(
+                        "General Purpose Register B",
+                        "GPB",
+                        true))},
+                    {GPC, (new Register_32(
+                        "General Purpose Register C",
+                        "GPC",
+                        true))},
+                    {GPD, (new Register_32(
+                        "General Purpose Register D",
+                        "GPD",
+                        true))},
+                    {GPE, (new Register_32(
+                        "General Purpose Register E",
+                        "GPE",
+                        true))},
+                    {GPF, (new Register_32(
+                        "General Purpose Register F",
+                        "GPF",
+                        true))},
+                    {GPG, (new Register_32(
+                        "General Purpose Register G",
+                        "GPG",
+                        true))},
+                    {GPH, (new Register_32(
+                        "General Purpose Register H",
+                        "GPH",
                         true))},
                 };
         }
