@@ -3,7 +3,7 @@ using System.Collections.Generic;
 
 namespace nlogic_sim
 {
-    public class Processor
+    public partial class Processor
     {
         public enum ALU_MODE
         {
@@ -182,8 +182,8 @@ namespace nlogic_sim
 
         private void update_fpu()
         {
-            float arga = Utility.float_from_byte_array(registers[FPUA].data_array);
-            float argb = Utility.float_from_byte_array(registers[FPUB].data_array);
+            float arga = ((Register_32)registers[FPUA]).float_data();
+            float argb = ((Register_32)registers[FPUB]).float_data();
             uint mode = ((Register_32)registers[FPUM]).data;
 
             float result = 0;
@@ -324,6 +324,11 @@ namespace nlogic_sim
 
         private void write_memory(uint address, byte[] data)
         {
+            for (int i = 0; i < data.Length; i++)
+            {
+                memory[address + i] = data[i];
+            }
+
         }
 
         public Processor()
@@ -482,10 +487,15 @@ namespace nlogic_sim
             }
         }
 
+        public float float_data()
+        {
+            return Utility.float_from_byte_array(_internal_data_array);
+        }
+
         public Register_32(string name_full, string name_short, bool writeable)
         {
             _internal_writeable = writeable;
-            _internal_size = size_in_bytes;
+            _internal_size = 4;
             this.name_full = name_full;
             this.name_short = name_short;
 

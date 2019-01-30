@@ -1,3 +1,6 @@
-﻿file contents in the correct order
-even separtaed	by tabs
-and new lines
+﻿0 EXE
+0 PC
+10 ALUA
+99 ALUB
+1 ALUR
+ALUR FLAG

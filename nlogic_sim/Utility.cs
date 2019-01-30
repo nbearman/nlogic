@@ -39,6 +39,67 @@ namespace nlogic_sim
         };
 
         /// <summary>
+        /// Maps register location codes to register short names.
+        /// </summary>
+        public static Dictionary<byte, string> register_location_to_name = new Dictionary<byte, string>
+        {
+            {Processor.IMM, "IMM" },
+
+            {Processor.FLAG, "FLAG"},
+            {Processor.EXE, "EXE"},
+            {Processor.PC, "PC"},
+
+            {Processor.ALUM, "ALUM"},
+            {Processor.ALUA, "ALUA"},
+            {Processor.ALUB, "ALUB"},
+            {Processor.ALUR, "ALUR"},
+
+            {Processor.FPUM, "FPUM"},
+            {Processor.FPUA, "FPUA"},
+            {Processor.FPUB, "FPUB"},
+            {Processor.FPUR, "FPUR"},
+
+            { Processor.RBASE, "RBASE"},
+            { Processor.ROFST, "ROFST"},
+            {Processor.RMEM, "RMEM"},
+
+            { Processor.WBASE, "WBASE"},
+            { Processor.WOFST, "WOFST"},
+            {Processor.WMEM, "WMEM"},
+        };
+
+        /// <summary>
+        /// Maps ALU modes to short names.
+        /// </summary>
+        public static Dictionary<Processor.ALU_MODE, string> alu_mode_to_name = new Dictionary<Processor.ALU_MODE, string>
+        {
+            {Processor.ALU_MODE.NoOp, "NoOP" },
+            {Processor.ALU_MODE.Add, "ADD" },
+            {Processor.ALU_MODE.AND, "AND" },
+            {Processor.ALU_MODE.Divide, "DIV" },
+            {Processor.ALU_MODE.Multiply, "MULT" },
+            {Processor.ALU_MODE.NAND, "NAND" },
+            {Processor.ALU_MODE.NOR, "NOR" },
+            {Processor.ALU_MODE.OR, "OR" },
+            {Processor.ALU_MODE.ShiftLeft, "LSFT" },
+            {Processor.ALU_MODE.ShiftRight, "RSFT" },
+            {Processor.ALU_MODE.Subtract, "SUB" },
+            {Processor.ALU_MODE.XOR, "XOR" },
+        };
+
+        /// <summary>
+        /// Maps FPU modes to short names.
+        /// </summary>
+        public static Dictionary<Processor.FPU_MODE, string> fpu_mode_to_name = new Dictionary<Processor.FPU_MODE, string>
+        {
+            {Processor.FPU_MODE.NoOp, "NoOP" },
+            {Processor.FPU_MODE.Add, "ADD" },
+            {Processor.FPU_MODE.Divide, "DIV" },
+            {Processor.FPU_MODE.Multiply, "MULT" },
+            {Processor.FPU_MODE.Subtract, "SUB" },
+        };
+
+        /// <summary>
         /// Converts a big-endian array of bytes into a floating point number.
         /// </summary>
         public static float float_from_byte_array(byte[] data_array)

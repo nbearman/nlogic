@@ -8,7 +8,7 @@ namespace nlogic_sim
 
         public static string get_file_contents(string file_path)
         {
-            StreamReader file_input = new StreamReader("program.txt");
+            StreamReader file_input = new StreamReader(file_path);
             string contents = file_input.ReadToEnd();
             file_input.Close();
             return (contents);

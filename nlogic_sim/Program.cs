@@ -11,6 +11,11 @@ namespace nlogic_sim
         static void Main(string[] args)
         {
             Assembler.assemble("program.txt");
+            string output = Assembler.dump_assembly();
+            Console.WriteLine(output);
+
+            Processor p = new Processor();
+            p.print_current_state();
             
             Console.Read();
         }
