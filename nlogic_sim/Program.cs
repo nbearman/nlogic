@@ -12,7 +12,7 @@ namespace nlogic_sim
         static void Main(string[] args)
         {
 
-            Assembler.assemble("programs/alu_shift_test.txt");
+            Assembler.assemble("programs/subtraction.txt");
             string output = Assembler.dump_assembly();
             Console.WriteLine(output);
 
