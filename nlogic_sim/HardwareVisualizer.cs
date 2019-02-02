@@ -77,7 +77,9 @@ namespace nlogic_sim
             Console.Write(" [ " + int_value + " ]");
             Console.WriteLine();
 
-            Console.Write("                                 ");
+            Console.Write("  ");
+            print_register(registers[COMPA], ConsoleColor.DarkBlue, ConsoleColor.White);
+            Console.Write("    ");
             print_register(registers[GPD], ConsoleColor.Blue, ConsoleColor.White);
             Console.Write("    ");
             print_register(registers[ALUR], ConsoleColor.Blue, ConsoleColor.White);
@@ -86,11 +88,15 @@ namespace nlogic_sim
             Console.Write(" [ " + int_value + " ]");
             Console.WriteLine();
 
+            Console.Write("  ");
+            print_register(registers[COMPB], ConsoleColor.DarkMagenta, ConsoleColor.White);
             Console.WriteLine();
 
             //////////////////////
 
-            Console.Write("                                 ");
+            Console.Write("  ");
+            print_register(registers[COMPR], ConsoleColor.DarkGreen, ConsoleColor.White);
+            Console.Write("    ");
             print_register(registers[GPE], ConsoleColor.Cyan, ConsoleColor.White);
             Console.Write("    ");
             print_register(registers[FPUM], ConsoleColor.DarkMagenta, ConsoleColor.White);

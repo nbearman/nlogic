@@ -45,6 +45,10 @@ namespace nlogic_sim
             {"GPF", Processor.GPF },
             {"GPG", Processor.GPG },
             {"GPH", Processor.GPH },
+
+            {"COMPA", Processor.COMPA },
+            {"COMPB", Processor.COMPB },
+            {"COMPR", Processor.COMPR },
         };
 
         /// <summary>
@@ -84,6 +88,10 @@ namespace nlogic_sim
             {Processor.GPF, "GPF" },
             {Processor.GPG, "GPG" },
             {Processor.GPH, "GPH" },
+
+            {Processor.COMPA, "COMPA" },
+            {Processor.COMPB, "COMPB" },
+            {Processor.COMPR, "COMPR" },
         };
 
         /// <summary>

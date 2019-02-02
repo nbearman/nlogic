@@ -12,7 +12,7 @@ namespace nlogic_sim
         static void Main(string[] args)
         {
 
-            Assembler.assemble("programs/subtraction.txt");
+            Assembler.assemble("programs/jump3.txt");
             string output = Assembler.dump_assembly();
             Console.WriteLine(output);
 

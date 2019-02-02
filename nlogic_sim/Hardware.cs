@@ -56,6 +56,9 @@ namespace nlogic_sim
         public const byte GPF = 0x96;
         public const byte GPG = 0x97;
         public const byte GPH = 0x98;
+        public const byte COMPA = 0x99;
+        public const byte COMPB = 0xA0;
+        public const byte COMPR = 0xA1;
 
         public bool halted;
         public ushort current_instruction;
@@ -74,6 +77,9 @@ namespace nlogic_sim
 
             //increment program counter
             ((Register_32)registers[PC]).data += 2;
+
+            //update COMPR
+            update_comp_accessor();
 
             //execute current instruction
             execute();
@@ -167,6 +173,22 @@ namespace nlogic_sim
             }
 
 
+        }
+
+        private void update_comp_accessor()
+        {
+            uint base_addr = ((Register_32)registers[EXE]).data;
+            uint offset = ((Register_32)registers[PC]).data;
+            uint compa_value = ((Register_32)registers[COMPA]).data;
+            uint compb_value = ((Register_32)registers[COMPB]).data;
+            if (compa_value == compb_value)
+            {
+                ((Register_32)registers[COMPR]).data_array = read_memory(base_addr + offset, 4);
+            }
+            else
+            {
+                ((Register_32)registers[COMPR]).data_array = read_memory(base_addr + offset + 4, 4);
+            }
         }
 
         private void update_accessor_a()
@@ -448,6 +470,18 @@ namespace nlogic_sim
                     {GPH, (new Register_32(
                         "General Purpose Register H",
                         "GPH",
+                        true))},
+                    {COMPA, (new Register_32(
+                        "Branching Comparator Input A",
+                        "COMPA",
+                        true))},
+                    {COMPB, (new Register_32(
+                        "Branching Comparator Input B",
+                        "COMPB",
+                        true))},
+                    {COMPR, (new Register_32(
+                        "Branching Comparator Read Result",
+                        "COMPR",
                         true))},
                 };
         }

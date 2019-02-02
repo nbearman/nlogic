@@ -13,29 +13,63 @@ namespace nlogic_sim
             return Utility.byte_array_string(program_data);
         }
 
-        public static void assemble(string filepath)
+        private static bool strip_labels(string code, out string result)
         {
-            ConsoleColor original_color = Console.ForegroundColor;
-            Console.ForegroundColor = ConsoleColor.Cyan;
-            Console.WriteLine("|ASSEMBLER");
-            Console.ForegroundColor = ConsoleColor.Gray;
+            result = "";
 
-            Assembler.print_message("opening file for assembly...", MESSAGE_TYPE.Status);
+            //dictionary of defined labels, along with their address of definition
+            Dictionary<string, int> labels = new Dictionary<string, int>();
 
+            int address_counter = 0;
+
+            string[] split = code.Split(new string[] { " ", "\t", "\n", "\r", Environment.NewLine }, StringSplitOptions.RemoveEmptyEntries);
+
+            for (int i = 0; i < split.Length; i++)
+            {
+                if (split[i].Substring(0, 1)[0] == '@')
+                {
+                    string l = split[i].Substring(1);
+                    if (labels.ContainsKey(l))
+                    {
+                        //duplicate label defined
+                        print_message("duplicate label defined: " + l, MESSAGE_TYPE.Error);
+                        return false;
+                    }
+
+                    labels.Add(l, address_counter);
+                }
+
+                else
+                {
+                    //reserve 4 addresses for labels that will be replaced with 4 bytes
+                    if (split[i].Substring(0, 1)[0] == ':')
+                        address_counter += 4;
+                    else
+                        address_counter += 1;
+                }
+
+            }
+
+            return false;
+        }
+
+        private static bool code_to_instructions(string code, out string instructions)
+        {
+            instructions = "";
+
+
+
+            return false;
+        }
+
+        private static bool instructions_to_binary(string instructions)
+        {
             bool successful = true;
 
-            string input_string = "";
-            try
-            {
-                input_string = File_Input.get_file_contents(filepath);
-            }
-            catch (Exception e)
-            {
-                Assembler.print_message("unable to open file: \t\t" + filepath, MESSAGE_TYPE.Error);
-                successful = false;
-            }
+            string input_string = instructions;
+            
 
-            string[] split = input_string.Split(new string[]{ " ", "\t", "\n", "\r", Environment.NewLine}, StringSplitOptions.RemoveEmptyEntries);
+            string[] split = input_string.Split(new string[] { " ", "\t", "\n", "\r", Environment.NewLine }, StringSplitOptions.RemoveEmptyEntries);
 
             byte[] converted_data = new byte[split.Length];
 
@@ -78,11 +112,43 @@ namespace nlogic_sim
             if (successful)
             {
                 Assembler.print_message("assembly successful", MESSAGE_TYPE.Success);
+                return true;
             }
             else
             {
                 Assembler.print_message("assembly failure; output unreliable", MESSAGE_TYPE.Failure);
+                return false;
             }
+        }
+
+        public static void assemble(string filepath)
+        {
+            ConsoleColor original_color = Console.ForegroundColor;
+            Console.ForegroundColor = ConsoleColor.Cyan;
+            Console.WriteLine("|ASSEMBLER");
+            Console.ForegroundColor = ConsoleColor.Gray;
+
+            Assembler.print_message("opening file for assembly...", MESSAGE_TYPE.Status);
+
+            bool successful = true;
+            string input_string = "";
+
+            try
+            {
+                input_string = File_Input.get_file_contents(filepath);
+            }
+            catch (Exception e)
+            {
+                Assembler.print_message("unable to open file: \t\t" + filepath, MESSAGE_TYPE.Error);
+                successful = false;
+            }
+
+            if (successful)
+            {
+                instructions_to_binary(input_string);
+            }
+
+
 
             Console.ForegroundColor = ConsoleColor.Cyan;
             Console.WriteLine("|end ASSEMBLER");
