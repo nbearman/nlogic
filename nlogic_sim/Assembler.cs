@@ -6,24 +6,57 @@ namespace nlogic_sim
 {
     class Assembler
     {
+        public static bool assembled = false;
+
         public static byte[] program_data;
 
         public static string dump_assembly()
         {
-            return Utility.byte_array_string(program_data);
+            if (program_data != null)
+                return Utility.byte_array_string(program_data);
+            return "";
         }
 
+        //attach a prefix to all local labels
+        private static bool prefix_labels(string code, string label_prefix, out string result)
+        {
+            result = "";
+
+            string[] split = code.Split(new string[] { " ", "\t", "\n", "\r", Environment.NewLine }, StringSplitOptions.RemoveEmptyEntries);
+
+            for (int i = 0; i < split.Length; i++)
+            {
+                //for local label usages and definitions, but not linked labels
+                if ( (split[i].Substring(0, 1)[0] == '@' && (split[i].Substring(0, 2) != "@@"))
+                    || (split[i].Substring(0, 1)[0] == ':' && (split[i].Substring(0, 2) != "::")) )
+                {
+                    split[i] = split[i].Substring(0, 1)[0] + label_prefix + split[i].Substring(1);
+                }
+
+                result += split[i];
+                if (i < split.Length - 1)
+                {
+                    result += ' ';
+                }
+            }
+
+            return true;
+        }
+
+        //resolve, remove, and replace all label usages and definitions
         private static bool strip_labels(string code, out string result)
         {
             result = "";
 
             //dictionary of defined labels, along with their address of definition
-            Dictionary<string, int> labels = new Dictionary<string, int>();
+            Dictionary<string, uint> labels = new Dictionary<string, uint>();
 
-            int address_counter = 0;
+            uint address_counter = 0;
 
             string[] split = code.Split(new string[] { " ", "\t", "\n", "\r", Environment.NewLine }, StringSplitOptions.RemoveEmptyEntries);
 
+
+            //go through input once to find all label definitions
             for (int i = 0; i < split.Length; i++)
             {
                 if (split[i].Substring(0, 1)[0] == '@')
@@ -50,16 +83,78 @@ namespace nlogic_sim
 
             }
 
-            return false;
+            //go through input again, removing label definitions and replacing label uses with addresses
+            //detect undefined label usage
+            for (int i = 0; i < split.Length; i++)
+            {
+                if (split[i].Substring(0, 1)[0] == '@')
+                {
+                    split[i] = "";
+                }
+
+                else if (split[i].Substring(0, 1)[0] == ':')
+                {
+                    string l = split[i].Substring(1);
+
+                    //linked labels must strip the additional ':' prefix
+                    //replace the ':' with @ because linked labels are stored with the '@' prefix
+                    if (l[0] == ':')
+                        l = '@' + l.Substring(1);
+
+                    if (labels.ContainsKey(l))
+                    {
+                        byte[] address_bytes = Utility.byte_array_from_uint32(4, labels[l]);
+                        split[i] = Utility.byte_array_string(address_bytes);
+                    }
+
+                    else
+                    {
+                        //undefined label used
+                        print_message("undefined label: " + l, MESSAGE_TYPE.Error);
+                        return false;
+                    }
+                }
+
+                result += split[i];
+                if (i < split.Length - 1)
+                {
+                    result += ' ';
+                }
+            }
+
+            return true;
         }
 
-        private static bool code_to_instructions(string code, out string instructions)
+
+        private static bool code_to_instructions(string[] code_files, out string instructions)
         {
             instructions = "";
 
+            string amalgamated_code = "";
 
+            for (int i = 0; i < code_files.Length; i++)
+            {
+                string prefix = "__file_" + i + "__";
+                string result;
+                Assembler.prefix_labels(code_files[i], prefix, out result);
+                amalgamated_code += result;
+                
+                //add a space between two code files
+                if (i < code_files.Length - 1)
+                {
+                    amalgamated_code += " ";
+                }
+            }
 
-            return false;
+            //string[] split = amalgamated_code.Split(new string[] { " ", "\t", "\n", "\r", Environment.NewLine }, StringSplitOptions.RemoveEmptyEntries);
+            //for (int i = 0; i < split.Length; i++)
+            //{
+            //    Console.WriteLine(split[i]);
+            //}
+
+            //return the success state of the assembly process so far
+            //also pass out intructions
+            return strip_labels(amalgamated_code, out instructions);
         }
 
         private static bool instructions_to_binary(string instructions)
@@ -109,19 +204,10 @@ namespace nlogic_sim
 
             program_data = converted_data;
 
-            if (successful)
-            {
-                Assembler.print_message("assembly successful", MESSAGE_TYPE.Success);
-                return true;
-            }
-            else
-            {
-                Assembler.print_message("assembly failure; output unreliable", MESSAGE_TYPE.Failure);
-                return false;
-            }
+            return successful;
         }
 
-        public static void assemble(string filepath)
+        public static void assemble(string[] filepaths)
         {
             ConsoleColor original_color = Console.ForegroundColor;
             Console.ForegroundColor = ConsoleColor.Cyan;
@@ -130,22 +216,43 @@ namespace nlogic_sim
 
             Assembler.print_message("opening file for assembly...", MESSAGE_TYPE.Status);
 
-            bool successful = true;
-            string input_string = "";
+            string[] code_files = new string[filepaths.Length];
 
-            try
+            bool successful = true;
+
+            for (int i = 0; i < filepaths.Length; i++)
             {
-                input_string = File_Input.get_file_contents(filepath);
+
+                try
+                {
+                    code_files[i] = File_Input.get_file_contents(filepaths[i]);
+                }
+                catch (Exception e)
+                {
+                    Assembler.print_message("unable to open file: \t\t" + filepaths[i], MESSAGE_TYPE.Error);
+                    successful = false;
+                }
             }
-            catch (Exception e)
-            {
-                Assembler.print_message("unable to open file: \t\t" + filepath, MESSAGE_TYPE.Error);
-                successful = false;
-            }
+
+
+            bool assembler_result = false;
 
             if (successful)
             {
-                instructions_to_binary(input_string);
+                string instructions = "";
+                assembler_result = code_to_instructions(code_files, out instructions);
+                if (assembler_result)
+                    assembler_result = instructions_to_binary(instructions);
+            }
+
+            if (assembler_result)
+            {
+                Assembler.print_message("assembly successful", MESSAGE_TYPE.Success);
+                assembled = true;
+            }
+            else
+            {
+                Assembler.print_message("assembly failure; output unreliable", MESSAGE_TYPE.Failure);
             }
 
 

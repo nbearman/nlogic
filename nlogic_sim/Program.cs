@@ -11,10 +11,20 @@ namespace nlogic_sim
     {
         static void Main(string[] args)
         {
-
-            Assembler.assemble("programs/jump3.txt");
+            string[] code_files = new string[]
+            {
+                "programs/external_labels1.txt",
+                "programs/external_labels2.txt",
+            };
+            Assembler.assemble(code_files);
             string output = Assembler.dump_assembly();
             Console.WriteLine(output);
+
+            if (!Assembler.assembled)
+            {
+                Console.ReadKey();
+                return;
+            }
 
             Processor p = new Processor();
             for (int i = 0; i < Assembler.program_data.Length; i++)
