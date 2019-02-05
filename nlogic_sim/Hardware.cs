@@ -207,7 +207,7 @@ namespace nlogic_sim
             //if COMPA == COMPB, COMPR = memory[EXE + PC]
             if (compa_value == compb_value)
             {
-                iadn_value = read_memory(base_addr + offset, 4);
+                ((Register_32)registers[COMPR]).data_array = iadn_value;
             }
 
             //else COMPR = memory[EXE + PC + 4]
@@ -523,7 +523,7 @@ namespace nlogic_sim
                         "Link Register",
                         "LINK",
                         true))},
-                    {LINK, (new Register_32(
+                    {SKIP, (new Register_32(
                         "Skip Immediate Address Register",
                         "SKIP",
                         false))},

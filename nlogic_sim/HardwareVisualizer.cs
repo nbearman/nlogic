@@ -78,7 +78,7 @@ namespace nlogic_sim
             Console.WriteLine();
 
             Console.Write("  ");
-            print_register(registers[COMPA], ConsoleColor.DarkBlue, ConsoleColor.White);
+            print_register(registers[SKIP], ConsoleColor.Gray, ConsoleColor.White);
             Console.Write("    ");
             print_register(registers[GPD], ConsoleColor.Blue, ConsoleColor.White);
             Console.Write("    ");
@@ -89,13 +89,13 @@ namespace nlogic_sim
             Console.WriteLine();
 
             Console.Write("  ");
-            print_register(registers[COMPB], ConsoleColor.DarkMagenta, ConsoleColor.White);
+            print_register(registers[RTRN], ConsoleColor.White, ConsoleColor.White);
             Console.WriteLine();
 
             //////////////////////
 
             Console.Write("  ");
-            print_register(registers[COMPR], ConsoleColor.DarkGreen, ConsoleColor.White);
+            print_register(registers[LINK], ConsoleColor.Cyan, ConsoleColor.White);
             Console.Write("    ");
             print_register(registers[GPE], ConsoleColor.Cyan, ConsoleColor.White);
             Console.Write("    ");
@@ -132,13 +132,36 @@ namespace nlogic_sim
             Console.Write(" [ " + float_value + " ]");
             Console.WriteLine();
 
-            Console.Write("                                 ");
+            Console.Write("  ");
+            print_register(registers[COMPA], ConsoleColor.DarkBlue, ConsoleColor.White);
+            Console.Write("    ");
             print_register(registers[GPH], ConsoleColor.Red, ConsoleColor.White);
             Console.Write("    ");
             print_register(registers[FPUR], ConsoleColor.Magenta, ConsoleColor.White);
             float_value = ((Register_32)registers[FPUR]).float_data().ToString();
             float_value = String.Format("{0, 11}", float_value);
             Console.Write(" [ " + float_value + " ]");
+            Console.WriteLine();
+
+            Console.Write("  ");
+            print_register(registers[COMPB], ConsoleColor.DarkMagenta, ConsoleColor.White);
+            Console.WriteLine();
+
+            Console.Write("  ");
+            print_register(registers[COMPR], ConsoleColor.DarkGreen, ConsoleColor.White);
+            Console.WriteLine();
+
+            
+            Console.WriteLine();
+
+            Console.Write("  ");
+            print_register(registers[IADN], ConsoleColor.Red, ConsoleColor.White);
+            Console.WriteLine();
+
+            Console.Write("  ");
+            print_register(registers[IADF], ConsoleColor.Green, ConsoleColor.White);
+            Console.WriteLine();
+
             Console.WriteLine();
 
             //////////////////////////////////////////
