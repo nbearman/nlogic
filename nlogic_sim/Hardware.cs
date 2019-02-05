@@ -5,6 +5,9 @@ namespace nlogic_sim
 {
     public partial class Processor
     {
+        //lock required for reading memory
+        public readonly object memory_mutex = new object();
+
         public enum ALU_MODE
         {
             NoOp = 0,
@@ -57,8 +60,8 @@ namespace nlogic_sim
         public const byte GPG = 0x97;
         public const byte GPH = 0x98;
         public const byte COMPA = 0x99;
-        public const byte COMPB = 0xA0;
-        public const byte COMPR = 0xA1;
+        public const byte COMPB = 0x9A;
+        public const byte COMPR = 0x9B;
 
         public bool halted;
         public ushort current_instruction;

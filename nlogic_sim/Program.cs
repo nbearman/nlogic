@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Threading;
+using System.Diagnostics;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -11,10 +12,13 @@ namespace nlogic_sim
     {
         static void Main(string[] args)
         {
+            //draw_test();
+            //Console.ReadKey();
+            //return;
+
             string[] code_files = new string[]
             {
-                "programs/external_labels1.txt",
-                "programs/external_labels2.txt",
+                "programs/fptest.txt",
             };
             Assembler.assemble(code_files);
             string output = Assembler.dump_assembly();
@@ -43,5 +47,59 @@ namespace nlogic_sim
 
 
         }
+
+        static void draw_test()
+        {
+            Console.CursorVisible = false;
+            Random random = new Random();
+
+            Stopwatch s = new Stopwatch();
+            s.Reset();
+            s.Start();
+            Thread.Sleep(10);
+            s.Stop();
+            Console.WriteLine(s.ElapsedMilliseconds);
+            Console.ReadKey();
+
+
+            Stopwatch sw = new Stopwatch();
+
+            int locx = 50;
+            int locy = 15;
+
+            while (true)
+            {
+                locx += random.Next(-1, 2);
+                locy += random.Next(-1, 2);
+                locx = locx % 100;
+                locy = locy % 28;
+
+                sw.Reset();
+                sw.Start();
+
+                for (int y = 0; y < 28; y++)
+                {
+                    Console.SetCursorPosition(0, y);
+
+                    for (int x = 0; x < 100; x++)
+                    {
+                        //int p = random.Next(0, 10);
+                        if (locx == x && locy == y)
+                            Console.Write('#');
+                        Console.Write(' ');
+                    }
+
+                }
+
+                sw.Stop();
+                Console.WriteLine("\n" + sw.ElapsedMilliseconds + "    ");
+                Console.WriteLine("\n" + locx + "    ");
+                Console.WriteLine("\n" + locy + "    ");
+                //Thread.Sleep(60);
+            }
+
+        }
+        
     }
+
 }
