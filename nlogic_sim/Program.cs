@@ -18,7 +18,7 @@ namespace nlogic_sim
 
             string[] code_files = new string[]
             {
-                "programs/fptest.txt",
+                "programs/sample_memory_read.txt",
             };
             Assembler.assemble(code_files);
             string output = Assembler.dump_assembly();

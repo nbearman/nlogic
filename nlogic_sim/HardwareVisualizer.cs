@@ -329,6 +329,13 @@ namespace nlogic_sim
                 base_line_number = 0;
             }
 
+            int last_line = ((memory.Length) / 8) - 1;
+
+            if (base_line_number > last_line - 8)
+            {
+                base_line_number = last_line - 8;
+            }
+
             for (int row = 0; row < 8; row++)
             {
                 result[row] = new membyte[8];
