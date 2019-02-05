@@ -62,6 +62,11 @@ namespace nlogic_sim
         public const byte COMPA = 0x99;
         public const byte COMPB = 0x9A;
         public const byte COMPR = 0x9B;
+        public const byte IADN = 0x9C;
+        public const byte IADF = 0x9D;
+        public const byte LINK = 0x9E;
+        public const byte SKIP = 0x9F;
+        public const byte RTRN = 0xA0;
 
         public bool halted;
         public ushort current_instruction;
@@ -81,8 +86,10 @@ namespace nlogic_sim
             //increment program counter
             ((Register_32)registers[PC]).data += 2;
 
-            //update COMPR
-            update_comp_accessor();
+            //update COMPR, IADN, IADF, SKIP, RTRN
+            update_accessors();
+
+
 
             //execute current instruction
             execute();
@@ -178,20 +185,38 @@ namespace nlogic_sim
 
         }
 
-        private void update_comp_accessor()
+        private void update_accessors()
         {
+            //calculate the address of EXE + PC in memory
             uint base_addr = ((Register_32)registers[EXE]).data;
             uint offset = ((Register_32)registers[PC]).data;
+
+            //update SKIP and RETURN
+            ((Register_32)registers[SKIP]).data = ((Register_32)registers[PC]).data + 4;
+            ((Register_32)registers[RTRN]).data = ((Register_32)registers[PC]).data + 6;
+
+            //update IADN and IADF
+            byte[] iadn_value = read_memory(base_addr + offset, 4); //IADN value might be reused by COMPR
+            ((Register_32)registers[IADN]).data_array = iadn_value;
+            ((Register_32)registers[IADF]).data_array = read_memory(base_addr + offset + 2, 4);
+
+            
+            //compare COMPA and COMPB
             uint compa_value = ((Register_32)registers[COMPA]).data;
             uint compb_value = ((Register_32)registers[COMPB]).data;
+            //if COMPA == COMPB, COMPR = memory[EXE + PC]
             if (compa_value == compb_value)
             {
-                ((Register_32)registers[COMPR]).data_array = read_memory(base_addr + offset, 4);
+                iadn_value = read_memory(base_addr + offset, 4);
             }
+
+            //else COMPR = memory[EXE + PC + 4]
             else
             {
                 ((Register_32)registers[COMPR]).data_array = read_memory(base_addr + offset + 4, 4);
             }
+
+
         }
 
         private void update_accessor_a()
@@ -485,7 +510,27 @@ namespace nlogic_sim
                     {COMPR, (new Register_32(
                         "Branching Comparator Read Result",
                         "COMPR",
+                        false))},
+                    {IADN, (new Register_32(
+                        "Near Instructions-as-data Accessor",
+                        "IADN",
+                        false))},
+                    {IADF, (new Register_32(
+                        "Far Instructions-as-data Accessor",
+                        "IADF",
+                        false))},
+                    {LINK, (new Register_32(
+                        "Link Register",
+                        "LINK",
                         true))},
+                    {LINK, (new Register_32(
+                        "Skip Immediate Address Register",
+                        "SKIP",
+                        false))},
+                    {RTRN, (new Register_32(
+                        "Return Address Register",
+                        "RTRN",
+                        false))},
                 };
         }
     }

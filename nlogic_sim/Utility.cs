@@ -49,6 +49,12 @@ namespace nlogic_sim
             {"COMPA", Processor.COMPA },
             {"COMPB", Processor.COMPB },
             {"COMPR", Processor.COMPR },
+
+            {"IADN", Processor.IADN },
+            {"IADF", Processor.IADF },
+            {"LINK", Processor.LINK },
+            {"SKIP", Processor.SKIP },
+            {"RTRN", Processor.RTRN },
         };
 
         /// <summary>
@@ -92,6 +98,12 @@ namespace nlogic_sim
             {Processor.COMPA, "COMPA" },
             {Processor.COMPB, "COMPB" },
             {Processor.COMPR, "COMPR" },
+
+            {Processor.IADN, "IADN" },
+            {Processor.IADF, "IADF" },
+            {Processor.LINK, "LINK" },
+            {Processor.SKIP, "SKIP" },
+            {Processor.RTRN, "RTRN" },
         };
 
         /// <summary>
