@@ -8,6 +8,8 @@ namespace nlogic_sim
         //lock required for reading memory
         public readonly object memory_mutex = new object();
 
+
+
         public enum ALU_MODE
         {
             NoOp = 0,
@@ -74,6 +76,9 @@ namespace nlogic_sim
         public byte[] memory;
 
         public Dictionary<byte, I_Register> registers;
+
+        //change to an interval tree or something
+        public Dictionary<uint, MMIO> devices;
 
         /// <summary>
         /// Completes one cycle of work on the processor and returns the processor status (contents of FLAG).
@@ -391,6 +396,21 @@ namespace nlogic_sim
 
         }
 
+        /// <summary>
+        /// Set up all the MMIO devices attached to the processor
+        /// </summary>
+        private void initialize_MMIO()
+        {
+            //assign base addresses to all MMIO devices
+            //for each device
+            //  give next base address
+            //  get size to calculate base address for next device
+
+
+            //change read() and write() memory to first look up MMIO device
+            //then use its read and write methods
+        }
+
         public Processor()
         {
             halted = false;
@@ -534,6 +554,14 @@ namespace nlogic_sim
                         false))},
                 };
         }
+    }
+
+    public interface MMIO
+    {
+        uint get_size();
+        void set_base_address();
+        void write_memory(uint address, byte[] data);
+        byte[] read_memory(uint address, uint length);
     }
 
     public interface I_Register
