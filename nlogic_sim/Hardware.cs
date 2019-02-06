@@ -80,22 +80,23 @@ namespace nlogic_sim
         /// </summary>
         public uint cycle()
         {
-            //load current instruction
-            load_current_instruction();
+            lock (memory_mutex)
+            {
+                //load current instruction
+                load_current_instruction();
 
-            //increment program counter
-            ((Register_32)registers[PC]).data += 2;
+                //increment program counter
+                ((Register_32)registers[PC]).data += 2;
 
-            //update COMPR, IADN, IADF, SKIP, RTRN
-            update_accessors();
+                //update COMPR, IADN, IADF, SKIP, RTRN
+                update_accessors();
 
+                //execute current instruction
+                execute();
 
-
-            //execute current instruction
-            execute();
-
-            //return contents of FLAG
-            return Utility.uint32_from_byte_array(registers[FLAG].data_array);
+                //return contents of FLAG
+                return Utility.uint32_from_byte_array(registers[FLAG].data_array);
+            }
         }
 
         /// <summary>

@@ -1,4 +1,5 @@
 ﻿using System;
+using System.IO;
 using System.Threading;
 using System.Diagnostics;
 using System.Collections.Generic;
@@ -12,40 +13,87 @@ namespace nlogic_sim
     {
         static void Main(string[] args)
         {
-            //draw_test();
+            //generate_memory_test();
+            //Console.ReadKey();
+            //return;
+
+            //var original_out = Console.Out;
+            //var file_output = new StreamWriter("output.txt");
+            //Console.SetOut(file_output);
+            //Console.WriteLine("out putting to out put");
+            //Console.SetOut(original_out);
+            //file_output.Close();
+            //Console.WriteLine("Done.");
             //Console.ReadKey();
             //return;
 
             string[] code_files = new string[]
             {
-                "programs/sample_memory_read.txt",
+                "programs/memory_test.txt",
             };
-            Assembler.assemble(code_files);
+
+            Assembler.assemble(code_files, "assembler_output.txt");
             string output = Assembler.dump_assembly();
             Console.WriteLine(output);
 
             if (!Assembler.assembled)
             {
+                Console.WriteLine("assembler failed");
                 Console.ReadKey();
                 return;
             }
 
-            Processor p = new Processor();
-            for (int i = 0; i < Assembler.program_data.Length; i++)
+            int runs = 1000;
+            long sum = 0;
+
+            for (int r = 0; r < runs; r++)
             {
-                p.memory[i] = Assembler.program_data[i];
+
+                Processor p = new Processor();
+                for (int i = 0; i < Assembler.program_data.Length; i++)
+                {
+                    p.memory[i] = Assembler.program_data[i];
+                }
+
+
+                sum += time_execution(p);
             }
 
-            p.print_current_state();
+            double avg = (double)sum / (double)runs;
+            Console.WriteLine("average time: " + avg + " ms");
 
-            while (true)
+            Console.ReadKey();
+            return;
+
+            /////////////////////////////////////////////////////////////////////////
+            //manual execution
+
+            //p.print_current_state();
+
+            //while (((Register_32)p.registers[Processor.FLAG]).data == 0)
+            //{
+            //    p.cycle();
+            //    p.print_current_state();
+            //    Console.ReadKey();
+            //}
+
+
+        }
+
+        static long time_execution(Processor p)
+        {
+            Stopwatch s = new Stopwatch();
+            s.Reset();
+            s.Start();
+
+            while (((Register_32)p.registers[Processor.FLAG]).data == 0)
             {
-                Console.ReadKey();
                 p.cycle();
-                p.print_current_state();
             }
 
+            s.Stop();
 
+            return s.ElapsedMilliseconds;
         }
 
         static void draw_test()
@@ -98,6 +146,22 @@ namespace nlogic_sim
                 //Thread.Sleep(60);
             }
 
+        }
+
+        static void generate_memory_test()
+        {
+            string contents = "";
+            Random random = new Random();
+
+            for (int i = 0; i < 1000; i++)
+            {
+                uint address = (uint)random.Next(0x2EE1, 0xFFFC);
+                byte[] b = Utility.byte_array_from_uint32(4, address);
+                string s = Utility.byte_array_string(b, "\n");
+                contents += "IADF\nROFST\nSKIP\nPC\n" + s + "\nRMEM\nGPA\nPC\nRMEM\n";
+            }
+
+            File_Input.write_file("memory_test.txt", contents);
         }
         
     }

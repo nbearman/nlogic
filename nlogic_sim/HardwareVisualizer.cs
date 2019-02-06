@@ -333,7 +333,7 @@ namespace nlogic_sim
 
             if (base_line_number > last_line - 8)
             {
-                base_line_number = last_line - 8;
+                base_line_number = last_line - 7;
             }
 
             for (int row = 0; row < 8; row++)

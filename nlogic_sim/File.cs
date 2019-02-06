@@ -14,5 +14,12 @@ namespace nlogic_sim
             return (contents);
 
         }
+
+        public static void write_file(string file_path, string contents)
+        {
+            StreamWriter w = new StreamWriter(file_path, false);
+            w.Write(contents);
+            w.Close();
+        }
     }
 }

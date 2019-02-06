@@ -6,6 +6,10 @@ namespace nlogic_sim
 {
     class Assembler
     {
+        private static bool output_to_file = false;
+
+        private static string assembler_output = "";
+
         public static bool assembled = false;
 
         public static byte[] program_data;
@@ -207,8 +211,14 @@ namespace nlogic_sim
             return successful;
         }
 
-        public static void assemble(string[] filepaths)
+        public static void assemble(string[] filepaths, string output_file_path = null)
         {
+
+            if (output_file_path != null)
+            {
+                redirect_output(output_file_path);
+            }
+
             ConsoleColor original_color = Console.ForegroundColor;
             Console.ForegroundColor = ConsoleColor.Cyan;
             Console.WriteLine("|ASSEMBLER");
@@ -262,6 +272,11 @@ namespace nlogic_sim
             Console.ForegroundColor = ConsoleColor.Gray;
             Console.ForegroundColor = original_color;
 
+            if (output_file_path != null)
+            {
+                reset_output();
+            }
+
         }
 
         private enum MESSAGE_TYPE
@@ -276,6 +291,7 @@ namespace nlogic_sim
 
         private static void print_message(string message, MESSAGE_TYPE message_type = MESSAGE_TYPE.None)
         {
+
             ConsoleColor original_color = Console.ForegroundColor;
             Console.ForegroundColor = (ConsoleColor)message_type;
 
@@ -310,6 +326,23 @@ namespace nlogic_sim
             Console.WriteLine(message);
 
             Console.ForegroundColor = original_color;
+        }
+
+
+        private static System.IO.TextWriter original_out_stream;
+        private static System.IO.StreamWriter file_out_stream;
+
+        private static void redirect_output(string file_path)
+        {
+            original_out_stream = Console.Out;
+            file_out_stream = new System.IO.StreamWriter(file_path);
+            Console.SetOut(file_out_stream);
+        }
+
+        private static void reset_output()
+        {
+            Console.SetOut(original_out_stream);
+            file_out_stream.Close();
         }
     }
 }
