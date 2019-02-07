@@ -5,79 +5,13 @@ namespace nlogic_sim
 {
     public partial class Processor
     {
-        //lock required for reading memory
-        public readonly object memory_mutex = new object(); //lock no  longer necessary
-
-
-
-        public enum ALU_MODE
-        {
-            NoOp = 0,
-            Add = 1,
-            Multiply = 2,
-            Subtract = 3,
-            Divide = 4,
-            ShiftLeft = 5,
-            ShiftRight = 6,
-            OR = 7,
-            AND = 8,
-            XOR = 9,
-            NAND = 10,
-            NOR = 11,
-        }
-
-        public enum FPU_MODE
-        {
-            NoOp = 0,
-            Add = 1,
-            Multiply = 2,
-            Subtract = 3,
-            Divide = 4,
-        }
-
-        public const byte IMM = 0x00;
-        public const byte FLAG = 0x80;
-        public const byte EXE = 0x81;
-        public const byte PC = 0x82;
-        public const byte ALUM = 0x83;
-        public const byte ALUA = 0x84;
-        public const byte ALUB = 0x85;
-        public const byte ALUR = 0x86;
-        public const byte FPUM = 0x87;
-        public const byte FPUA = 0x88;
-        public const byte FPUB = 0x89;
-        public const byte FPUR = 0x8A;
-        public const byte RBASE = 0x8B;
-        public const byte ROFST = 0x8C;
-        public const byte RMEM = 0x8D;
-        public const byte WBASE = 0x8E;
-        public const byte WOFST = 0x8F;
-        public const byte WMEM = 0x90;
-        public const byte GPA = 0x91;
-        public const byte GPB = 0x92;
-        public const byte GPC = 0x93;
-        public const byte GPD = 0x94;
-        public const byte GPE = 0x95;
-        public const byte GPF = 0x96;
-        public const byte GPG = 0x97;
-        public const byte GPH = 0x98;
-        public const byte COMPA = 0x99;
-        public const byte COMPB = 0x9A;
-        public const byte COMPR = 0x9B;
-        public const byte IADN = 0x9C;
-        public const byte IADF = 0x9D;
-        public const byte LINK = 0x9E;
-        public const byte SKIP = 0x9F;
-        public const byte RTRN = 0xA0;
-
-        public bool halted;
         public ushort current_instruction;
 
         public byte[] memory;
 
         public Dictionary<byte, I_Register> registers;
 
-        //map virtual address ranges to memory-mapped input-output devices
+        //map address ranges to memory-mapped input-output devices
         public IntervalTree<uint, MMIO> devices;
 
         /// <summary>
@@ -85,23 +19,20 @@ namespace nlogic_sim
         /// </summary>
         public uint cycle()
         {
-            lock (memory_mutex) //remove lock
-            {
-                //load current instruction
-                load_current_instruction();
+            //load current instruction
+            load_current_instruction();
 
-                //increment program counter
-                ((Register_32)registers[PC]).data += 2;
+            //increment program counter
+            ((Register_32)registers[PC]).data += 2;
 
-                //update COMPR, IADN, IADF, SKIP, RTRN
-                update_accessors();
+            //update COMPR, IADN, IADF, SKIP, RTRN
+            update_accessors();
 
-                //execute current instruction
-                execute();
+            //execute current instruction
+            execute();
 
-                //return contents of FLAG
-                return Utility.uint32_from_byte_array(registers[FLAG].data_array);
-            }
+            //return contents of FLAG
+            return Utility.uint32_from_byte_array(registers[FLAG].data_array);
         }
 
         /// <summary>
@@ -388,6 +319,7 @@ namespace nlogic_sim
                 return result;
             }
 
+            //else use physical memory
             else
             {
                 for (int i = 0; i < length; i++)
@@ -401,12 +333,17 @@ namespace nlogic_sim
 
         private void write_memory(uint address, byte[] data)
         {
+            //address is beyond physical memory, check MMIO devices instead
+            if (address >= memory.Length)
+            {
+                devices.get_data(address).write_memory(address, data);
+            }
+
+            //else use physical memory
             for (int i = 0; i < data.Length; i++)
             {
                 memory[address + i] = data[i];
             }
-
-            //writing should check out of bounds addresses in the MMIO tree
 
         }
 
@@ -438,11 +375,11 @@ namespace nlogic_sim
 
         public Processor(MMIO[] MMIO_devices)
         {
-            halted = false;
             current_instruction = 0;
 
             memory = new byte[65536];
 
+            this.devices = new IntervalTree<uint, MMIO>();
             initialize_MMIO(MMIO_devices);
 
             registers = new Dictionary<byte, I_Register>
@@ -583,117 +520,4 @@ namespace nlogic_sim
         }
     }
 
-    public interface MMIO
-    {
-        uint get_size();
-        void set_base_address(uint address);
-        void write_memory(uint address, byte[] data);
-        byte[] read_memory(uint address, uint length);
-    }
-
-    public interface I_Register
-    {
-        byte[] data_array
-        {
-            get;
-            set;
-        }
-
-        uint size_in_bytes
-        {
-            get;
-        }
-
-        bool writeable
-        {
-            get;
-        }
-
-    }
-
-    public class Register_32 : I_Register
-    {
-        public readonly string name_short;
-        public readonly string name_full;
-
-        private bool _internal_writeable;
-        private readonly uint _internal_size;
-        private uint _internal_data;
-        private byte[] _internal_data_array;
-
-        public bool writeable
-        {
-            get
-            {
-                return _internal_writeable;
-            }
-        }
-
-        public uint size_in_bytes
-        {
-            get
-            {
-                return _internal_size;
-            }
-        }
-
-        public uint data
-        {
-            get
-            {
-                return _internal_data;
-            }
-
-            set
-            {
-                _internal_data = value;
-                update_array_from_data();
-            }
-        }
-
-
-        public byte[] data_array
-        {
-            get
-            {
-                return _internal_data_array;
-            }
-
-            set
-            {
-                _internal_data_array = value;
-                update_data_from_array();
-            }
-        }
-
-        public float float_data()
-        {
-            return Utility.float_from_byte_array(_internal_data_array);
-        }
-
-        public Register_32(string name_full, string name_short, bool writeable)
-        {
-            _internal_writeable = writeable;
-            _internal_size = 4;
-            this.name_full = name_full;
-            this.name_short = name_short;
-
-            data_array = new byte[_internal_size];
-            for (int i = 0; i < data_array.Length; i++)
-            {
-                data_array[i] = 0;
-            }
-
-        }
-
-        private void update_array_from_data()
-        {
-            _internal_data_array = Utility.byte_array_from_uint32(4, _internal_data);
-        }
-
-        private void update_data_from_array()
-        {
-            _internal_data = Utility.uint32_from_byte_array(_internal_data_array);
-        }
-    }
 }

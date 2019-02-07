@@ -49,7 +49,7 @@ namespace nlogic_sim
             for (int r = 0; r < runs; r++)
             {
 
-                Processor p = new Processor();
+                Processor p = new Processor(new MMIO[] {new VirtualDisplay()});
                 for (int i = 0; i < Assembler.program_data.Length; i++)
                 {
                     p.memory[i] = Assembler.program_data[i];
@@ -86,10 +86,7 @@ namespace nlogic_sim
             s.Reset();
             s.Start();
 
-            while (((Register_32)p.registers[Processor.FLAG]).data == 0)
-            {
-                p.cycle();
-            }
+            while (p.cycle() == 0) ;
 
             s.Stop();
 

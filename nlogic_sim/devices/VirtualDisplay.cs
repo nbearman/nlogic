@@ -21,14 +21,19 @@ namespace nlogic_sim
 
         private uint base_address;
 
+        public VirtualDisplay()
+        {
+            display_buffer = new byte[2000];
+        }
 
-        public static void power_on(byte[] memory, uint start_address)
+
+        public void power_on(byte[] memory, uint start_address)
         {
             ThreadStart s = new ThreadStart(display_thread);
             Thread p = new Thread(cycle);
         }
 
-        static void display_thread()
+        private void display_thread()
         {
             while (true)
             {
@@ -37,7 +42,7 @@ namespace nlogic_sim
             }
         }
 
-        static void cycle()
+        private void cycle()
         {
         }
 
