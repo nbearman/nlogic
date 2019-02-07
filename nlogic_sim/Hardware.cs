@@ -406,6 +406,8 @@ namespace nlogic_sim
                 memory[address + i] = data[i];
             }
 
+            //writing should check out of bounds addresses in the MMIO tree
+
         }
 
         /// <summary>
