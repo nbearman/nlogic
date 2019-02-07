@@ -47,6 +47,8 @@
     <Compile Include="Hardware.cs" />
     <Compile Include="HardwareVisualizer.cs" />
     <Compile Include="devices\VirtualDisplay.cs" />
+    <Compile Include="IntervalTree.cs" />
+    <Compile Include="IntervalTreeTest.cs" />
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="Utility.cs" />
