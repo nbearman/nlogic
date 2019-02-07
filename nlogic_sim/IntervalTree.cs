@@ -7,7 +7,7 @@ namespace nlogic_sim
     /// <summary>
     /// An associative mapping of intervals of type T to values of type U
     /// </summary>
-    class IntervalTree<T, U> where T : IComparable
+    public class IntervalTree<T, U> where T : IComparable
     {
         private SortedList<IntervalTreeValue, U> tree;
 

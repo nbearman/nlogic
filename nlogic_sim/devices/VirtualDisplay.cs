@@ -3,7 +3,7 @@ using System.Threading;
 
 namespace nlogic_sim
 {
-    public class VirtualDisplay
+    public class VirtualDisplay : MMIO
     {
         /// <summary>
         /// The virtual display uses the system memory to communicate with the processor;
@@ -15,7 +15,12 @@ namespace nlogic_sim
         /// </summary>
 
         public char[][] display_data;
+
+        //holds data to be displayed on the display
         public byte[] display_buffer;
+
+        private uint base_address;
+
 
         public static void power_on(byte[] memory, uint start_address)
         {
@@ -34,6 +39,26 @@ namespace nlogic_sim
 
         static void cycle()
         {
+        }
+
+        uint MMIO.get_size()
+        {
+            return (uint)display_buffer.Length;
+        }
+
+        void MMIO.set_base_address(uint address)
+        {
+            this.base_address = address;
+        }
+
+        void MMIO.write_memory(uint address, byte[] data)
+        {
+            throw new NotImplementedException();
+        }
+
+        byte[] MMIO.read_memory(uint address, uint length)
+        {
+            throw new NotImplementedException();
         }
     }
 }

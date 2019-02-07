@@ -11,7 +11,7 @@ namespace nlogic_sim
 {
     class Program
     {
-        static void _Main(string[] args)
+        static void Main(string[] args)
         {
             //generate_memory_test();
             //Console.ReadKey();

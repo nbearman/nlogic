@@ -6,7 +6,7 @@ namespace nlogic_sim
     public partial class Processor
     {
         //lock required for reading memory
-        public readonly object memory_mutex = new object();
+        public readonly object memory_mutex = new object(); //lock no  longer necessary
 
 
 
@@ -77,15 +77,15 @@ namespace nlogic_sim
 
         public Dictionary<byte, I_Register> registers;
 
-        //change to an interval tree or something
-        public Dictionary<uint, MMIO> devices;
+        //map virtual address ranges to memory-mapped input-output devices
+        public IntervalTree<uint, MMIO> devices;
 
         /// <summary>
         /// Completes one cycle of work on the processor and returns the processor status (contents of FLAG).
         /// </summary>
         public uint cycle()
         {
-            lock (memory_mutex)
+            lock (memory_mutex) //remove lock
             {
                 //load current instruction
                 load_current_instruction();
@@ -374,17 +374,29 @@ namespace nlogic_sim
         }
 
         /// <summary>
-        /// Return an array of length bytes from memory, starting at address
+        /// Return an array of length bytes from memory, starting at address.
+        /// Results may come from a memory-mapped input-output device
         /// </summary>
         private byte[] read_memory(uint address, uint length)
         {
             byte[] result = new byte[length];
-            for (int i = 0; i < length; i++)
+
+            //address is beyond physical memory, check MMIO devices instead
+            if (address >= memory.Length)
             {
-                result[i] = memory[address + i];
+                result = devices.get_data(address).read_memory(address, length);
+                return result;
             }
 
-            return result;
+            else
+            {
+                for (int i = 0; i < length; i++)
+                {
+                    result[i] = memory[address + i];
+                }
+
+                return result;
+            }
         }
 
         private void write_memory(uint address, byte[] data)
@@ -399,24 +411,37 @@ namespace nlogic_sim
         /// <summary>
         /// Set up all the MMIO devices attached to the processor
         /// </summary>
-        private void initialize_MMIO()
+        private void initialize_MMIO(MMIO[] MMIO_devices)
         {
             //assign base addresses to all MMIO devices
+
+            uint base_address = (uint)memory.Length;
             //for each device
-            //  give next base address
-            //  get size to calculate base address for next device
+            for (int i = 0; i < MMIO_devices.Length; i++)
+            {
+                //  give next base address (must be known for address translation)
+                MMIO_devices[i].set_base_address(base_address);
 
+                //  get size to calculate base address for next device
+                uint next_base_address = base_address + MMIO_devices[i].get_size();
 
-            //change read() and write() memory to first look up MMIO device
-            //then use its read and write methods
+                //insert the device into the interval tree
+                this.devices.insert(base_address, next_base_address, MMIO_devices[i]);
+
+                //update the base address to be used next
+                base_address = next_base_address;
+            }
+
         }
 
-        public Processor()
+        public Processor(MMIO[] MMIO_devices)
         {
             halted = false;
             current_instruction = 0;
 
             memory = new byte[65536];
+
+            initialize_MMIO(MMIO_devices);
 
             registers = new Dictionary<byte, I_Register>
                 {
@@ -559,7 +584,7 @@ namespace nlogic_sim
     public interface MMIO
     {
         uint get_size();
-        void set_base_address();
+        void set_base_address(uint address);
         void write_memory(uint address, byte[] data);
         byte[] read_memory(uint address, uint length);
     }

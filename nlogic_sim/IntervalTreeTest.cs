@@ -4,7 +4,7 @@ namespace nlogic_sim
 {
     class test_program
     {
-        static void Main()
+        static void _Main()
         {
             IntervalTree<int, string> tree = new IntervalTree<int, string>();
 
