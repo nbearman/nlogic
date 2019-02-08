@@ -43,6 +43,7 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="Assembler.cs" />
+    <Compile Include="devices\display_test.cs" />
     <Compile Include="File.cs" />
     <Compile Include="processor\Processor.cs" />
     <Compile Include="processor\ProcessorDefinitions.cs" />

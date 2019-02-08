@@ -11,7 +11,7 @@ namespace nlogic_sim
 {
     class Program
     {
-        static void Main(string[] args)
+        static void _Main(string[] args)
         {
             //generate_memory_test();
             //Console.ReadKey();
@@ -49,7 +49,7 @@ namespace nlogic_sim
             for (int r = 0; r < runs; r++)
             {
 
-                Processor p = new Processor(new MMIO[] {new VirtualDisplay()});
+                Processor p = new Processor(new MMIO[] {new VirtualDisplay(90, 30)});
                 for (int i = 0; i < Assembler.program_data.Length; i++)
                 {
                     p.memory[i] = Assembler.program_data[i];
