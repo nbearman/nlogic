@@ -13,6 +13,9 @@ namespace nlogic_sim
     {
         static void Main(string[] args)
         {
+            test_processor_visualizer.run();
+            return;
+
             //generate_memory_test();
             //Console.ReadKey();
             //return;

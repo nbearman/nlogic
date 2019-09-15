@@ -372,7 +372,17 @@ namespace nlogic_sim
             }
 
         }
+        
+        /// <summary>
+        /// Processor with no MMIO devices
+        /// </summary>
+        public Processor() : this(new MMIO[] { }) { }
 
+
+        /// <summary>
+        /// Processor using the given MMIO devices
+        /// </summary>
+        /// <param name="MMIO_devices">Array of MMIO objects to map to memory</param>
         public Processor(MMIO[] MMIO_devices)
         {
             current_instruction = 0;
