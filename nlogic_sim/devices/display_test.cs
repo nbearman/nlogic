@@ -4,7 +4,7 @@ namespace nlogic_sim
 {
     class display_test
     {
-        public static void Main()
+        public static void _Main()
         {
             VirtualDisplay d = new VirtualDisplay(90, 30);
             ((MMIO)d).set_base_address(0);

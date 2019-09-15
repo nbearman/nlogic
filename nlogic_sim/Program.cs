@@ -11,7 +11,7 @@ namespace nlogic_sim
 {
     class Program
     {
-        static void _Main(string[] args)
+        static void Main(string[] args)
         {
             //generate_memory_test();
             //Console.ReadKey();
@@ -27,11 +27,17 @@ namespace nlogic_sim
             //Console.ReadKey();
             //return;
 
+
+            //input code files
             string[] code_files = new string[]
             {
-                "programs/memory_test.txt",
+                //"programs/memory_test.txt",
+                //"programs/alu_shift_test.txt",
+                "programs/fptest.txt",
             };
 
+
+            //assemble code files
             Assembler.assemble(code_files, "assembler_output.txt");
             string output = Assembler.dump_assembly();
             Console.WriteLine(output);
@@ -43,39 +49,49 @@ namespace nlogic_sim
                 return;
             }
 
-            int runs = 1000;
-            long sum = 0;
 
-            for (int r = 0; r < runs; r++)
-            {
+            /////////////////////////////////////////////////////////////////////////
+            //automatic benchmark execution
+            //int runs = 1000;
+            //long sum = 0;
 
-                Processor p = new Processor(new MMIO[] {new VirtualDisplay(90, 30)});
-                for (int i = 0; i < Assembler.program_data.Length; i++)
-                {
-                    p.memory[i] = Assembler.program_data[i];
-                }
+            //for (int r = 0; r < runs; r++)
+            //{
+
+            //    Processor p = new Processor(new MMIO[] {new VirtualDisplay(90, 30)});
+            //    for (int i = 0; i < Assembler.program_data.Length; i++)
+            //    {
+            //        p.memory[i] = Assembler.program_data[i];
+            //    }
 
 
-                sum += time_execution(p);
-            }
+            //    sum += time_execution(p);
+            //}
 
-            double avg = (double)sum / (double)runs;
-            Console.WriteLine("average time: " + avg + " ms");
+            //double avg = (double)sum / (double)runs;
+            //Console.WriteLine("average time: " + avg + " ms");
 
-            Console.ReadKey();
-            return;
+            //Console.ReadKey();
+            //return;
 
             /////////////////////////////////////////////////////////////////////////
             //manual execution
 
-            //p.print_current_state();
+            Processor p = new Processor(new MMIO[] { new VirtualDisplay(90, 30) });
+            //load program into memory
+            for (int i = 0; i < Assembler.program_data.Length; i++)
+            {
+                p.memory[i] = Assembler.program_data[i];
+            }
 
-            //while (((Register_32)p.registers[Processor.FLAG]).data == 0)
-            //{
-            //    p.cycle();
-            //    p.print_current_state();
-            //    Console.ReadKey();
-            //}
+            p.print_current_state();
+
+            while (((Register_32)p.registers[Processor.FLAG]).data == 0)
+            {
+                p.cycle();
+                p.print_current_state();
+                Console.ReadKey();
+            }
 
 
         }
@@ -86,7 +102,7 @@ namespace nlogic_sim
             s.Reset();
             s.Start();
 
-            while (p.cycle() == 0) ;
+            while (p.cycle() == 0);
 
             s.Stop();
 

@@ -51,6 +51,7 @@
     <Compile Include="devices\VirtualDisplay.cs" />
     <Compile Include="data_structures\IntervalTree.cs" />
     <Compile Include="data_structures\IntervalTreeTest.cs" />
+    <Compile Include="processor\ProcessorVisualizer_New.cs" />
     <Compile Include="processor\Register.cs" />
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
