@@ -13,8 +13,8 @@ namespace nlogic_sim
     {
         static void Main(string[] args)
         {
-            test_processor_visualizer.run();
-            return;
+            //test_processor_visualizer.run();
+            //return;
 
             //generate_memory_test();
             //Console.ReadKey();
@@ -87,12 +87,19 @@ namespace nlogic_sim
                 p.memory[i] = Assembler.program_data[i];
             }
 
+            Console.Clear();
+            p.initialize_visualizer();
             p.print_current_state();
 
             while (((Register_32)p.registers[Processor.FLAG]).data == 0)
             {
                 p.cycle();
+                Stopwatch s = new Stopwatch();
+                s.Reset();
+                s.Start();
                 p.print_current_state();
+                s.Stop();
+                Console.Write(s.ElapsedMilliseconds);
                 Console.ReadKey();
             }
 

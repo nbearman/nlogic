@@ -1,61 +1,186 @@
 ﻿using System;
+using System.Diagnostics;
 using System.Linq;
 using System.Collections.Generic;
 
 namespace nlogic_sim
 {
+    //TODO
+    //make flag change color under certain conditions
+    //  maybe add update_readout() event schedulers / register watchers
 
     public partial class Processor
     {
         /// <summary>
         /// Show the current internal state of the processor
         /// </summary>
-        public void _print_current_state()
+        public void print_current_state()
         {
-            print_skeleton();
-            throw new NotImplementedException();
+
+
+            update_readout(READOUT.FLAG_contents, Utility.byte_array_string(registers[FLAG].data_array, "", false));
+
+            {
+                byte[] b = Utility.byte_array_from_uint32(2, (uint)current_instruction);
+                string s = b[0].ToString("X2");
+                if (Utility.register_location_to_name.ContainsKey(b[0]))
+                    s = Utility.register_location_to_name[b[0]];
+                string d = b[1].ToString("X2");
+                if (Utility.register_location_to_name.ContainsKey(b[1]))
+                    d = Utility.register_location_to_name[b[1]];
+
+                s = String.Format("{0, -5}", s);
+                d = String.Format("{0, -5}", d);
+
+                string instruction_expansion = s + " -> " + d;
+
+
+                update_readout(
+                    READOUT.CurrentInstruction_contents,
+                    Utility.byte_array_string(b, "", false));
+
+                update_readout(
+                    READOUT.CurrentInstruction_expansion,
+                    instruction_expansion);
+            }
+
+
+            update_readout(READOUT.EXE_contents, Utility.byte_array_string(registers[EXE].data_array, "", false));
+            update_readout(READOUT.PC_contents, Utility.byte_array_string(registers[PC].data_array, "", false));
+
+            update_readout(READOUT.SKIP_contents, Utility.byte_array_string(registers[SKIP].data_array, "", false));
+            update_readout(READOUT.RTRN_contents, Utility.byte_array_string(registers[RTRN].data_array, "", false));
+            update_readout(READOUT.LINK_contents, Utility.byte_array_string(registers[LINK].data_array, "", false));
+
+            update_readout(READOUT.COMPA_contents, Utility.byte_array_string(registers[COMPA].data_array, "", false));
+            update_readout(READOUT.COMPB_contents, Utility.byte_array_string(registers[COMPB].data_array, "", false));
+            update_readout(READOUT.COMPR_contents, Utility.byte_array_string(registers[COMPR].data_array, "", false));
+
+            update_readout(READOUT.IADN_contents, Utility.byte_array_string(registers[IADN].data_array, "", false));
+            update_readout(READOUT.IADF_contents, Utility.byte_array_string(registers[IADF].data_array, "", false));
+
+            update_readout(READOUT.GPA_contents, Utility.byte_array_string(registers[GPA].data_array, "", false));
+            update_readout(READOUT.GPB_contents, Utility.byte_array_string(registers[GPB].data_array, "", false));
+            update_readout(READOUT.GPC_contents, Utility.byte_array_string(registers[GPC].data_array, "", false));
+            update_readout(READOUT.GPD_contents, Utility.byte_array_string(registers[GPD].data_array, "", false));
+
+            update_readout(READOUT.GPE_contents, Utility.byte_array_string(registers[GPE].data_array, "", false));
+            update_readout(READOUT.GPF_contents, Utility.byte_array_string(registers[GPF].data_array, "", false));
+            update_readout(READOUT.GPG_contents, Utility.byte_array_string(registers[GPG].data_array, "", false));
+            update_readout(READOUT.GPH_contents, Utility.byte_array_string(registers[GPH].data_array, "", false));
+
+            update_readout(READOUT.ALUM_contents, Utility.byte_array_string(registers[ALUM].data_array, "", false));
+            update_readout(READOUT.ALUA_contents, Utility.byte_array_string(registers[ALUA].data_array, "", false));
+            update_readout(READOUT.ALUB_contents, Utility.byte_array_string(registers[ALUB].data_array, "", false));
+            update_readout(READOUT.ALUR_contents, Utility.byte_array_string(registers[ALUR].data_array, "", false));
+
+
+            update_readout(READOUT.FPUM_contents, Utility.byte_array_string(registers[FPUM].data_array, "", false));
+            update_readout(READOUT.FPUA_contents, Utility.byte_array_string(registers[FPUA].data_array, "", false));
+            update_readout(READOUT.FPUB_contents, Utility.byte_array_string(registers[FPUB].data_array, "", false));
+            update_readout(READOUT.FPUR_contents, Utility.byte_array_string(registers[FPUR].data_array, "", false));
+
+            {
+                uint alu_mode = ((Register_32)registers[ALUM]).data;
+                string alu_mode_string = alu_mode.ToString("X2");
+                if (Utility.alu_mode_to_name.ContainsKey((ALU_MODE)alu_mode))
+                {
+                    alu_mode_string = Utility.alu_mode_to_name[(ALU_MODE)alu_mode];
+                }
+
+                //alu_mode_string = String.Format("{0, -5}", alu_mode_string);
+                update_readout(READOUT.ALUM_expansion, alu_mode_string);
+            }
+
+            {
+                uint fpu_mode = ((Register_32)registers[FPUM]).data;
+                string fpu_mode_string = fpu_mode.ToString("X2");
+                if (Utility.fpu_mode_to_name.ContainsKey((FPU_MODE)fpu_mode))
+                {
+                    fpu_mode_string = Utility.fpu_mode_to_name[(FPU_MODE)fpu_mode];
+                }
+
+                //fpu_mode_string = String.Format("{0, -5}", fpu_mode_string);
+                update_readout(READOUT.ALUM_expansion, fpu_mode_string);
+            }
+
+            {
+                string int_value = ((Register_32)registers[ALUA]).data.ToString();
+                update_readout(READOUT.ALUA_expansion, int_value);
+            }
+            {
+                string int_value = ((Register_32)registers[ALUB]).data.ToString();
+                update_readout(READOUT.ALUB_expansion, int_value);
+            }
+            {
+                string int_value = ((Register_32)registers[ALUR]).data.ToString();
+                update_readout(READOUT.ALUR_expansion, int_value);
+            }
+            {
+                string float_value = ((Register_32)registers[FPUA]).float_data().ToString();
+                update_readout(READOUT.FPUA_expansion, float_value);
+            }
+            {
+                string float_value = ((Register_32)registers[FPUB]).float_data().ToString();
+                update_readout(READOUT.FPUB_expansion, float_value);
+            }
+            {
+                string float_value = ((Register_32)registers[FPUR]).float_data().ToString();
+                update_readout(READOUT.FPUR_expansion, float_value);
+            }
+
+            update_readout(READOUT.RBASE_contents, Utility.byte_array_string(registers[RBASE].data_array, "", false));
+            update_readout(READOUT.ROFST_contents, Utility.byte_array_string(registers[ROFST].data_array, "", false));
+            update_readout(READOUT.RMEM_contents, Utility.byte_array_string(registers[RMEM].data_array, "", false));
+
+            update_readout(READOUT.WBASE_contents, Utility.byte_array_string(registers[WBASE].data_array, "", false));
+            update_readout(READOUT.WOFST_contents, Utility.byte_array_string(registers[WOFST].data_array, "", false));
+            update_readout(READOUT.WMEM_contents, Utility.byte_array_string(registers[WMEM].data_array, "", false));
+
+            {
+                uint r_address = ((Register_32)registers[RBASE]).data + ((Register_32)registers[ROFST]).data;
+                uint w_address = ((Register_32)registers[WBASE]).data + ((Register_32)registers[WOFST]).data;
+                update_memory_context(READOUT.MemoryContext1, r_address, this.memory);
+                update_memory_context(READOUT.MemoryContext2, w_address, this.memory);
+            }
+
+
         }
 
-        public void initialize()
+        public void initialize_visualizer()
         {
+            //initialize the cache
+            Array values = Enum.GetValues(typeof(READOUT));
+            foreach (var v in values)
+            {
+                readout_cache.Add((READOUT)v, new ColorString[0]);
+            }
+
             //print skeleton
+            print_skeleton();
+
             //populate name fields
-            throw new NotImplementedException();
+            print_all_names();
+
+
         }
 
         //the current state of each readout
-        private static Dictionary<READOUT, ColorString[]> readout_cache;
+        private static Dictionary<READOUT, ColorString[]> readout_cache = new Dictionary<READOUT, ColorString[]>();
 
         /// <summary>
         /// Write the given ColorStrings to the given READOUT
         /// </summary>
         /// <param name="location">The READOUT to update</param>
-        /// <param name="value">Fromatted value to display</param>
-        private static void update_readout(READOUT location, ColorString[] value)
+        /// <param name="formatted_value">Fromatted value to display</param>
+        private static void update_readout(READOUT location, ColorString[] formatted_value)
         {
-            throw new NotImplementedException();
-            return;
-        }
-
-        /// <summary>
-        /// Change the specified readout to display the given value using the location's default styling
-        /// </summary>
-        /// <param name="location">READOUT to be changed</param>
-        /// <param name="value">Unformatted value to display</param>
-        private static void update_readout(READOUT location, string value)
-        {
-
             //the memory context readouts cannot be updated with this method
             if (location == READOUT.MemoryContext1 || location == READOUT.MemoryContext2)
             {
                 throw new Exception("cannot use update_readout() for memory contexts; " +
                     "use update_memory_context() instead");
             }
-
-            //format the given string
-            ColorString[] formatted_value = format_to_readout_style(location, value);
-
-            //update the given readout
 
             //check the cache to avoid rewriting unchanged data
             if (readout_cache[location].SequenceEqual(formatted_value))
@@ -86,6 +211,21 @@ namespace nlogic_sim
                 Console.ForegroundColor = previous_color;
                 Console.SetCursorPosition(previous_coordinates.Item1, previous_coordinates.Item2);
             }
+        }
+
+        /// <summary>
+        /// Change the specified readout to display the given value using the location's default styling
+        /// </summary>
+        /// <param name="location">READOUT to be changed</param>
+        /// <param name="value">Unformatted value to display</param>
+        private static void update_readout(READOUT location, string value)
+        {
+
+            //format the given string
+            ColorString[] formatted_value = format_to_readout_style(location, value);
+
+            //update the given readout
+            update_readout(location, formatted_value);   
 
 
         }
@@ -118,8 +258,12 @@ namespace nlogic_sim
             for (int i = 0; i < neighboring_lines.Length; i++)
             {
                 Console.SetCursorPosition(start_position.Item1, start_position.Item2 + i);
+                Console.Write("  ");
                 foreach (var colorstring in neighboring_lines[i])
+                {
                     colorstring.print();
+                    Console.Write(' ');
+                }
             }
 
             //reset the console color and cursor position
@@ -231,7 +375,7 @@ namespace nlogic_sim
                         cs.value = format_register(value, 4, 2, "  ", "  ");
 
                         //white when not "  00 00 00 00  "
-                        if (cs.value == "  00 00 00 00  ")
+                        if (cs.value != "  00 00 00 00  ")
                             cs.color = ConsoleColor.White;
                         //dark gray otherwise
                         else
@@ -249,7 +393,7 @@ namespace nlogic_sim
                         cs.value = format_register(value, 2, 2, "  ", "  ");
 
                         //white when not "  00 00  "
-                        if (cs.value == "  00 00  ")
+                        if (cs.value != "  00 00  ")
                             cs.color = ConsoleColor.White;
                         //dark gray otherwise
                         else
@@ -259,11 +403,14 @@ namespace nlogic_sim
                     }
                 case (READOUT.CurrentInstruction_expansion):
                     {
-                        //TODO figure out how to format to include "->" and correct spacing
-                        //pad string with 1 space to the left
-                        string truncated = " " + value.Substring(0, 16);
-                        string[] separated = truncated.Split(' ');
+                        Debug.Assert(value.Contains("->"), "Current instruction expansion must be passed containing '->'");
 
+                        //TODO make the arrow appear
+
+                        //pad string with 1 space to the left
+                        string truncated = " " + value.Substring(0, Math.Min(value.Length, 16));
+                        string[] separated = truncated.Split(new string[] { "->" }, StringSplitOptions.None);
+                        
                         //create a ColorString for each section of the string
                         foreach (string s in separated)
                         {
@@ -274,33 +421,45 @@ namespace nlogic_sim
                                 cs.color = Processor.register_name_to_color[s];
                             else
                                 cs.color = ConsoleColor.Gray;
+
+                            result_list.Add(cs);
                         }
                         break;
                     }
                 case (READOUT.ALUM_expansion):
                 case (READOUT.FPUM_expansion):
-                    //pad string with 1 space on both sides
-                    break;
+                    {
+                        //pad string with 1 space on both sides
+                        ColorString cs = new ColorString(" " + value.Substring(0, 4) + " ", ConsoleColor.Gray);
+                        result_list.Add(cs);
+                        break;
+                    }
                 case (READOUT.ALUA_expansion):
                 case (READOUT.ALUB_expansion):
                 case (READOUT.ALUR_expansion):
-                    //pad string with 1 space on both sides
-                    //format int
-                    break;
+                    {
+                        //pad string with 1 space on both sides
+                        string int_value = String.Format("{0, 9}", value);
+                        ColorString cs = new ColorString(" " + int_value + " ", ConsoleColor.Gray);
+                        result_list.Add(cs);
+                        break;
+                    }
                 case (READOUT.FPUA_expansion):
                 case (READOUT.FPUB_expansion):
                 case (READOUT.FPUR_expansion):
-                    //pad string with 1 space on both sides
-                    //format float
-                    break;
+                    {
+                        //pad string with 1 space on both sides
+                        //format float
+                        string float_value = String.Format("{0, 9}", value);
+                        ColorString cs = new ColorString(" " + float_value + " ", ConsoleColor.Gray);
+                        result_list.Add(cs);
+                        break;
+                    }
                 default:
                     //do nothing
                     result_list.Add(new ColorString(value, ConsoleColor.Gray));
                     break;
             }
-
-
-            throw new NotImplementedException();
 
             return result_list.ToArray();
         }
@@ -311,7 +470,7 @@ namespace nlogic_sim
         /// <param name="value">String to be formatted</param>
         /// <param name="num_groups">Number of groups of characters allowed</param>
         /// <param name="group_size">Size of character groups in characters</param>
-        /// <param padL="padL">Padding for the left side</param>
+        /// <param name="padL">Padding for the left side</param>
         /// <param name="padR">Padding for the right side</param>
         /// <returns></returns>
         private static string format_register(string value, int num_groups, int group_size, string padL, string padR)
@@ -324,9 +483,9 @@ namespace nlogic_sim
             for (int i = 0; i < truncated_string.Length; i++)
             {
                 //split string into doublets separated by spaces
-                result += truncated_string[i];
                 if (i % group_size == 0 && i > 0)
                     result += " ";
+                result += truncated_string[i];
             }
             result += padR;
 
@@ -357,6 +516,33 @@ namespace nlogic_sim
         }
 
         /// <summary>
+        /// Print all the names of registers and readouts.
+        /// </summary>
+        private static void print_all_names()
+        {
+            Array values = Enum.GetValues(typeof(READOUT));
+            foreach (var v in values)
+            {
+                READOUT target = (READOUT)v;
+
+                if (register_name_to_color.ContainsKey(target.ToString()))
+                {
+                    update_readout(
+                        target,
+                        new ColorString[]
+                        {
+                            new ColorString
+                            (
+                                (" " + target.ToString()),
+                                register_name_to_color[target.ToString()]
+                            )
+                        });
+                }
+            }
+
+        }
+
+        /// <summary>
         /// Print the skeleton of the display to the console
         /// </summary>
         private static void print_skeleton()
@@ -380,7 +566,6 @@ namespace nlogic_sim
             Console.WriteLine();
             Console.WriteLine("  ||       |               ||");
             Console.WriteLine("  ||       |               ||");
-            Console.WriteLine();
             Console.WriteLine();
             Console.WriteLine("_____________________________________________________________________________________________________________");
             Console.WriteLine("  ||       |               ||                           ||       |               ||");

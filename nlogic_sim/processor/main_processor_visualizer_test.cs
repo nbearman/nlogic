@@ -8,6 +8,7 @@ namespace nlogic_sim
         public static void run()
         {
             Processor p = new Processor();
+            p.initialize_visualizer();
             p._print_current_state();
             return;
         }

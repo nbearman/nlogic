@@ -4,7 +4,7 @@ namespace nlogic_sim
 {
     public partial class Processor
     {
-        public void print_current_state()
+        public void _print_current_state()
         {
             Console.ForegroundColor = ConsoleColor.DarkYellow;
             Console.WriteLine("|PROCESSOR");

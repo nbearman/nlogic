@@ -48,7 +48,7 @@ namespace nlogic_sim
 
         private static Dictionary<READOUT, Tuple<int, int>> readout_coordinates = new Dictionary<READOUT, Tuple<int, int>>
         {
-            { READOUT.Header, new Tuple<int, int>(0, 1) },
+            { READOUT.Header, new Tuple<int, int>(1, 0) },
             ////////////////////////////////////////////////////////////////////////////
             { READOUT.FLAG, new Tuple<int, int>(4, 2) },
             { READOUT.FLAG_contents, new Tuple<int, int>(12, 2) },
@@ -129,22 +129,22 @@ namespace nlogic_sim
             { READOUT.IADF, new Tuple<int, int>(4, 18) },
             { READOUT.IADF_contents, new Tuple<int, int>(12, 18) },
             ////////////////////////////////////////////////////////////////////////////
-            { READOUT.RBASE, new Tuple<int, int>(4, 22) },
-            { READOUT.RBASE_contents, new Tuple<int, int>(12, 22) },
-            { READOUT.MemoryContext1, new Tuple<int, int>(29, 22) },
-            { READOUT.WBASE, new Tuple<int, int>(58, 22) },
-            { READOUT.WBASE_contents, new Tuple<int, int>(66, 22) },
-            { READOUT.MemoryContext2, new Tuple<int, int>(82, 22) },
+            { READOUT.RBASE, new Tuple<int, int>(4, 21) },
+            { READOUT.RBASE_contents, new Tuple<int, int>(12, 21) },
+            { READOUT.MemoryContext1, new Tuple<int, int>(29, 21) },
+            { READOUT.WBASE, new Tuple<int, int>(58, 21) },
+            { READOUT.WBASE_contents, new Tuple<int, int>(66, 21) },
+            { READOUT.MemoryContext2, new Tuple<int, int>(83, 21) },
             ////////////////////////////////////////////////////////////////////////////
-            { READOUT.ROFST, new Tuple<int, int>(4, 23) },
-            { READOUT.ROFST_contents, new Tuple<int, int>(12, 23) },
-            { READOUT.WOFST, new Tuple<int, int>(58, 23) },
-            { READOUT.WOFST_contents, new Tuple<int, int>(66, 23) },
+            { READOUT.ROFST, new Tuple<int, int>(4, 22) },
+            { READOUT.ROFST_contents, new Tuple<int, int>(12, 22) },
+            { READOUT.WOFST, new Tuple<int, int>(58, 22) },
+            { READOUT.WOFST_contents, new Tuple<int, int>(66, 22) },
             ////////////////////////////////////////////////////////////////////////////
-            { READOUT.RMEM, new Tuple<int, int>(4, 24) },
-            { READOUT.RMEM_contents, new Tuple<int, int>(12, 24) },
-            { READOUT.WMEM, new Tuple<int, int>(58, 24) },
-            { READOUT.WMEM_contents, new Tuple<int, int>(66, 24) },
+            { READOUT.RMEM, new Tuple<int, int>(4, 23) },
+            { READOUT.RMEM_contents, new Tuple<int, int>(12, 23) },
+            { READOUT.WMEM, new Tuple<int, int>(58, 23) },
+            { READOUT.WMEM_contents, new Tuple<int, int>(66, 23) },
 
 
         };
@@ -187,6 +187,8 @@ namespace nlogic_sim
             {"WBASE", ConsoleColor.Yellow },
             {"WOFST", ConsoleColor.Yellow },
             {"WMEM", ConsoleColor.Green },
+            {"CurrentInstruction", ConsoleColor.Cyan },
+            {"Header", ConsoleColor.DarkYellow },
 
         };
 
