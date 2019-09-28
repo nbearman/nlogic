@@ -93,6 +93,7 @@ namespace nlogic_sim
 
             while (((Register_32)p.registers[Processor.FLAG]).data == 0)
             {
+                Console.ReadKey();
                 p.cycle();
                 Stopwatch s = new Stopwatch();
                 s.Reset();
@@ -100,7 +101,6 @@ namespace nlogic_sim
                 p.print_current_state();
                 s.Stop();
                 Console.Write(s.ElapsedMilliseconds);
-                Console.ReadKey();
             }
 
 

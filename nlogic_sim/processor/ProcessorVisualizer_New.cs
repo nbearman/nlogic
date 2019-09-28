@@ -8,6 +8,7 @@ namespace nlogic_sim
     //TODO
     //make flag change color under certain conditions
     //  maybe add update_readout() event schedulers / register watchers
+    //  maybe replace conditional register coloring with this logic
 
     public partial class Processor
     {
@@ -28,9 +29,6 @@ namespace nlogic_sim
                 string d = b[1].ToString("X2");
                 if (Utility.register_location_to_name.ContainsKey(b[1]))
                     d = Utility.register_location_to_name[b[1]];
-
-                s = String.Format("{0, -5}", s);
-                d = String.Format("{0, -5}", d);
 
                 string instruction_expansion = s + " -> " + d;
 
@@ -198,8 +196,11 @@ namespace nlogic_sim
                 Tuple<int, int> previous_coordinates =
                     new Tuple<int, int>(Console.CursorLeft, Console.CursorTop);
 
+                //clear the current location (in case the new value doesn't overwrite all spaces)
+                clear_readout(location);
+
                 //print the formatted string at the correct location
-                Tuple<int, int> coordinates = readout_coordinates[location];
+                Tuple<int, int, int> coordinates = readout_coordinates[location];
                 Console.SetCursorPosition(coordinates.Item1, coordinates.Item2);
                 foreach (var colorstring in formatted_value)
                     colorstring.print();
@@ -253,7 +254,7 @@ namespace nlogic_sim
             Tuple<int, int> previous_coordinates = 
                 new Tuple<int, int>(Console.CursorLeft, Console.CursorTop);
 
-            Tuple<int, int> start_position = readout_coordinates[memory_context];
+            Tuple<int, int, int> start_position = readout_coordinates[memory_context];
             //print all the lines of the context
             for (int i = 0; i < neighboring_lines.Length; i++)
             {
@@ -408,8 +409,11 @@ namespace nlogic_sim
                         //TODO make the arrow appear
 
                         //pad string with 1 space to the left
-                        string truncated = " " + value.Substring(0, Math.Min(value.Length, 16));
-                        string[] separated = truncated.Split(new string[] { "->" }, StringSplitOptions.None);
+                        string[] separated = value.Split(new string[] { "->" }, StringSplitOptions.None);
+
+                        //format each half to be properly spaced
+                        separated[0] = String.Format("{0, -5}", separated[0]);
+                        separated[1] = String.Format("{0, -5}", separated[1]);
                         
                         //create a ColorString for each section of the string
                         foreach (string s in separated)
@@ -424,6 +428,8 @@ namespace nlogic_sim
 
                             result_list.Add(cs);
                         }
+
+                        result_list.Insert(1, new ColorString("->", ConsoleColor.Gray));
                         break;
                     }
                 case (READOUT.ALUM_expansion):
@@ -490,6 +496,46 @@ namespace nlogic_sim
             result += padR;
 
             return result;
+        }
+
+        /// <summary>
+        /// Write spaces to the entire writeable area of a READOUT
+        /// </summary>
+        /// <param name="location">READOUT to clear</param>
+        private static void clear_readout(READOUT location)
+        {
+            //save the previous color and cursor position
+            ConsoleColor previous_color = Console.ForegroundColor;
+            Tuple<int, int> previous_coordinates =
+                new Tuple<int, int>(Console.CursorLeft, Console.CursorTop);
+
+            //write spaces to the readout
+            Tuple<int, int, int> readout_info = readout_coordinates[location];
+            Console.CursorLeft = readout_info.Item1;
+            Console.CursorTop = readout_info.Item2;
+            for (int i = 0; i < readout_info.Item3; i++)
+            {
+                Console.Write(" ");
+            }
+
+            //clear the cache
+            readout_cache[location] = new ColorString[0];
+
+            //reset the console color and cursor position
+            Console.ForegroundColor = previous_color;
+            Console.SetCursorPosition(previous_coordinates.Item1, previous_coordinates.Item2);
+        }
+
+        /// <summary>
+        /// Fill all READOUTs entirely with spaces.
+        /// </summary>
+        private static void clear_all_readouts()
+        {
+            Array values = Enum.GetValues(typeof(READOUT));
+            foreach (var v in values)
+            {
+                clear_readout((READOUT)v);
+            }
         }
 
         /// <summary>
