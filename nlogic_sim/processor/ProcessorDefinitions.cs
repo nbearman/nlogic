@@ -70,4 +70,9 @@
         void write_memory(uint address, byte[] data);
         byte[] read_memory(uint address, uint length);
     }
+
+    public interface HardwareInterrupter
+    {
+        void nothing();
+    }
 }

@@ -36,7 +36,8 @@ namespace nlogic_sim
             {
                 //"programs/memory_test.txt",
                 //"programs/alu_shift_test.txt",
-                "programs/fptest.txt",
+                //"programs/sample_memory_read.txt",
+                "programs/skip_test.txt",
             };
 
 
@@ -71,7 +72,7 @@ namespace nlogic_sim
             //    sum += time_execution(p);
             //}
 
-            //double avg = (double)sum / (double)runs;
+            //double avg = (doubles)sum / (double)runs;
             //Console.WriteLine("average time: " + avg + " ms");
 
             //Console.ReadKey();
@@ -102,6 +103,8 @@ namespace nlogic_sim
                 s.Stop();
                 Console.Write(s.ElapsedMilliseconds);
             }
+
+            Console.Read();
 
 
         }

@@ -3,19 +3,18 @@ using System.Collections.Generic;
 
 namespace nlogic_sim
 {
-    public partial class Processor
+    public partial class newProcessor
     {
-        public ushort current_instruction;
+        //reference to the containing simuation environment
+        private SimulationEnvironment environment;
+
+        //processor constants
         public const ushort interrupt_handler_address = 0x002A;
         public const ushort interrupt_register_dump_address = 0x001A;
 
-        public byte[] memory;
-
-
+        //processor state
+        public ushort current_instruction;
         public Dictionary<byte, I_Register> registers;
-
-        //map address ranges to memory-mapped input-output devices
-        public IntervalTree<uint, MMIO> devices;
 
         /// <summary>
         /// Completes one cycle of work on the processor and returns the processor status (contents of FLAG).
@@ -25,7 +24,6 @@ namespace nlogic_sim
             //check the status of the processor
             //(and check for interrupts)
             check_status();
-
 
             //load current instruction
             load_current_instruction();
@@ -41,6 +39,56 @@ namespace nlogic_sim
 
             //return contents of FLAG
             return Utility.uint32_from_byte_array(registers[FLAG].data_array);
+        }
+
+
+        /// <summary>
+        /// Send a signal to the processor on the given signal channel.
+        /// Throws an exception if the channel is out of range.
+        /// </summary>
+        /// <param name="channel"></param>
+        public void raise_signal(uint channel)
+        {
+            //there is one channel per bit in the FLAG register
+            //1 bit is reserved as the 'ignore interrupts' bit, however
+            uint num_channels = registers[FLAG].size_in_bytes * 8;
+            if (channel > (num_channels - 2))
+            {
+                throw new ArgumentOutOfRangeException("channel", "Processor cannot receive signals on that channel");
+            }
+
+            uint signal_mask = 0b1;
+            for (int i = 0; i < channel; i++)
+            {
+                signal_mask = signal_mask << 1;
+            }
+
+            throw new NotImplementedException();
+        }
+
+        /// <summary>
+        /// Processor using the given simulation environment
+        /// Processor is ready to call cycle() after construction
+        /// </summary>
+        /// <param name="environment"></param>
+        public newProcessor(SimulationEnvironment environment)//SimulationEnvironment environment)
+        {
+            //save a reference to the simulation environment
+            this.environment = environment;
+
+            //give the environment a way to signal the processor
+            //necessary for other devices in the environment to send interrupts
+            //to the processor
+            environment.register_signal_callback(raise_signal);
+
+            //set the current instruction to a no-op just in case
+            current_instruction = 0;
+
+            initialize_registers();
+
+            //ensures the special registers (SKIP, COMPR, etc.) have the correct values before the first cycle
+            //must happen after registers are intialized
+            update_accessors();
         }
 
         /// <summary>
@@ -145,7 +193,7 @@ namespace nlogic_sim
             ((Register_32)registers[IADN]).data_array = iadn_value;
             ((Register_32)registers[IADF]).data_array = read_memory(base_addr + offset + 2, 4);
 
-            
+
             //compare COMPA and COMPB
             uint compa_value = ((Register_32)registers[COMPA]).data;
             uint compb_value = ((Register_32)registers[COMPB]).data;
@@ -318,91 +366,12 @@ namespace nlogic_sim
         /// </summary>
         private byte[] read_memory(uint address, uint length)
         {
-            byte[] result = new byte[length];
-
-            //address is beyond physical memory, check MMIO devices instead
-            if (address >= memory.Length)
-            {
-                result = devices.get_data(address).read_memory(address, length);
-                return result;
-            }
-
-            //else use physical memory
-            else
-            {
-                for (int i = 0; i < length; i++)
-                {
-                    result[i] = memory[address + i];
-                }
-
-                return result;
-            }
+            return environment.read_address(address, length);
         }
 
         private void write_memory(uint address, byte[] data)
         {
-            //address is beyond physical memory, check MMIO devices instead
-            if (address >= memory.Length)
-            {
-                devices.get_data(address).write_memory(address, data);
-            }
-
-            //else use physical memory
-            for (int i = 0; i < data.Length; i++)
-            {
-                memory[address + i] = data[i];
-            }
-
-        }
-
-        /// <summary>
-        /// Set up all the MMIO devices attached to the processor
-        /// </summary>
-        private void initialize_MMIO(MMIO[] MMIO_devices)
-        {
-            //assign base addresses to all MMIO devices
-
-            uint base_address = (uint)memory.Length;
-            //for each device
-            for (int i = 0; i < MMIO_devices.Length; i++)
-            {
-                //give next base address (must be known for address translation)
-                MMIO_devices[i].set_base_address(base_address);
-
-                //get size to calculate base address for next device
-                uint next_base_address = base_address + MMIO_devices[i].get_size();
-
-                //insert the device into the interval tree
-                this.devices.insert(base_address, next_base_address, MMIO_devices[i]);
-
-                //update the base address to be used next
-                base_address = next_base_address;
-            }
-
-        }
-        
-        /// <summary>
-        /// Processor with no MMIO devices
-        /// </summary>
-        public Processor() : this(new MMIO[] { }) { }
-
-
-        /// <summary>
-        /// Processor using the given MMIO devices
-        /// </summary>
-        /// <param name="MMIO_devices">Array of MMIO objects to map to memory</param>
-        public Processor(MMIO[] MMIO_devices)
-        {
-            current_instruction = 0;
-
-            memory = new byte[65536];
-
-            this.devices = new IntervalTree<uint, MMIO>();
-            initialize_MMIO(MMIO_devices);
-
-            initialize_registers();
-
-            update_accessors();
+            environment.write_address(address, data);
         }
 
 
@@ -424,18 +393,23 @@ namespace nlogic_sim
                 return;
             }
 
-            //TODO:
-            //this doesn't need to be handled by the processor; it should be done by the OS
-            //need to add a datastructure to the processor to save the trap address
-            //and the memory destinations of the dumped registers
-            
+
             //if flag register is non 0, we are interrupted
-            
-            //dump PC, EXE, FLAG to memory
-            
+
+            //dump PC, EXE, FLAG, GPA to memory
+            uint address_increment = registers[PC].size_in_bytes;
+            write_memory(interrupt_register_dump_address, registers[PC].data_array);
+            write_memory(interrupt_register_dump_address + address_increment, registers[EXE].data_array);
+            write_memory(interrupt_register_dump_address + (2 * address_increment), registers[FLAG].data_array);
+            write_memory(interrupt_register_dump_address + (3 * address_increment), registers[GPA].data_array);
+
             //enable ignore interrupts
-            
+            uint new_flag_value = flag_contents | ignore_flag_mask;
+            registers[FLAG].data_array = Utility.byte_array_from_uint32(registers[FLAG].size_in_bytes, new_flag_value);
+
             //change PC/EXE to trap address
+            registers[PC].data_array = Utility.byte_array_from_uint32(registers[PC].size_in_bytes, interrupt_handler_address);
+            registers[EXE].data_array = Utility.byte_array_from_uint32(registers[EXE].size_in_bytes, 0);
 
         }
 
@@ -583,4 +557,70 @@ namespace nlogic_sim
         }
     }
 
+}
+
+namespace nlogic_sim
+{
+    public partial class newProcessor
+    {
+        public enum ALU_MODE
+        {
+            NoOp = 0,
+            Add = 1,
+            Multiply = 2,
+            Subtract = 3,
+            Divide = 4,
+            ShiftLeft = 5,
+            ShiftRight = 6,
+            OR = 7,
+            AND = 8,
+            XOR = 9,
+            NAND = 10,
+            NOR = 11,
+        }
+
+        public enum FPU_MODE
+        {
+            NoOp = 0,
+            Add = 1,
+            Multiply = 2,
+            Subtract = 3,
+            Divide = 4,
+        }
+
+        public const byte IMM = 0x00;
+        public const byte FLAG = 0x80;
+        public const byte EXE = 0x81;
+        public const byte PC = 0x82;
+        public const byte ALUM = 0x83;
+        public const byte ALUA = 0x84;
+        public const byte ALUB = 0x85;
+        public const byte ALUR = 0x86;
+        public const byte FPUM = 0x87;
+        public const byte FPUA = 0x88;
+        public const byte FPUB = 0x89;
+        public const byte FPUR = 0x8A;
+        public const byte RBASE = 0x8B;
+        public const byte ROFST = 0x8C;
+        public const byte RMEM = 0x8D;
+        public const byte WBASE = 0x8E;
+        public const byte WOFST = 0x8F;
+        public const byte WMEM = 0x90;
+        public const byte GPA = 0x91;
+        public const byte GPB = 0x92;
+        public const byte GPC = 0x93;
+        public const byte GPD = 0x94;
+        public const byte GPE = 0x95;
+        public const byte GPF = 0x96;
+        public const byte GPG = 0x97;
+        public const byte GPH = 0x98;
+        public const byte COMPA = 0x99;
+        public const byte COMPB = 0x9A;
+        public const byte COMPR = 0x9B;
+        public const byte IADN = 0x9C;
+        public const byte IADF = 0x9D;
+        public const byte LINK = 0x9E;
+        public const byte SKIP = 0x9F;
+        public const byte RTRN = 0xA0;
+    }
 }

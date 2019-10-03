@@ -13,7 +13,7 @@ namespace nlogic_sim
         public const byte COMMIT = 0x00;
         public const byte BUFFER_BASE = 0x01;
 
-        //processor and virtual display both need access to memory banks
+        //processor and virtual display threads both need access to memory banks
         //processor during calls to write_memory() and display while drawing
         private readonly object buffer0_mutex = new object();
         private readonly object buffer1_mutex = new object();

@@ -1,0 +1,24 @@
+﻿Look into changing MMIO to allow enter/exit read/write mode
+	Processor can only issue one write at a time
+		This is due to the available instructions of the processor, not the design on the MMIO interface
+	Moving large amounts of memory to IO devices would require acquiring and releasing locks over and over again
+	Alternative: create a DMA (direct memory access) controller IO device
+		Processor sends signal and address to DMA controller
+		DMA controller writes range of data from memory to MMIO device with single call to device's write_memory()
+			Therefore minmizing lock acquisition
+
+Processor visualizer (new)
+	Add register listeners to processor visualizer
+		Cue visualizations based on register contents (like changing color of FLAG name)
+	Make FLAG name change color when system halts
+		Possibly by implementing register listeners
+
+
+Divide the processor into the processor and simulated environment
+	The processor object handles only internal processor state
+		The processor has outputs of read / write commands and inputs data responses and hardware signals
+	The simulated environment handles everything outside the processor
+		This includes memory and IO devices
+		The simulated environment has inputs of read / write commands from the processor to memory,
+			and outputs data to the processor
+	This division will remove methods and datastructures that are not involved in running the processor to another class
