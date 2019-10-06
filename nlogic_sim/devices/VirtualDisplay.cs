@@ -38,10 +38,6 @@ namespace nlogic_sim
         int width;
         int height;
 
-        //processor will assign base address for use during address translation
-        //unprotected; used only by processor thread when reading and writing to the device
-        private uint base_address;
-
         public VirtualDisplay(int width, int height)
         {
             //no locks needed; display thread not started yet
@@ -164,17 +160,11 @@ namespace nlogic_sim
             return (uint)buffer_size;
         }
 
-        void MMIO.set_base_address(uint address)
-        {
-            this.base_address = address;
-        }
-
         void MMIO.write_memory(uint address, byte[] data)
         {
-            uint translation = address - base_address;
 
             //if non-zero data is written to the COMMIT address, swap the buffers
-            if (translation == COMMIT)
+            if (address == COMMIT)
             {
                 if (Utility.uint32_from_byte_array(data) != 0)
                 {
@@ -187,14 +177,14 @@ namespace nlogic_sim
 
                 //no address may be outside the range of the frame buffer
                 //(buffersize + 1, extra byte for the COMMIT signal)
-                uint max_access = translation + (uint)data.Length;
+                uint max_access = address + (uint)data.Length;
                 Debug.Assert(max_access < (buffer_size + 1));
 
                 //translate the address into a frame buffer offset
-                translation -= 1; //subtract one for the COMMIT byte which isn't part of the frame buffer
+                address -= 1; //subtract one for the COMMIT byte which isn't part of the frame buffer
 
                 //write to the frame buffer
-                write_frame_buffer(translation, data);
+                write_frame_buffer(address, data);
             }
         }
 

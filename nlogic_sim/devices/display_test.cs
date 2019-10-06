@@ -7,7 +7,6 @@ namespace nlogic_sim
         public static void _Main()
         {
             VirtualDisplay d = new VirtualDisplay(90, 30);
-            ((MMIO)d).set_base_address(0);
             d.enable_display();
 
             int frame_counter = 0;

@@ -13,31 +13,14 @@ namespace nlogic_sim
     {
         static void Main(string[] args)
         {
-            //test_processor_visualizer.run();
-            //return;
-
-            //generate_memory_test();
-            //Console.ReadKey();
-            //return;
-
-            //var original_out = Console.Out;
-            //var file_output = new StreamWriter("output.txt");
-            //Console.SetOut(file_output);
-            //Console.WriteLine("out putting to out put");
-            //Console.SetOut(original_out);
-            //file_output.Close();
-            //Console.WriteLine("Done.");
-            //Console.ReadKey();
-            //return;
-
 
             //input code files
             string[] code_files = new string[]
             {
                 //"programs/memory_test.txt",
-                //"programs/alu_shift_test.txt",
+                "programs/alu_shift_test.txt",
                 //"programs/sample_memory_read.txt",
-                "programs/skip_test.txt",
+                //"programs/skip_test.txt",
             };
 
 
@@ -53,56 +36,19 @@ namespace nlogic_sim
                 return;
             }
 
+            SimulationEnvironment environment =
+                new SimulationEnvironment(
+                    65536,
+                    Assembler.program_data,
+                    new MMIO[] { new VirtualDisplay(90, 30) });
 
-            /////////////////////////////////////////////////////////////////////////
-            //automatic benchmark execution
-            //int runs = 1000;
-            //long sum = 0;
-
-            //for (int r = 0; r < runs; r++)
-            //{
-
-            //    Processor p = new Processor(new MMIO[] {new VirtualDisplay(90, 30)});
-            //    for (int i = 0; i < Assembler.program_data.Length; i++)
-            //    {
-            //        p.memory[i] = Assembler.program_data[i];
-            //    }
-
-
-            //    sum += time_execution(p);
-            //}
-
-            //double avg = (doubles)sum / (double)runs;
-            //Console.WriteLine("average time: " + avg + " ms");
-
-            //Console.ReadKey();
-            //return;
-
-            /////////////////////////////////////////////////////////////////////////
-            //manual execution
-
-            Processor p = new Processor(new MMIO[] { new VirtualDisplay(90, 30) });
-            //load program into memory
-            for (int i = 0; i < Assembler.program_data.Length; i++)
-            {
-                p.memory[i] = Assembler.program_data[i];
-            }
-
+            Console.WriteLine("simulation environment setup complete");
+            Console.ReadLine();
             Console.Clear();
-            p.initialize_visualizer();
-            p.print_current_state();
 
-            while (((Register_32)p.registers[Processor.FLAG]).data == 0)
-            {
-                Console.ReadKey();
-                p.cycle();
-                Stopwatch s = new Stopwatch();
-                s.Reset();
-                s.Start();
-                p.print_current_state();
-                s.Stop();
-                Console.Write(s.ElapsedMilliseconds);
-            }
+            environment.run(true, 0xFFFFFFFF);
+
+            Console.WriteLine("processor halted");
 
             Console.Read();
 

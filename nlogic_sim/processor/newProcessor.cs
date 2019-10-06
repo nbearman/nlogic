@@ -3,13 +3,13 @@ using System.Collections.Generic;
 
 namespace nlogic_sim
 {
-    public partial class newProcessor
+    public partial class Processor
     {
         //reference to the containing simuation environment
         private SimulationEnvironment environment;
 
         //processor constants
-        public const ushort interrupt_handler_address = 0x002A;
+        public const ushort interrupt_handler_address = 0x9999;
         public const ushort interrupt_register_dump_address = 0x001A;
 
         //processor state
@@ -50,20 +50,30 @@ namespace nlogic_sim
         public void raise_signal(uint channel)
         {
             //there is one channel per bit in the FLAG register
-            //1 bit is reserved as the 'ignore interrupts' bit, however
+            //1 bit (MSB) is reserved as the 'ignore interrupts' bit, however
             uint num_channels = registers[FLAG].size_in_bytes * 8;
             if (channel > (num_channels - 2))
             {
                 throw new ArgumentOutOfRangeException("channel", "Processor cannot receive signals on that channel");
             }
 
+            //create the mask to apply to the FLAG register,
+            //changing the bit of the signal channel to 1
             uint signal_mask = 0b1;
             for (int i = 0; i < channel; i++)
             {
                 signal_mask = signal_mask << 1;
             }
 
-            throw new NotImplementedException();
+            //get the current contents of FLAG
+            uint flag_contents = Utility.uint32_from_byte_array(registers[FLAG].data_array);
+
+            //set the bit of the given signal channel
+            uint new_flag_contents = flag_contents | signal_mask;
+
+            //store the result back into FLAG
+            registers[FLAG].data_array = Utility.byte_array_from_uint32(registers[FLAG].size_in_bytes, new_flag_contents);
+
         }
 
         /// <summary>
@@ -71,7 +81,7 @@ namespace nlogic_sim
         /// Processor is ready to call cycle() after construction
         /// </summary>
         /// <param name="environment"></param>
-        public newProcessor(SimulationEnvironment environment)//SimulationEnvironment environment)
+        public Processor(SimulationEnvironment environment)//SimulationEnvironment environment)
         {
             //save a reference to the simulation environment
             this.environment = environment;
@@ -380,8 +390,16 @@ namespace nlogic_sim
         /// </summary>
         private void check_status()
         {
-            //check the most significant bit to determine if interrupts are being ignored
+            //retrieve the contents of FLAG, the control register
             uint flag_contents = Utility.uint32_from_byte_array(registers[FLAG].data_array);
+
+            if (flag_contents == 0)
+            {
+                //do nothing if FLAG is clear
+                return;
+            }
+
+            //check the most significant bit to determine if interrupts are being ignored
             //mask for only the most significant of 32 bits
             uint ignore_flag_mask = 0x80000000;
             uint ignore_flag = flag_contents & ignore_flag_mask;
@@ -557,70 +575,4 @@ namespace nlogic_sim
         }
     }
 
-}
-
-namespace nlogic_sim
-{
-    public partial class newProcessor
-    {
-        public enum ALU_MODE
-        {
-            NoOp = 0,
-            Add = 1,
-            Multiply = 2,
-            Subtract = 3,
-            Divide = 4,
-            ShiftLeft = 5,
-            ShiftRight = 6,
-            OR = 7,
-            AND = 8,
-            XOR = 9,
-            NAND = 10,
-            NOR = 11,
-        }
-
-        public enum FPU_MODE
-        {
-            NoOp = 0,
-            Add = 1,
-            Multiply = 2,
-            Subtract = 3,
-            Divide = 4,
-        }
-
-        public const byte IMM = 0x00;
-        public const byte FLAG = 0x80;
-        public const byte EXE = 0x81;
-        public const byte PC = 0x82;
-        public const byte ALUM = 0x83;
-        public const byte ALUA = 0x84;
-        public const byte ALUB = 0x85;
-        public const byte ALUR = 0x86;
-        public const byte FPUM = 0x87;
-        public const byte FPUA = 0x88;
-        public const byte FPUB = 0x89;
-        public const byte FPUR = 0x8A;
-        public const byte RBASE = 0x8B;
-        public const byte ROFST = 0x8C;
-        public const byte RMEM = 0x8D;
-        public const byte WBASE = 0x8E;
-        public const byte WOFST = 0x8F;
-        public const byte WMEM = 0x90;
-        public const byte GPA = 0x91;
-        public const byte GPB = 0x92;
-        public const byte GPC = 0x93;
-        public const byte GPD = 0x94;
-        public const byte GPE = 0x95;
-        public const byte GPF = 0x96;
-        public const byte GPG = 0x97;
-        public const byte GPH = 0x98;
-        public const byte COMPA = 0x99;
-        public const byte COMPB = 0x9A;
-        public const byte COMPR = 0x9B;
-        public const byte IADN = 0x9C;
-        public const byte IADF = 0x9D;
-        public const byte LINK = 0x9E;
-        public const byte SKIP = 0x9F;
-        public const byte RTRN = 0xA0;
-    }
 }

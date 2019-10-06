@@ -46,9 +46,8 @@
     <Compile Include="devices\display_test.cs" />
     <Compile Include="devices\VirtualKeyboard.cs" />
     <Compile Include="File.cs" />
-    <Compile Include="processor\main_processor_visualizer_test.cs" />
     <Compile Include="processor\newProcessor.cs" />
-    <Compile Include="processor\Processor.cs" />
+    <None Include="processor\oldProcessor.cs" />
     <Compile Include="processor\ProcessorDefinitions.cs" />
     <Compile Include="processor\ProcessorVisualizer.cs" />
     <Compile Include="devices\VirtualDisplay.cs" />

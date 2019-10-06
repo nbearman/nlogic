@@ -3,7 +3,7 @@ using System.Collections.Generic;
 
 namespace nlogic_sim
 {
-    public partial class Processor
+    public partial class oldProcessor
     {
         public ushort current_instruction;
         public const ushort interrupt_handler_address = 0x002A;

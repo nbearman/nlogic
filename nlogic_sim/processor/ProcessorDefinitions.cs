@@ -63,11 +63,40 @@
         public const byte RTRN = 0xA0;
     }
 
+    /// <summary>
+    /// Interface for a memory-mapped input-output device. MMIO devices
+    /// are managed by the simulation environment and are addressable by
+    /// the processor, just like memory. MMIO devices must know how much
+    /// of the address space they require (in bytes) and provide this with
+    /// get_size(). MMIO devices must also handle being written to and
+    /// being read. The address provided to calls of write_memory() and
+    /// read_memory() will be in the MMIO device's virtual address space
+    /// (addresses will range from 0 to this.get_size()), and therefore
+    /// the MMIO device does not need to handle address translation.
+    /// </summary>
     public interface MMIO
     {
+        /// <summary>
+        /// Get the size, in bytes, of the address space required by this device.
+        /// </summary>
+        /// <returns>The size of the address space required by this device in bytes.</returns>
         uint get_size();
-        void set_base_address(uint address);
+
+
+        /// <summary>
+        /// Write the given data array to the device at the given virtual address.
+        /// </summary>
+        /// <param name="address">The address start address of the write in the device's address space (no translation required)</param>
+        /// <param name="data">The data to be written</param>
         void write_memory(uint address, byte[] data);
+
+
+        /// <summary>
+        /// Read the given length of data starting at the given address in the device's virtual address space.
+        /// </summary>
+        /// <param name="address">The address start address of the read in the device's address space (no translation required)</param>
+        /// <param name="length">The number of bytes to be read</param>
+        /// <returns></returns>
         byte[] read_memory(uint address, uint length);
     }
 
