@@ -99,7 +99,7 @@ namespace nlogic_sim
                 }
 
                 //fpu_mode_string = String.Format("{0, -5}", fpu_mode_string);
-                update_readout(READOUT.ALUM_expansion, fpu_mode_string);
+                update_readout(READOUT.FPUM_expansion, fpu_mode_string);
             }
 
             {

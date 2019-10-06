@@ -66,7 +66,7 @@ namespace nlogic_sim
             {
                 if (visualizer_enabled)
                 {
-                    this.processor._print_current_state();
+                    this.processor.print_current_state();
                     Console.ReadKey();
                 }
 
