@@ -1,4 +1,6 @@
-﻿namespace nlogic_sim
+﻿using System;
+
+namespace nlogic_sim
 {
     public partial class Processor
     {
@@ -102,6 +104,6 @@
 
     public interface HardwareInterrupter
     {
-        void nothing();
+        void register_signal_callback(Action signal_callback);
     }
 }

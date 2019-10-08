@@ -42,6 +42,7 @@ namespace nlogic_sim
                     Assembler.program_data,
                     new MMIO[] { new VirtualDisplay(90, 30) });
 
+
             Console.WriteLine("simulation environment setup complete");
             Console.ReadLine();
             Console.Clear();

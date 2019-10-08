@@ -2,6 +2,8 @@
 	Processor can only issue one write at a time
 		This is due to the available instructions of the processor, not the design on the MMIO interface
 	Moving large amounts of memory to IO devices would require acquiring and releasing locks over and over again
+		It would also require many instructions
+		Therefore, there is a high cost for both the processor in the simulation and running the simulation
 	Alternative: create a DMA (direct memory access) controller IO device
 		Processor sends signal and address to DMA controller
 		DMA controller writes range of data from memory to MMIO device with single call to device's write_memory()
@@ -12,13 +14,6 @@ Processor visualizer (new)
 		Cue visualizations based on register contents (like changing color of FLAG name)
 	Make FLAG name change color when system halts
 		Possibly by implementing register listeners
-
-
-Divide the processor into the processor and simulated environment
-	The processor object handles only internal processor state
-		The processor has outputs of read / write commands and inputs data responses and hardware signals
-	The simulated environment handles everything outside the processor
-		This includes memory and IO devices
-		The simulated environment has inputs of read / write commands from the processor to memory,
-			and outputs data to the processor
-	This division will remove methods and datastructures that are not involved in running the processor to another class
+	Move the visualizer outside of the processor class
+		Living inside the processor makes accessing registers very simple, which is common for the visualizer
+		Maybe the visualizer can be a nested class

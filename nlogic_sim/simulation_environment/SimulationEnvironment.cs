@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Diagnostics;
+using System.Collections.Generic;
 
 namespace nlogic_sim
 {
@@ -34,6 +35,9 @@ namespace nlogic_sim
         //the callback to raise signals for the processor
         private Action<uint> processor_signal_callback;
 
+        private object signal_queue_mutex = new object();
+        private Queue<uint> signal_queue = new Queue<uint>();
+
         public SimulationEnvironment(uint memory_size, byte[] initial_memory, MMIO[] MMIO_devices)
         {
             //create memory
@@ -42,6 +46,9 @@ namespace nlogic_sim
             //create the MMIO devices
             this.MMIO_devices_by_address = new IntervalTree<uint, Tuple<uint, MMIO>>();
             initialize_MMIO(MMIO_devices);
+
+            //initialize the hardware interrupters
+            initialize_hardware_interrupters(new HardwareInterrupter[] { });
 
             //create the processor
             this.processor = new Processor(this);
@@ -64,12 +71,17 @@ namespace nlogic_sim
 
             while (((Register_32)this.processor.registers[Processor.FLAG]).data != halt_status)
             {
+                //display the visualizer if it is enabled
                 if (visualizer_enabled)
                 {
                     this.processor.print_current_state();
                     Console.ReadKey();
                 }
 
+                //send outstanding interrupts to the processor
+                this.resolve_signal_queue();
+
+                //cycle the processor
                 this.processor.cycle();
             }
 
@@ -195,5 +207,87 @@ namespace nlogic_sim
 
         }
 
+        private void initialize_hardware_interrupters(HardwareInterrupter[] interrupter_devices)
+        {
+            //the environment cannot support more interrupters than there are channels
+            //TODO change to get the number of supported channels from the processor
+            Debug.Assert(interrupter_devices.Length < 32);
+
+            //give each interrupter a callback to use on their own thread
+            //which raises a signal on their assigned channel
+            for (uint channel = 0; channel < interrupter_devices.Length; channel++)
+            {
+                //create a method that will raise a signal on this device's assigned channel
+
+                //this method is defined on a hidden functor so that it can be handed off to
+                //the interrupter device as a void function; this prevents the interrupter
+                //class from having to keep track of what channel to call signals on and
+                //prevents interrupters from raising signals on the wrong channel
+
+                signal_functor custom_signal_callback_functor = new signal_functor(this, channel);
+                Action custom_signal_callback = new Action(custom_signal_callback_functor.signal);
+                interrupter_devices[channel].register_signal_callback(custom_signal_callback);
+            }
+        }
+
+        /// <summary>
+        /// Send all signals built up in the queue to the processor,
+        /// removing them from the queue as they are processed
+        /// </summary>
+        private void resolve_signal_queue()
+        {
+            //the signal queue is accessible by interrupters' threads
+            //so it is protected with a lock
+            //hold the lock while sending interrupts to the processor
+            //this means that interrupters could be blocked at some point
+            //between processor cycles
+            lock (signal_queue_mutex)
+            {
+                while (signal_queue.Count > 0)
+                {
+                    uint channel = signal_queue.Dequeue();
+                    this.processor_signal_callback(channel);
+                }
+            }
+
+            return;
+        }
+
+        /// <summary>
+        /// The target method of the customized functors' signal() methods.
+        /// This method is responsible for processing a request from a call
+        /// to signal() (possibly on a non-main thread) by adding it to the
+        /// queue of signals the environment will raise before the next cycle
+        /// </summary>
+        /// <param name="channel">The channel to raise the signal on</param>
+        private void queue_signal(uint channel)
+        {
+            //add a signal to the signal queue
+            //grab the lock, first, because this method is called directly
+            //by interrupters, possible on their own threads
+            lock (this.signal_queue_mutex)
+            {
+                this.signal_queue.Enqueue(channel);
+            }
+
+            return;
+        }
+
+        private struct signal_functor
+        {
+            private uint channel;
+            private SimulationEnvironment environment;
+
+            public void signal()
+            {
+                this.environment.queue_signal(this.channel);
+            }
+
+            public signal_functor(SimulationEnvironment environment, uint channel)
+            {
+                this.environment = environment;
+                this.channel = channel;
+            }
+        }
     }
 }

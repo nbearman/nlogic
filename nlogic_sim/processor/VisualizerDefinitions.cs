@@ -159,7 +159,7 @@ namespace nlogic_sim
         /// </summary>
         private static Dictionary<string, ConsoleColor> register_name_to_color = new Dictionary<string, ConsoleColor>
         {
-            {"FLAG", ConsoleColor.Green },
+            {"FLAG", ConsoleColor.DarkGreen },
             {"EXE", ConsoleColor.DarkYellow },
             {"PC", ConsoleColor.White },
             {"SKIP", ConsoleColor.Gray },
