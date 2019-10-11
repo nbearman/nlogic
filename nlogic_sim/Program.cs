@@ -18,14 +18,17 @@ namespace nlogic_sim
             string[] code_files = new string[]
             {
                 //"programs/memory_test.txt",
-                "programs/alu_shift_test.txt",
+                //"programs/alu_shift_test.txt",
                 //"programs/sample_memory_read.txt",
                 //"programs/skip_test.txt",
+                "programs/external_labels1.txt",
+                "programs/external_labels2.txt",
+                //"programs/comments.txt",
             };
 
 
             //assemble code files
-            Assembler.assemble(code_files, "assembler_output.txt");
+            Assembler.assemble(code_files);//, "assembler_output.txt");
             string output = Assembler.dump_assembly();
             Console.WriteLine(output);
 
@@ -33,7 +36,7 @@ namespace nlogic_sim
             {
                 Console.WriteLine("assembler failed");
                 Console.ReadKey();
-                return;
+                //return;
             }
 
             SimulationEnvironment environment =

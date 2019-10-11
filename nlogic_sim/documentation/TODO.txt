@@ -17,3 +17,33 @@ Processor visualizer (new)
 	Move the visualizer outside of the processor class
 		Living inside the processor makes accessing registers very simple, which is common for the visualizer
 		Maybe the visualizer can be a nested class
+
+
+Assembler
+	Create a new layer for the assembler which can strip comments and other styling
+	The goal is to enable writing assembly in a style that's easier to understand
+
+Simulation environment
+	Create the MMU
+		MMU must replace address translation system
+			MMU cannot be a normal MMIO device because reads/writes to all adresses must go through the MMU
+		To run the processor in "bare metal" mode, the simulation environment should allow disabling the MMU
+			All addresses still pass through the MMU, it just doesn't translate them
+
+Operating system
+	Interrupt handlers
+		MMU interrupts
+		Timer interrupts
+		Syscall interrupts
+		IO interrupts
+	Kernel boot process
+		Initializing page tables
+		Initiating the hardware timer for preemption
+	Kernel scheduler
+
+Virtual keyboard
+	Create virtual keyboard
+	Runs its own thread that listens for Console.readkey()
+	When key is pressed
+		Save the keypress
+		Send interrupt to processor
