@@ -1,13 +1,32 @@
-﻿Look into changing MMIO to allow enter/exit read/write mode
+﻿
+Change processor to only access memory when the current instruction requires it
+	Do not prematurely fetch COMPR, IADN, IADF, RMEM, WMEM
+	Will this prevent any problems?
+
+Update trap to new model
+
+====================================================================================
+
+Tests
+	Write tests for processor functionality
+		Test programs for processor instructions
+		Tests for trap functionality
+	Complete TestMain
+		Add assembler method to read in dumped assembly to assembler.assembly_data
+		Add a way to create correct output
+			Change processor to write state to output file
+	
+
+Look into changing MMIO to allow enter/exit read/write mode
 	Processor can only issue one write at a time
-		This is due to the available instructions of the processor, not the design on the MMIO interface
+		This is due to the available instructions of the processor, not the design of the MMIO interface
 	Moving large amounts of memory to IO devices would require acquiring and releasing locks over and over again
 		It would also require many instructions
 		Therefore, there is a high cost for both the processor in the simulation and running the simulation
 	Alternative: create a DMA (direct memory access) controller IO device
 		Processor sends signal and address to DMA controller
 		DMA controller writes range of data from memory to MMIO device with single call to device's write_memory()
-			Therefore minmizing lock acquisition
+			Therefore mininmizing lock acquisition
 
 Processor visualizer (new)
 	Add register listeners to processor visualizer
@@ -17,6 +36,10 @@ Processor visualizer (new)
 	Move the visualizer outside of the processor class
 		Living inside the processor makes accessing registers very simple, which is common for the visualizer
 		Maybe the visualizer can be a nested class
+	Change the memory context preview readouts to work with virtual addressing
+		Processor visualizer must not raise interrupts or page table faults
+		Perhaps color preview along page boundaries, conditional on status of the page
+			(kernel, unmapped, dirty, etc.)
 
 
 Assembler
@@ -47,3 +70,9 @@ Virtual keyboard
 	When key is pressed
 		Save the keypress
 		Send interrupt to processor
+
+Page table
+	Establish page table layout that both MMU and OS can use
+
+Change writes to FLAG to always set MSB to 0
+	Only the trap should be allowed to enable ignore interrupts

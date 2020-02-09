@@ -279,6 +279,11 @@ namespace nlogic_sim
 
         }
 
+        public static void load_assembly_from_file(string filepath)
+        {
+
+        }
+
         private enum MESSAGE_TYPE
         {
             None = (int)ConsoleColor.Gray,

@@ -35,6 +35,10 @@ namespace nlogic_sim
         //the callback to raise signals for the processor
         private Action<uint> processor_signal_callback;
 
+        //queue to store interruptions received from MMIO devices since the last
+        //time interruptions were forwarded to the processor
+        //accessed by the environment thread as well as threads running on MMIO devices,
+        //so it must be protected by a lock
         private object signal_queue_mutex = new object();
         private Queue<uint> signal_queue = new Queue<uint>();
 

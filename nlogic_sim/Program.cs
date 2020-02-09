@@ -13,7 +13,14 @@ namespace nlogic_sim
     {
         static void Main(string[] args)
         {
+            //OldMain(args);
+            //TestProgram.main(args);
+            AssembleProgram.main(args);
 
+        }
+
+        static void OldMain(string[] args)
+        {
             //input code files
             string[] code_files = new string[]
             {

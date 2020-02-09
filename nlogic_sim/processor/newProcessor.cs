@@ -24,18 +24,32 @@ namespace nlogic_sim
             //check the status of the processor
             //(and check for interrupts)
             check_status();
+                //can possibly result in MMU fault while dumping registers
+                //can be avoided if dump addresses are guaranteed to be mapped
+                //<-- interrupt here results in registers not being saved
+                //      return to faulted process impossible
 
             //load current instruction
             load_current_instruction();
+                //can result in MMU fault while fetching instruction from memory
+                //<-- interrupt here during interrupt handler makes
+                //      handling MMU interrupts impossible
+                //  during normal process:
+                //      MMU interrupt triggered, no op returned as current instruction
+                //      
 
             //increment program counter
             ((Register_32)registers[PC]).data += 2;
 
             //update COMPR, IADN, IADF, SKIP, RTRN
             update_accessors();
+                //can result in MMU fault while fetching COMPR, IADN, IADF
 
             //execute current instruction
             execute();
+                //can result in MMU fault while writing to RMEM or WMEM
+                //no faults resulting from reads; reads updating registers
+                //are resolved before execute()
 
             //return contents of FLAG
             return Utility.uint32_from_byte_array(registers[FLAG].data_array);
