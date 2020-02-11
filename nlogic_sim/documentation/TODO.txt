@@ -1,4 +1,8 @@
-﻿
+﻿test processor state logging
+
+
+====================================================================================
+
 Change processor to only access memory when the current instruction requires it
 	Do not prematurely fetch COMPR, IADN, IADF, RMEM, WMEM
 	Will this prevent any problems?

@@ -57,7 +57,7 @@ namespace nlogic_sim
             Console.ReadLine();
             Console.Clear();
 
-            environment.run(true, 0xFFFFFFFF);
+            environment.run(true, true, 0xFFFFFFFF);
 
             Console.WriteLine("processor halted");
 

@@ -13,6 +13,7 @@ namespace nlogic_sim
     /// </summary>
     public class SimulationEnvironment
     {
+        public const int MAX_LOG_SIZE = 1000;
 
         /// <summary>
         /// An interval tree which maps uint addresses to (uint base address, MMIO device) tuples
@@ -42,6 +43,8 @@ namespace nlogic_sim
         private object signal_queue_mutex = new object();
         private Queue<uint> signal_queue = new Queue<uint>();
 
+        private List<string> state_logs = new List<string>(MAX_LOG_SIZE);
+
         public SimulationEnvironment(uint memory_size, byte[] initial_memory, MMIO[] MMIO_devices)
         {
             //create memory
@@ -66,7 +69,7 @@ namespace nlogic_sim
             Debug.Assert(this.signal_callback_registered);
         }
 
-        public void run(bool visualizer_enabled, uint halt_status)
+        public void run(bool visualizer_enabled, bool logging_enabled, uint halt_status)
         {
             if (visualizer_enabled)
             {
@@ -75,6 +78,12 @@ namespace nlogic_sim
 
             while (((Register_32)this.processor.registers[Processor.FLAG]).data != halt_status)
             {
+                //save the state of the processor if logging is enabled
+                if (logging_enabled)
+                {
+                    this.log_state();
+                }
+
                 //display the visualizer if it is enabled
                 if (visualizer_enabled)
                 {
@@ -87,6 +96,12 @@ namespace nlogic_sim
 
                 //cycle the processor
                 this.processor.cycle();
+            }
+
+            //save the logs to a file if logging is enabled
+            if (logging_enabled)
+            {
+                this.store_log("processor_state_log.txt");
             }
 
         }
@@ -292,6 +307,36 @@ namespace nlogic_sim
                 this.environment = environment;
                 this.channel = channel;
             }
+        }
+
+        /// <summary>
+        /// Logs the current state of all the processor's registers to this instance's state logs
+        /// </summary>
+        private void log_state()
+        {
+            string state_string = "";
+            foreach (Register_32 register in this.processor.registers.Values)
+            {
+                string value = Utility.byte_array_string(register.data_array);
+                string name = register.name_short;
+                state_string += name + " " + value + "\n";
+            }
+            state_string += "\n";
+            this.state_logs.Add(state_string);
+        }
+
+        /// <summary>
+        /// Print all the state logs to the file at the given file path
+        /// </summary>
+        /// <param name="file_path">Path to file where the log should be saved</param>
+        private void store_log(string file_path)
+        {
+            string log_string = "";
+            foreach (string s in this.state_logs)
+            {
+                log_string += s;
+            }
+            File_Input.write_file(file_path, log_string);
         }
     }
 }
