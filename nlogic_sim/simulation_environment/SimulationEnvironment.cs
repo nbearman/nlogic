@@ -13,7 +13,10 @@ namespace nlogic_sim
     /// </summary>
     public class SimulationEnvironment
     {
-        public const int MAX_LOG_SIZE = 1000;
+        //logging information
+        private const int MAX_LOG_SIZE = 1000;
+        private bool logging_enabled = false;
+        private string logging_file_path = null;
 
         /// <summary>
         /// An interval tree which maps uint addresses to (uint base address, MMIO device) tuples
@@ -45,8 +48,15 @@ namespace nlogic_sim
 
         private List<string> state_logs = new List<string>(MAX_LOG_SIZE);
 
-        public SimulationEnvironment(uint memory_size, byte[] initial_memory, MMIO[] MMIO_devices)
+        public SimulationEnvironment(uint memory_size, byte[] initial_memory, MMIO[] MMIO_devices, string logging_file_path = null)
         {
+            //set up logging
+            if (logging_file_path != null)
+            {
+                this.logging_file_path = logging_file_path;
+                this.logging_enabled = true;
+            }
+
             //create memory
             memory = new byte[memory_size];
 
@@ -69,7 +79,12 @@ namespace nlogic_sim
             Debug.Assert(this.signal_callback_registered);
         }
 
-        public void run(bool visualizer_enabled, bool logging_enabled, uint halt_status)
+        /// <summary>
+        /// Begin simluating the processor
+        /// </summary>
+        /// <param name="visualizer_enabled">Whether or not the visualizer should be used</param>
+        /// <param name="halt_status">The value of the FLAG register which will cause the simulation to end.</param>
+        public void run(bool visualizer_enabled, uint halt_status)
         {
             if (visualizer_enabled)
             {
@@ -101,7 +116,7 @@ namespace nlogic_sim
             //save the logs to a file if logging is enabled
             if (logging_enabled)
             {
-                this.store_log("processor_state_log.txt");
+                this.store_log();
             }
 
         }
@@ -329,14 +344,15 @@ namespace nlogic_sim
         /// Print all the state logs to the file at the given file path
         /// </summary>
         /// <param name="file_path">Path to file where the log should be saved</param>
-        private void store_log(string file_path)
+        private void store_log()
         {
             string log_string = "";
-            foreach (string s in this.state_logs)
+            for (int i = 0; i < this.state_logs.Count; i++)
             {
-                log_string += s;
+                log_string += String.Format("#{0}\n", i);
+                log_string += this.state_logs[i];
             }
-            File_Input.write_file(file_path, log_string);
+            File_Input.write_file(this.logging_file_path, log_string);
         }
     }
 }

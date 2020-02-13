@@ -279,9 +279,11 @@ namespace nlogic_sim
 
         }
 
-        public static void load_assembly_from_file(string filepath)
+        public static void load_assembly_from_file(string file_path)
         {
-
+            //TODO way to load pre-assembled code so tests don't have to re-assemble test programs each time
+            string byte_string = File_Input.get_file_contents(file_path);
+            Console.WriteLine(byte_string);
         }
 
         private enum MESSAGE_TYPE

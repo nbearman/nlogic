@@ -17,7 +17,9 @@ namespace nlogic_sim
 
         public static void write_file(string file_path, string contents)
         {
-            StreamWriter w = new StreamWriter(file_path, false);
+            FileInfo file = new FileInfo(file_path);
+            file.Directory.Create();
+            StreamWriter w = new StreamWriter(file.OpenWrite());
             w.Write(contents);
             w.Close();
         }

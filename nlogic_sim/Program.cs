@@ -13,10 +13,137 @@ namespace nlogic_sim
     {
         static void Main(string[] args)
         {
-            //OldMain(args);
-            //TestProgram.main(args);
-            AssembleProgram.main(args);
+            if (args.Length == 0)
+            {
+                Console.WriteLine("no command line arguments given; run with 'help' to get options");
+                return;
+            }
 
+            if (args[0] == "help")
+            {
+                Console.WriteLine("[nlogic sim help]");
+                Console.WriteLine("help\n\tthis help prompt");
+                Console.WriteLine("run [code files] {visualizer?} {-log [log output location]?}\n\tassemble the given code files;" +
+                    "run the program with the visualizer; store state logs to the given location");
+                Console.WriteLine("assemble [code files]\n\tassemble the given code files; output the assembly");
+                Console.WriteLine("test\n\trun the test program");
+                return;
+            }
+
+            if (args[0] == "run")
+            {
+                //remove the first argument (which was run)
+                var additional_args = args.Skip(1).Take(args.Length - 1).ToArray();
+
+                foreach (var a in additional_args)
+                {
+                    Console.WriteLine(a);
+                }
+
+
+                bool visualizer = false;
+                string log_output_filepath = null;
+
+                List<string> codefiles = new List<string>();
+                for (int i = 0; i < additional_args.Count(); i++)
+                {
+                    string aa = additional_args[i];
+                    if (aa.ToLower() == "visualizer" || aa.ToLower() == "-v")
+                    {
+                        visualizer = true;
+                    }
+                    else if (aa.ToLower() == "log" || aa.ToLower() == "-l")
+                    {
+                        if (i == additional_args.Count() - 1)
+                        {
+                            Console.WriteLine("No valid log output path provided");
+                            return;
+                        }
+                        else
+                        {
+                            //interpret the next argument as the output filepath
+                            log_output_filepath = additional_args[i + 1];
+                            //skip the next argument
+                            i++;
+                        }
+                    }
+                    else
+                    {
+                        //it's not a flag, so it's a codefile
+                        codefiles.Add(aa);
+                    }
+                }
+
+                if (codefiles.Count() == 0)
+                {
+                    Console.WriteLine("No code files provided");
+                    return;
+                }
+
+                assemble_and_run(codefiles.ToArray(), visualizer, log_output_filepath);
+                return;
+            }
+
+            if (args[0] == "assemble")
+            {
+                return;
+            }
+
+            if (args[0] == "test")
+            {
+                return;
+            }
+
+            return;
+        }
+
+        private static void assemble_and_run(string[] codefiles, bool visualizer_enabled, string logging_file_path)
+        {
+            ConsoleColor original_color = Console.ForegroundColor;
+
+            //assemble code files
+            Assembler.assemble(codefiles);
+            if (!Assembler.assembled)
+            {
+                Console.ForegroundColor = ConsoleColor.Red;
+                Console.WriteLine("Assembler failed; press any key to end...");
+                Console.ForegroundColor = original_color;
+                Console.ReadKey();
+                return;
+            }
+
+            Console.ForegroundColor = ConsoleColor.Cyan;
+            Console.WriteLine("Program assembly successful");
+
+            //set up the simulation environment
+            SimulationEnvironment environment =
+                new SimulationEnvironment(
+                    65536,
+                    Assembler.program_data,
+                    new MMIO[] { new VirtualDisplay(90, 30) },
+                    logging_file_path);
+
+            Console.ForegroundColor = ConsoleColor.Green;
+            Console.WriteLine("Simluation environment setup successful");
+
+            Console.ForegroundColor = original_color;
+            Console.WriteLine("Simulation ready; press any key to run...");
+            Console.ReadKey();
+
+            //clear the output messages so far
+            if (visualizer_enabled)
+                Console.Clear();
+
+            //begin the simulation
+            environment.run(visualizer_enabled, 0x0000007F);
+
+            Console.ForegroundColor = ConsoleColor.Yellow;
+            Console.WriteLine("Processor halted");
+            Console.ForegroundColor = original_color;
+            Console.WriteLine("Press any key to end...");
+            Console.ReadKey();
+            Console.Clear();
+            return;
         }
 
         static void OldMain(string[] args)
@@ -28,9 +155,10 @@ namespace nlogic_sim
                 //"programs/alu_shift_test.txt",
                 //"programs/sample_memory_read.txt",
                 //"programs/skip_test.txt",
-                "programs/external_labels1.txt",
-                "programs/external_labels2.txt",
+                //"programs/external_labels1.txt",
+                //"programs/external_labels2.txt",
                 //"programs/comments.txt",
+                "programs/log_testing/add_test.txt",
             };
 
 
@@ -57,7 +185,7 @@ namespace nlogic_sim
             Console.ReadLine();
             Console.Clear();
 
-            environment.run(true, true, 0xFFFFFFFF);
+            environment.run(true, 0xFFFFFFFF);
 
             Console.WriteLine("processor halted");
 

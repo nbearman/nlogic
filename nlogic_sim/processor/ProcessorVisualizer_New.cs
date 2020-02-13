@@ -436,7 +436,7 @@ namespace nlogic_sim
                 case (READOUT.FPUM_expansion):
                     {
                         //pad string with 1 space on both sides
-                        ColorString cs = new ColorString(" " + value.Substring(0, 4) + " ", ConsoleColor.Gray);
+                        ColorString cs = new ColorString(" " + value.Substring(0, Math.Min(value.Length, 4)) + " ", ConsoleColor.Gray);
                         result_list.Add(cs);
                         break;
                     }

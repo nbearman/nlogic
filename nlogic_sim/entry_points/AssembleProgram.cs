@@ -6,11 +6,11 @@ namespace nlogic_sim
     {
         public static void main(string[] args)
         {
-            const string OUTPUT_FILEPATH = "alu_shift_test_assmebly.txt";
+            const string OUTPUT_FILEPATH = "assembler_output/add_test_assembly.txt";
 
             string[] input_files = new string[]
             {
-                "programs/alu_shift_test.txt",
+                "programs/log_testing/add_test.txt",
             };
 
             Assembler.assemble(input_files);
