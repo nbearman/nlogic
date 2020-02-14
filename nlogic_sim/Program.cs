@@ -86,11 +86,17 @@ namespace nlogic_sim
 
             if (args[0] == "assemble")
             {
+                //remove the first argument (which was assemble)
+                var additional_args = args.Skip(1).Take(args.Length - 1).ToArray();
+                string assemble_time = (DateTime.Now.ToString().Replace(' ', '_').Replace('/', '-').Replace(':', '-'));
+                Assembler.assemble(additional_args, String.Format("{0}_assembler_output.txt", assemble_time));
+                Console.WriteLine(Assembler.dump_assembly());
                 return;
             }
 
             if (args[0] == "test")
             {
+                TestProgram.run_tests(args[1]);
                 return;
             }
 
@@ -120,8 +126,7 @@ namespace nlogic_sim
                 new SimulationEnvironment(
                     65536,
                     Assembler.program_data,
-                    new MMIO[] { new VirtualDisplay(90, 30) },
-                    logging_file_path);
+                    new MMIO[] { new VirtualDisplay(90, 30) });
 
             Console.ForegroundColor = ConsoleColor.Green;
             Console.WriteLine("Simluation environment setup successful");

@@ -5,6 +5,30 @@ namespace nlogic_sim
 {
     public class TestProgram
     {
+        public static void run_tests(string test_file_path)
+        {
+            Console.WriteLine(test_file_path);
+            string test_file_contents = File_Input.get_file_contents(test_file_path);
+            string[] test_pairs = test_file_contents.Split(new string[] { "\n", "\r\n"}, StringSplitOptions.RemoveEmptyEntries);
+            foreach (var tp in test_pairs)
+            {
+                string[] files = tp.Split(' ');
+                Assembler.load_assembly_from_file(files[0]);
+                SimulationEnvironment environment = new SimulationEnvironment(65536, Assembler.program_data, null);
+                environment.enable_logging();
+                environment.run(false, 0x0000007F);
+                string actual_output = environment.get_log();
+
+                string expected_output = File_Input.get_file_contents(files[1]);
+                if (expected_output != actual_output)
+                {
+                    Console.WriteLine(String.Format("Failed test {0}", files[0]));
+                }
+            }
+
+            Console.WriteLine("All tests run");
+        }
+
         public static void main(string[] args)
         {
 
