@@ -138,6 +138,43 @@ namespace nlogic_sim
         };
 
         /// <summary>
+        /// Returns string of the form "SRC -> DST" from the instruction represented by a uint32
+        /// </summary>
+        /// <param name="instruction">uint32 of an instruction</param>
+        /// <returns></returns>
+        public static string instruction_string_from_uint32(uint instruction)
+        {
+            byte[] b = byte_array_from_uint32(2, (uint)instruction);
+            return instruction_string_from_byte_array(b);
+        }
+
+        /// <summary>
+        /// Returns string of the form "SRC -> DST" from a big-endian array of 2 bytes
+        /// [MSB] [LSB]
+        /// [SRC] [DST]
+        /// </summary>
+        /// <param name="instruction_bytes">Byte array representing an instruction, a pair of bytes</param>
+        /// <returns></returns>
+        public static string instruction_string_from_byte_array(byte[] instruction_bytes)
+        {
+            Debug.Assert(instruction_bytes.Length == 2);
+
+            byte s_byte = instruction_bytes[0];
+            byte d_byte = instruction_bytes[1];
+
+            string s = s_byte.ToString("X2");
+            if (Utility.register_location_to_name.ContainsKey(s_byte))
+                s = Utility.register_location_to_name[s_byte];
+
+            string d = d_byte.ToString("X2");
+            if (Utility.register_location_to_name.ContainsKey(d_byte))
+                d = Utility.register_location_to_name[d_byte];
+
+            string instruction_expansion = s + " -> " + d;
+            return instruction_expansion;
+        }
+
+        /// <summary>
         /// Converts a big-endian array of bytes into a floating point number.
         /// </summary>
         public static float float_from_byte_array(byte[] data_array)

@@ -23,14 +23,8 @@ namespace nlogic_sim
 
             {
                 byte[] b = Utility.byte_array_from_uint32(2, (uint)current_instruction);
-                string s = b[0].ToString("X2");
-                if (Utility.register_location_to_name.ContainsKey(b[0]))
-                    s = Utility.register_location_to_name[b[0]];
-                string d = b[1].ToString("X2");
-                if (Utility.register_location_to_name.ContainsKey(b[1]))
-                    d = Utility.register_location_to_name[b[1]];
 
-                string instruction_expansion = s + " -> " + d;
+                string instruction_expansion = Utility.instruction_string_from_uint32((uint)current_instruction);
 
 
                 update_readout(
@@ -445,7 +439,7 @@ namespace nlogic_sim
                 case (READOUT.ALUR_expansion):
                     {
                         //pad string with 1 space on both sides
-                        string int_value = String.Format("{0, 9}", value);
+                        string int_value = String.Format("{0, 10}", value);
                         ColorString cs = new ColorString(" " + int_value + " ", ConsoleColor.Gray);
                         result_list.Add(cs);
                         break;
@@ -456,7 +450,7 @@ namespace nlogic_sim
                     {
                         //pad string with 1 space on both sides
                         //format float
-                        string float_value = String.Format("{0, 9}", value);
+                        string float_value = String.Format("{0, 10}", value);
                         ColorString cs = new ColorString(" " + float_value + " ", ConsoleColor.Gray);
                         result_list.Add(cs);
                         break;

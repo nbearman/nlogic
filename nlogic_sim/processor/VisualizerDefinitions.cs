@@ -75,13 +75,13 @@ namespace nlogic_sim
             { READOUT.GPB_contents, new Tuple<int, int, int>(43, 6, 15) },
             { READOUT.ALUA, new Tuple<int, int, int>(66, 6, 7) },
             { READOUT.ALUA_contents, new Tuple<int, int, int>(74, 6, 15) },
-            { READOUT.ALUA_expansion, new Tuple<int, int, int>(94, 6, 11) },
+            { READOUT.ALUA_expansion, new Tuple<int, int, int>(93, 6, 11) },
             ////////////////////////////////////////////////////////////////////////////
             { READOUT.GPC, new Tuple<int, int, int>(35, 7, 7) },
             { READOUT.GPC_contents, new Tuple<int, int, int>(43, 7, 15) },
             { READOUT.ALUB, new Tuple<int, int, int>(66, 7, 7) },
             { READOUT.ALUB_contents, new Tuple<int, int, int>(74, 7, 15) },
-            { READOUT.ALUB_expansion, new Tuple<int, int, int>(94, 7, 11) },
+            { READOUT.ALUB_expansion, new Tuple<int, int, int>(93, 7, 11) },
             ////////////////////////////////////////////////////////////////////////////
             { READOUT.SKIP, new Tuple<int, int, int>(4, 8, 7) },
             { READOUT.SKIP_contents, new Tuple<int, int, int>(12, 8, 15) },
@@ -89,7 +89,7 @@ namespace nlogic_sim
             { READOUT.GPD_contents, new Tuple<int, int, int>(43, 8, 15) },
             { READOUT.ALUR, new Tuple<int, int, int>(66, 8, 7) },
             { READOUT.ALUR_contents, new Tuple<int, int, int>(74, 8, 15) },
-            { READOUT.ALUR_expansion, new Tuple<int, int, int>(94, 8, 11) },
+            { READOUT.ALUR_expansion, new Tuple<int, int, int>(93, 8, 11) },
             ////////////////////////////////////////////////////////////////////////////
             { READOUT.RTRN, new Tuple<int, int, int>(4, 9, 7) },
             { READOUT.RTRN_contents, new Tuple<int, int, int>(12, 9, 15) },
@@ -106,13 +106,13 @@ namespace nlogic_sim
             { READOUT.GPF_contents, new Tuple<int, int, int>(43, 11, 15) },
             { READOUT.FPUA, new Tuple<int, int, int>(66, 11, 7) },
             { READOUT.FPUA_contents, new Tuple<int, int, int>(74, 11, 15) },
-            { READOUT.FPUA_expansion, new Tuple<int, int, int>(94, 11, 11) },
+            { READOUT.FPUA_expansion, new Tuple<int, int, int>(93, 11, 11) },
             ////////////////////////////////////////////////////////////////////////////
             { READOUT.GPG, new Tuple<int, int, int>(35, 12, 7) },
             { READOUT.GPG_contents, new Tuple<int, int, int>(43, 12, 15) },
             { READOUT.FPUB, new Tuple<int, int, int>(66, 12, 7) },
             { READOUT.FPUB_contents, new Tuple<int, int, int>(74, 12, 15) },
-            { READOUT.FPUB_expansion, new Tuple<int, int, int>(94, 12, 11) },
+            { READOUT.FPUB_expansion, new Tuple<int, int, int>(93, 12, 11) },
             ////////////////////////////////////////////////////////////////////////////
             { READOUT.COMPA, new Tuple<int, int, int>(4, 13, 7) },
             { READOUT.COMPA_contents, new Tuple<int, int, int>(12, 13, 15) },
@@ -120,7 +120,7 @@ namespace nlogic_sim
             { READOUT.GPH_contents, new Tuple<int, int, int>(43, 13, 15) },
             { READOUT.FPUR, new Tuple<int, int, int>(66, 13, 7) },
             { READOUT.FPUR_contents, new Tuple<int, int, int>(74, 13, 15) },
-            { READOUT.FPUR_expansion, new Tuple<int, int, int>(94, 13, 11) },
+            { READOUT.FPUR_expansion, new Tuple<int, int, int>(93, 13, 11) },
             ////////////////////////////////////////////////////////////////////////////
             { READOUT.COMPB, new Tuple<int, int, int>(4, 14, 7) },
             { READOUT.COMPB_contents, new Tuple<int, int, int>(12, 14, 15) },
