@@ -14,11 +14,32 @@ namespace nlogic_sim
 
         public static byte[] program_data;
 
+        public static string disassembly;
+
         public static string dump_assembly()
         {
             if (program_data != null)
                 return Utility.byte_array_string(program_data);
             return "";
+        }
+
+        public static string generate_disassembly()
+        {
+            if (program_data == null)
+            {
+                return "";
+            }
+
+            string result = "";
+            for (int i = 0; i < Assembler.program_data.Length; i += 2)
+            {
+                byte[] instruction = new byte[2];
+                Array.Copy(Assembler.program_data, i, instruction, 0, 2);
+                string expansion = Utility.instruction_string_from_byte_array(instruction);
+                result += expansion + "\n";
+            }
+
+            return result;
         }
 
         //attach a prefix to all local labels
@@ -257,6 +278,7 @@ namespace nlogic_sim
 
             if (assembler_result)
             {
+                Assembler.disassembly = Assembler.generate_disassembly();
                 Assembler.print_message("assembly successful", MESSAGE_TYPE.Success);
                 assembled = true;
             }

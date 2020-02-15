@@ -1,8 +1,10 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 
 namespace nlogic_sim
 {
+    [DebuggerDisplay("INST = {Utility.instruction_string_from_uint32(current_instruction)}")]
     public partial class Processor
     {
         //reference to the containing simuation environment
@@ -14,6 +16,11 @@ namespace nlogic_sim
 
         //processor state
         public ushort current_instruction;
+        private string current_instruction_expansion
+        { 
+            get { return Utility.instruction_string_from_uint32(current_instruction); }
+        }
+
         public Dictionary<byte, I_Register> registers;
 
         /// <summary>

@@ -1,6 +1,6 @@
-﻿continue testing the test program
+﻿change processor current instruction debugger display to show the instruction expansion ("src -> dst")
 
-check that FLAG is written to correctly
+continue testing the test program
 
 ====================================================================================
 

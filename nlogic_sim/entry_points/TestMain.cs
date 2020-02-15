@@ -9,7 +9,7 @@ namespace nlogic_sim
 
         public static void run_tests(string test_file_path)
         {
-            Console.WriteLine(test_file_path);
+            Console.WriteLine("\nRunning tests...\n____________________________\n");
             string test_file_contents = File_Input.get_file_contents(test_file_path);
 
             //each line represents a pair of files
@@ -31,6 +31,11 @@ namespace nlogic_sim
                 string assembly_bytes_string = File_Input.get_file_contents(input_assembly_path);
                 byte[] program_data = Utility.byte_array_from_string(assembly_bytes_string);
 
+                //load the disassembly for debugging
+                //TODO make this process better
+                Assembler.program_data = program_data;
+                Assembler.disassembly = Assembler.generate_disassembly();
+
                 //prepare and run the simulation with the program data
                 SimulationEnvironment environment = new SimulationEnvironment(65536, program_data, null);
                 environment.enable_logging();
@@ -47,65 +52,9 @@ namespace nlogic_sim
                 }
             }
 
-            Console.WriteLine("All tests run");
+            Console.WriteLine("\n____________________________");
+            Console.WriteLine("All tests run\n");
             return;
-        }
-
-        public static void main(string[] args)
-        {
-
-            string[] test_names = new string[]
-            {
-                "alu_shift_test",
-            };
-
-            //for each test name, get the test assembly and the correct output
-            //load the test assembly into the processor
-            //test the output against the correct output
-
-
-            string[] assembly_files = new string[]
-            {
-                "testing/test_assemblies/no_op.txt",
-            };
-
-            ////////////////////////////////////////////////////////////////
-            string[] code_files = new string[]
-            {
-                "programs/log_testing/add_test.txt",
-
-            };
-
-            //return;
-
-            //assemble code files
-            Assembler.assemble(code_files);//, "assembler_output.txt");
-            string output = Assembler.dump_assembly();
-            Console.WriteLine(output);
-
-            if (!Assembler.assembled)
-            {
-                Console.WriteLine("assembler failed");
-                Console.ReadKey();
-                //return;
-            }
-
-            SimulationEnvironment environment =
-                new SimulationEnvironment(
-                    65536,
-                    Assembler.program_data,
-                    new MMIO[] { new VirtualDisplay(90, 30) });
-
-
-            Console.WriteLine("simulation environment setup complete");
-            Console.ReadLine();
-            Console.Clear();
-
-            environment.run(false, 0x0000007F);
-
-            Console.WriteLine("processor halted");
-
-            Console.Read();
         }
     }
 }

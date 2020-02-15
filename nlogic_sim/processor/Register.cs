@@ -1,4 +1,6 @@
-﻿namespace nlogic_sim
+﻿using System.Diagnostics;
+
+namespace nlogic_sim
 {
     public interface I_Register
     {
@@ -20,6 +22,7 @@
 
     }
 
+    [DebuggerDisplay("[{name_short, nq}]  0x{data.ToString(\"X2\")} || d:{data} || f:{float_data()}")]
     public class Register_32 : I_Register
     {
         public readonly string name_short;
