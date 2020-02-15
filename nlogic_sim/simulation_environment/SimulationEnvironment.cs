@@ -213,6 +213,11 @@ namespace nlogic_sim
         /// </summary>
         private void initialize_MMIO(MMIO[] MMIO_devices)
         {
+            if (MMIO_devices == null)
+            {
+                return;
+            }
+
             //assign base addresses to all MMIO devices
 
             uint base_address = (uint)memory.Length;

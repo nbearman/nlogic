@@ -11,15 +11,50 @@ namespace nlogic_sim
 {
     class Program
     {
+        static readonly string[] flag_values = { "debug", "-d", };
+
         static void Main(string[] args)
         {
+
             if (args.Length == 0)
             {
                 Console.WriteLine("no command line arguments given; run with 'help' to get options");
                 return;
             }
 
-            if (args[0] == "help")
+            List<string> arg_list = args.ToList();
+            List<string> flags = new List<string>();
+            List<string> additional_args = new List<string>();
+
+            string command = arg_list[0];
+            arg_list.RemoveAt(0);
+
+            //detect and remove all legal global flags from the arguments
+            foreach (string f in flag_values)
+            {
+                int num_removed = arg_list.RemoveAll((arg) => arg == f);
+                if (num_removed > 0)
+                {
+                    flags.Add(f);
+                }
+            }
+
+            //add remaining non-flag arguments to the additional args list
+            foreach (string a in arg_list)
+            {
+                additional_args.Add(a);
+            }
+
+            //debug mode
+            //print the process ID and wait for a keypress to give the opportunity to attach the debugger
+            if (flags.Contains("-d") || flags.Contains("debug"))
+            {
+                Console.WriteLine(Process.GetCurrentProcess().Id);
+                Debugger.Launch();
+            }
+
+
+            if (command == "help")
             {
                 Console.WriteLine("[nlogic sim help]");
                 Console.WriteLine("help\n\tthis help prompt");
@@ -30,11 +65,8 @@ namespace nlogic_sim
                 return;
             }
 
-            if (args[0] == "run")
+            if (command == "run")
             {
-                //remove the first argument (which was run)
-                var additional_args = args.Skip(1).Take(args.Length - 1).ToArray();
-
                 foreach (var a in additional_args)
                 {
                     Console.WriteLine(a);
@@ -84,19 +116,23 @@ namespace nlogic_sim
                 return;
             }
 
-            if (args[0] == "assemble")
+            if (command == "assemble")
             {
-                //remove the first argument (which was assemble)
-                var additional_args = args.Skip(1).Take(args.Length - 1).ToArray();
                 string assemble_time = (DateTime.Now.ToString().Replace(' ', '_').Replace('/', '-').Replace(':', '-'));
-                Assembler.assemble(additional_args, String.Format("{0}_assembler_output.txt", assemble_time));
+                Assembler.assemble(additional_args.ToArray(), String.Format("{0}_assembler_output.txt", assemble_time));
                 Console.WriteLine(Assembler.dump_assembly());
                 return;
             }
 
-            if (args[0] == "test")
+            if (command == "test")
             {
-                TestProgram.run_tests(args[1]);
+                if (additional_args.Count == 0)
+                {
+                    Console.WriteLine("No test file provided");
+                    return;
+                }
+
+                TestProgram.run_tests(additional_args[0]);
                 return;
             }
 

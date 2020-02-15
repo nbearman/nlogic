@@ -1,4 +1,6 @@
-﻿continue program CLI
+﻿continue testing the test program
+
+check that FLAG is written to correctly
 
 ====================================================================================
 

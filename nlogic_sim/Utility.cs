@@ -243,7 +243,7 @@ namespace nlogic_sim
 
 
         /// <summary>
-        /// Returns a big-endian byte array from of the specified size from the given data.
+        /// Returns a big-endian byte array of the specified size from the given data.
         /// </summary>
         public static byte[] byte_array_from_uint32(uint size, uint data)
         {
@@ -270,6 +270,22 @@ namespace nlogic_sim
                 if (prepend_separator || i > 0)
                     result += separator;
                 result += data[i].ToString("X2");
+            }
+
+            return result;
+        }
+
+        public static byte[] byte_array_from_string(string input, string separator = " ")
+        {
+            string[] bytes = input.Split(new string[] { separator }, StringSplitOptions.RemoveEmptyEntries);
+            byte[] result = new byte[bytes.Length];
+
+            for (int i = 0; i < result.Length; i++)
+            {
+                //convert the string to a uint32
+                //convert the uint32 to a byte array of length 1
+                //store the first (and only) byte into the output array
+                result[i] = byte_array_from_uint32(1, uint.Parse(bytes[i], System.Globalization.NumberStyles.HexNumber))[0];
             }
 
             return result;
