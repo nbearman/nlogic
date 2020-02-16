@@ -11,3 +11,4 @@ COMPR PC
 :jump
 @jump
 0A FLAG
+7F FLAG

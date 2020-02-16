@@ -26,9 +26,6 @@ namespace nlogic_sim
             List<string> flags = new List<string>();
             List<string> additional_args = new List<string>();
 
-            string command = arg_list[0];
-            arg_list.RemoveAt(0);
-
             //detect and remove all legal global flags from the arguments
             foreach (string f in flag_values)
             {
@@ -38,6 +35,10 @@ namespace nlogic_sim
                     flags.Add(f);
                 }
             }
+
+            //get the command, the first argument after flags have been stripped
+            string command = arg_list[0];
+            arg_list.RemoveAt(0);
 
             //add remaining non-flag arguments to the additional args list
             foreach (string a in arg_list)
@@ -67,12 +68,6 @@ namespace nlogic_sim
 
             if (command == "run")
             {
-                foreach (var a in additional_args)
-                {
-                    Console.WriteLine(a);
-                }
-
-
                 bool visualizer = false;
                 string log_output_filepath = null;
 
@@ -133,6 +128,25 @@ namespace nlogic_sim
                 }
 
                 TestProgram.run_tests(additional_args[0]);
+                return;
+            }
+
+            if (command == "testcase")
+            {
+                if (additional_args.Count == 0)
+                {
+                    Console.WriteLine("No test case name provided");
+                    return;
+                }
+
+                if (additional_args.Count == 1)
+                {
+                    Console.WriteLine("No code files provided");
+                    return;
+                }
+
+                string[] code_files = additional_args.GetRange(1, additional_args.Count - 1).ToArray();
+                TestProgram.create_test_file_pair(additional_args[0], code_files);
                 return;
             }
 

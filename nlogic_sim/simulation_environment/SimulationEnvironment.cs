@@ -16,6 +16,7 @@ namespace nlogic_sim
         //logging information
         private const int MAX_LOG_SIZE = 1000;
         private bool logging_enabled = false;
+        private List<string> state_logs = new List<string>(MAX_LOG_SIZE);
 
         /// <summary>
         /// An interval tree which maps uint addresses to (uint base address, MMIO device) tuples
@@ -26,6 +27,9 @@ namespace nlogic_sim
         /// data structure to hold the base address of each attached device.
         /// </summary>
         private IntervalTree<uint, Tuple<uint, MMIO>> MMIO_devices_by_address;
+
+        //enable the trap on the processor
+        public bool trap_enabled = false;
 
         //physical memory
         public byte[] memory;
@@ -44,8 +48,6 @@ namespace nlogic_sim
         //so it must be protected by a lock
         private object signal_queue_mutex = new object();
         private Queue<uint> signal_queue = new Queue<uint>();
-
-        private List<string> state_logs = new List<string>(MAX_LOG_SIZE);
 
         public SimulationEnvironment(uint memory_size, byte[] initial_memory, MMIO[] MMIO_devices)
         {
@@ -88,7 +90,8 @@ namespace nlogic_sim
                 this.processor.initialize_visualizer();
             }
 
-            while (((Register_32)this.processor.registers[Processor.FLAG]).data != halt_status)
+            uint cycle_status = 0;
+            while (cycle_status != halt_status)
             {
                 //save the state of the processor if logging is enabled
                 if (logging_enabled)
@@ -107,7 +110,14 @@ namespace nlogic_sim
                 this.resolve_signal_queue();
 
                 //cycle the processor
-                this.processor.cycle();
+                cycle_status = this.processor.cycle();
+            }
+
+            //print the end state of the processor if the visualizer is enabled
+            if (visualizer_enabled)
+            {
+                this.processor.print_current_state();
+                Console.ReadKey();
             }
 
         }

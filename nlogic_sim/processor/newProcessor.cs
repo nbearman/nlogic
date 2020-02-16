@@ -30,11 +30,14 @@ namespace nlogic_sim
         {
             //check the status of the processor
             //(and check for interrupts)
-            check_status();
+            if (environment.trap_enabled)
+            {
+                check_status();
                 //can possibly result in MMU fault while dumping registers
                 //can be avoided if dump addresses are guaranteed to be mapped
                 //<-- interrupt here results in registers not being saved
                 //      return to faulted process impossible
+            }
 
             //load current instruction
             load_current_instruction();
