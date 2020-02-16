@@ -63,6 +63,7 @@ namespace nlogic_sim
         public const byte LINK = 0x9E;
         public const byte SKIP = 0x9F;
         public const byte RTRN = 0xA0;
+        public const byte DMEM = 0xC0;
     }
 
     /// <summary>

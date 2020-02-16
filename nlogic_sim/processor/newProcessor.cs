@@ -144,10 +144,23 @@ namespace nlogic_sim
             }
             else if (source < FLAG)
             {
+                //if the source is less than FLAG, it's an immediate value
                 source_data = (uint)source;
+            }
+            else if (source >= DMEM)
+            {
+                //if the source is greater than the lowest DMEM instruction, its a DMEM instruction
+                //DMEM instructions read directly from memory
+
+                //calculate the target address
+                //lowest DMEM accesses address 0, DMEM + 1 -> address 1, etc.
+                uint address = (uint)source - (uint)DMEM;
+
+                source_data = Utility.uint32_from_byte_array(read_memory(address, 4));
             }
             else
             {
+                //otherwise, its an unused instruction
                 source_data = 0;
             }
 
@@ -156,7 +169,15 @@ namespace nlogic_sim
 
             if (registers.ContainsKey(destination) && registers[destination].writeable)
             {
+                //destination is a writeable register
                 ((Register_32)registers[destination]).data = source_data;
+            }
+            else if (destination >= DMEM)
+            {
+                //destination is a DMEM location in memory
+                uint address = (uint)destination - (uint)DMEM;
+                byte[] data_bytes = Utility.byte_array_from_uint32(4, source_data);
+                write_memory(address, data_bytes);
             }
 
             //update result registers as needed
@@ -175,20 +196,6 @@ namespace nlogic_sim
                 destination == FPUB)
             {
                 update_fpu();
-            }
-
-            else if (
-                destination == RBASE ||
-                destination == ROFST)
-            {
-                update_accessor_a();
-            }
-
-            else if (
-                destination == WBASE ||
-                destination == WOFST)
-            {
-                update_accessor_b();
             }
 
             else if (destination == RMEM)
@@ -243,6 +250,9 @@ namespace nlogic_sim
                 ((Register_32)registers[COMPR]).data_array = read_memory(base_addr + offset + 4, 4);
             }
 
+
+            update_accessor_a();
+            update_accessor_b();
 
         }
 

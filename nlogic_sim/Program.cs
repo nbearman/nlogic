@@ -189,12 +189,25 @@ namespace nlogic_sim
             if (visualizer_enabled)
                 Console.Clear();
 
+            //enable logging
+            if (logging_file_path != null)
+            {
+                environment.enable_logging();
+            }
+
             //begin the simulation
             environment.run(visualizer_enabled, 0x0000007F);
 
             Console.ForegroundColor = ConsoleColor.Yellow;
             Console.WriteLine("Processor halted");
             Console.ForegroundColor = original_color;
+
+            if (logging_file_path != null)
+            {
+                Console.WriteLine("Writing log file");
+                File_Input.write_file(logging_file_path, environment.get_log());
+            }
+
             Console.WriteLine("Press any key to end...");
             Console.ReadKey();
             Console.Clear();
