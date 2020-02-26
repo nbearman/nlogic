@@ -11,7 +11,7 @@ namespace nlogic_sim
     /// processor. The simulation environment handles address translation from physical address
     /// of reads and writes from the processor to the local address of the MMIO device.
     /// </summary>
-    public class SimulationEnvironment
+    public class SimulationEnvironment : I_Environment
     {
         //logging information
         private const int MAX_LOG_SIZE = 1000;
@@ -28,6 +28,8 @@ namespace nlogic_sim
         /// </summary>
         private IntervalTree<uint, Tuple<uint, MMIO>> MMIO_devices_by_address;
 
+        private MemoryManagementUnit MMU = new MemoryManagementUnit();
+
         //enable the trap on the processor
         public bool trap_enabled = false;
 
@@ -40,14 +42,14 @@ namespace nlogic_sim
         //true if the processor has registered its signal callback with the environments
         private bool signal_callback_registered = false;
         //the callback to raise signals for the processor
-        private Action<uint> processor_signal_callback;
+        private Action<Interrupt> processor_signal_callback;
 
         //queue to store interruptions received from MMIO devices since the last
         //time interruptions were forwarded to the processor
         //accessed by the environment thread as well as threads running on MMIO devices,
         //so it must be protected by a lock
         private object signal_queue_mutex = new object();
-        private Queue<uint> signal_queue = new Queue<uint>();
+        private Queue<Interrupt> signal_queue = new Queue<Interrupt>();
 
         public SimulationEnvironment(uint memory_size, byte[] initial_memory, MMIO[] MMIO_devices)
         {
@@ -62,7 +64,7 @@ namespace nlogic_sim
             initialize_hardware_interrupters(new HardwareInterrupter[] { });
 
             //create the processor
-            this.processor = new Processor(this);
+            this.processor = new Processor(this, false);
 
             //initialize memory
             this.write_address(0, initial_memory);
@@ -109,6 +111,9 @@ namespace nlogic_sim
                 //send outstanding interrupts to the processor
                 this.resolve_signal_queue();
 
+                //clear faults on the MMU when the processor cycles
+                MMU.clear_fault();
+
                 //cycle the processor
                 cycle_status = this.processor.cycle();
             }
@@ -134,16 +139,26 @@ namespace nlogic_sim
         {
             byte[] result = new byte[length];
 
+
+            uint physical_address;
+            if (!MMU.translate_address(address, out physical_address))
+            {
+                //the translation failed
+                //return garbage
+                return result;
+            }
+
+
             //address is beyond physical memory, check MMIO devices instead
-            if (address >= memory.Length)
+            if (physical_address >= memory.Length)
             {
                 //get the target device and base address
-                Tuple<uint, MMIO> target_device = this.MMIO_devices_by_address.get_data(address);
+                Tuple<uint, MMIO> target_device = this.MMIO_devices_by_address.get_data(physical_address);
                 uint base_address = target_device.Item1;
                 MMIO device = target_device.Item2;
 
                 //translate the processor's requested address to the address space of the device
-                uint translated_address = address - base_address;
+                uint translated_address = physical_address - base_address;
 
                 //read the data from the device at the translated address
                 result = device.read_memory(translated_address, length);
@@ -157,7 +172,7 @@ namespace nlogic_sim
             {
                 for (int i = 0; i < length; i++)
                 {
-                    result[i] = memory[address + i];
+                    result[i] = memory[physical_address + i];
                 }
 
                 return result;
@@ -173,17 +188,25 @@ namespace nlogic_sim
         /// <param name="data_array">Array of bytes to write at the address</param>
         public void write_address(uint address, byte[] data_array)
         {
+            uint physical_address;
+            if (!MMU.translate_address(address, out physical_address))
+            {
+                //the translation failed
+                //do nothing
+                return;
+            }
+
 
             //address is beyond physical memory, check MMIO devices instead
-            if (address >= memory.Length)
+            if (physical_address >= memory.Length)
             {
                 //get the target device and base address
-                Tuple<uint, MMIO> target_device = this.MMIO_devices_by_address.get_data(address);
+                Tuple<uint, MMIO> target_device = this.MMIO_devices_by_address.get_data(physical_address);
                 uint base_address = target_device.Item1;
                 MMIO device = target_device.Item2;
 
                 //translate the processor's requested address to the address space of the device
-                uint translated_address = address - base_address;
+                uint translated_address = physical_address - base_address;
 
                 //read the data from the device at the translated address
                 device.write_memory(translated_address, data_array);
@@ -194,7 +217,7 @@ namespace nlogic_sim
             //write the given bytes to memory at the given address
             for (int i = 0; i < data_array.Length; i++)
             {
-                memory[address + i] = data_array[i];
+                memory[physical_address + i] = data_array[i];
             }
 
             return;
@@ -208,14 +231,27 @@ namespace nlogic_sim
         /// like interrupts, to the processor.
         /// </summary>
         /// <param name="signal_callback">
-        /// A method which takes a channel number as a parameter.
-        /// Invoking signal_callback(channel_number) will send a signal on
-        /// the corresponding signal wire to the processor.
+        /// A method which takes an Interrupt struct as a parameter.
+        /// Invoking signal_callback(interrupt) will send the interrupt
+        /// the processor with the given flags on the given channel.
         /// </param>
-        public void register_signal_callback(Action<uint> signal_callback)
+        public void register_signal_callback(Action<Interrupt> signal_callback)
         {
             this.processor_signal_callback = signal_callback;
             this.signal_callback_registered = true;
+        }
+
+        /// <summary>
+        /// Called by the processor to set the environment (the MMU) to kernel mode
+        /// </summary>
+        public void signal_kernel_mode()
+        {
+            throw new NotImplementedException();
+        }
+
+        public byte[] get_memory()
+        {
+            return this.memory;
         }
 
         /// <summary>
@@ -251,7 +287,7 @@ namespace nlogic_sim
         {
             //the environment cannot support more interrupters than there are channels
             //TODO change to get the number of supported channels from the processor
-            Debug.Assert(interrupter_devices.Length < 32);
+            Debug.Assert(interrupter_devices.Length < 25);
 
             //give each interrupter a callback to use on their own thread
             //which raises a signal on their assigned channel
@@ -265,7 +301,7 @@ namespace nlogic_sim
                 //prevents interrupters from raising signals on the wrong channel
 
                 signal_functor custom_signal_callback_functor = new signal_functor(this, channel);
-                Action custom_signal_callback = new Action(custom_signal_callback_functor.signal);
+                Action<bool, bool> custom_signal_callback = new Action<bool, bool>(custom_signal_callback_functor.signal);
                 interrupter_devices[channel].register_signal_callback(custom_signal_callback);
             }
         }
@@ -285,8 +321,8 @@ namespace nlogic_sim
             {
                 while (signal_queue.Count > 0)
                 {
-                    uint channel = signal_queue.Dequeue();
-                    this.processor_signal_callback(channel);
+                    Interrupt signal = signal_queue.Dequeue();
+                    this.processor_signal_callback(signal);
                 }
             }
 
@@ -299,15 +335,15 @@ namespace nlogic_sim
         /// to signal() (possibly on a non-main thread) by adding it to the
         /// queue of signals the environment will raise before the next cycle
         /// </summary>
-        /// <param name="channel">The channel to raise the signal on</param>
-        private void queue_signal(uint channel)
+        /// <param name="interrupt_signal">The interrupt struct to send to the processor</param>
+        private void queue_signal(Interrupt interrupt_signal)
         {
             //add a signal to the signal queue
             //grab the lock, first, because this method is called directly
             //by interrupters, possible on their own threads
             lock (this.signal_queue_mutex)
             {
-                this.signal_queue.Enqueue(channel);
+                this.signal_queue.Enqueue(interrupt_signal);
             }
 
             return;
@@ -318,9 +354,20 @@ namespace nlogic_sim
             private uint channel;
             private SimulationEnvironment environment;
 
-            public void signal()
+            /// <summary>
+            /// Callback to be used by the hardware interrupter on its own thread to raise an interrupt
+            /// signal on the appropriate channel with the given additional flags
+            /// </summary>
+            /// <param name="retry">True if the RETRY flag should be used on the interrupt</param>
+            /// <param name="kernel">True if the KERNEL flag should be used on the interrupt</param>
+            public void signal(bool retry, bool kernel)
             {
-                this.environment.queue_signal(this.channel);
+                Interrupt interrupt_signal = new Interrupt();
+                interrupt_signal.channel = this.channel;
+                interrupt_signal.retry = retry;
+                interrupt_signal.kernel = kernel;
+
+                this.environment.queue_signal(interrupt_signal);
             }
 
             public signal_functor(SimulationEnvironment environment, uint channel)

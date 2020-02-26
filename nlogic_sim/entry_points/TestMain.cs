@@ -34,7 +34,7 @@ namespace nlogic_sim
                 byte[] program_data = Utility.byte_array_from_string(assembly_bytes_string);
 
                 //load the disassembly for debugging
-                //TODO make this process better
+                //TODO make this process better (it's bad that we first have to fill the assembler with program data and then generate the disassembly)
                 Assembler.program_data = program_data;
                 Assembler.disassembly = Assembler.generate_disassembly();
 

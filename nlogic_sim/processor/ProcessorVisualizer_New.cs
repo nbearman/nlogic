@@ -132,8 +132,8 @@ namespace nlogic_sim
             {
                 uint r_address = ((Register_32)registers[RBASE]).data + ((Register_32)registers[ROFST]).data;
                 uint w_address = ((Register_32)registers[WBASE]).data + ((Register_32)registers[WOFST]).data;
-                update_memory_context(READOUT.MemoryContext1, r_address, this.environment.memory);
-                update_memory_context(READOUT.MemoryContext2, w_address, this.environment.memory);
+                update_memory_context(READOUT.MemoryContext1, r_address, this.environment.get_memory());
+                update_memory_context(READOUT.MemoryContext2, w_address, this.environment.get_memory());
             }
 
 

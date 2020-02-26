@@ -329,7 +329,7 @@ namespace nlogic_sim
                 base_line_number = 0;
             }
 
-            int last_line = ((this.environment.memory.Length) / 8) - 1;
+            int last_line = ((this.environment.get_memory().Length) / 8) - 1;
 
             if (base_line_number > last_line - 8)
             {
@@ -344,7 +344,7 @@ namespace nlogic_sim
                 for (int col = 0; col < 8; col++)
                 {
                     membyte m = new membyte();
-                    m.value = this.environment.memory[addr + col];
+                    m.value = this.environment.get_memory()[addr + col];
                     if ((addr + col) >= address && (addr + col) < (address + 4))
                         m.color = ConsoleColor.White;
                     else

@@ -67,6 +67,28 @@ namespace nlogic_sim
     }
 
     /// <summary>
+    /// List of flags in the status register (FLAG); the enum value is the number
+    /// of bits right of the most significant bit where the flag's corresponding bit is
+    /// </summary>
+    public enum FLAGS
+    {
+        UNLOCKED = 0,
+        DISABLED = 1,
+        DELAY = 2,
+        RETRY = 3,
+        KERNEL = 4,
+        USER_DISABLED = 5,
+        USER_DELAY = 6,
+    }
+
+    public struct Interrupt
+    {
+        public uint channel;
+        public bool retry;
+        public bool kernel;
+    }
+
+    /// <summary>
     /// Interface for a memory-mapped input-output device. MMIO devices
     /// are managed by the simulation environment and are addressable by
     /// the processor, just like memory. MMIO devices must know how much
@@ -105,6 +127,27 @@ namespace nlogic_sim
 
     public interface HardwareInterrupter
     {
-        void register_signal_callback(Action signal_callback);
+        /// <summary>
+        /// 
+        /// </summary>
+        /// <param name="signal_callback">Method that takes two booleans: RETRY and KERNEL,
+        /// which use the RETRY and KERNEL flag, respectively, on the interrupt
+        /// </param>
+        void register_signal_callback(Action<bool, bool> signal_callback);
+    }
+
+    /// <summary>
+    /// Interface through which the processor communicates with the environment.
+    /// </summary>
+    public interface I_Environment
+    {
+        byte[] read_address(uint address, uint length);
+        void write_address(uint address, byte[] data_array);
+        void register_signal_callback(Action<Interrupt> signal_callback);
+        void signal_kernel_mode();
+
+        //TODO this is necessary only for the visualizer
+        //refactor visualizer to be part of the environment and remove this
+        byte[] get_memory();
     }
 }

@@ -8,7 +8,10 @@ namespace nlogic_sim
     public partial class Processor
     {
         //reference to the containing simuation environment
-        private SimulationEnvironment environment;
+        private I_Environment environment;
+
+        //whether or not the trap is enabled
+        private bool trap_enabled;
 
         //processor constants
         public const ushort interrupt_handler_address = 0x9999;
@@ -21,6 +24,9 @@ namespace nlogic_sim
             get { return Utility.instruction_string_from_uint32(current_instruction); }
         }
 
+        //TODO implement the UNLOCKED bit logic
+        //add special case if the destination is FLAG; should be faster than invoking getter and setter methods
+        //everytime a register is written
         public Dictionary<byte, I_Register> registers;
 
         /// <summary>
@@ -30,7 +36,7 @@ namespace nlogic_sim
         {
             //check the status of the processor
             //(and check for interrupts)
-            if (environment.trap_enabled)
+            if (this.trap_enabled)
             {
                 check_status();
                 //can possibly result in MMU fault while dumping registers
@@ -71,29 +77,41 @@ namespace nlogic_sim
         /// Throws an exception if the channel is out of range.
         /// </summary>
         /// <param name="channel"></param>
-        public void raise_signal(uint channel)
+        public void raise_signal(Interrupt interrupt_signal)
         {
-            //there is one channel per bit in the FLAG register
-            //1 bit (MSB) is reserved as the 'ignore interrupts' bit, however
+
+            uint channel = interrupt_signal.channel;
+
+            //there is one channel per bit in the FLAG register, however:
+            //1 bit (MSB) is reserved for the UNLOCKED flag, to prevent overwriting flags
+            //1 bit (next MSB) is reserved as the DISABLED bit, to ignore interrupts
+            //1 bit is reserved for the DELAY flag
+            //1 bit is reserved for the RETRY flag
+            //1 bit is reserved for the KERNEL flag
+            //1 bit is reserved for the USER DISABLED flag
+            //1 bit is reserved for the USER DELAY flag
+            uint num_reserved_channels = 7;
             uint num_channels = registers[FLAG].size_in_bytes * 8;
-            if (channel > (num_channels - 2))
+            if (channel > (num_channels - num_reserved_channels - 1))
             {
                 throw new ArgumentOutOfRangeException("channel", "Processor cannot receive signals on that channel");
             }
 
-            //create the mask to apply to the FLAG register,
-            //changing the bit of the signal channel to 1
-            uint signal_mask = 0b1;
-            for (int i = 0; i < channel; i++)
-            {
-                signal_mask = signal_mask << 1;
-            }
+            //create the masks to apply to the FLAG register
+            //changing the bit of the signal channel and the corresponding flags to 1
+            uint retry_mask = (uint)0b1 << ((int)num_channels - (int)FLAGS.RETRY - 1);
+            uint kernel_mask = (uint)0b1 << ((int)num_channels - (int)FLAGS.KERNEL - 1);
+            uint signal_mask = (uint)0b1 << (int)channel;
+
+            //combine the masks into 1
+            uint combined_mask = retry_mask | kernel_mask | signal_mask;
 
             //get the current contents of FLAG
             uint flag_contents = Utility.uint32_from_byte_array(registers[FLAG].data_array);
 
-            //set the bit of the given signal channel
-            uint new_flag_contents = flag_contents | signal_mask;
+            //set the bit of the given signal channel and the flags by applying the mask
+            //bits that have already been set will not be unset
+            uint new_flag_contents = flag_contents | combined_mask;
 
             //store the result back into FLAG
             registers[FLAG].data_array = Utility.byte_array_from_uint32(registers[FLAG].size_in_bytes, new_flag_contents);
@@ -105,10 +123,13 @@ namespace nlogic_sim
         /// Processor is ready to call cycle() after construction
         /// </summary>
         /// <param name="environment"></param>
-        public Processor(SimulationEnvironment environment)//SimulationEnvironment environment)
+        public Processor(I_Environment environment, bool trap_enabled)
         {
             //save a reference to the simulation environment
             this.environment = environment;
+
+            //allow the trap to be disabled, which prevents special behavior when FLAG is changed
+            this.trap_enabled = trap_enabled;
 
             //give the environment a way to signal the processor
             //necessary for other devices in the environment to send interrupts
@@ -424,8 +445,46 @@ namespace nlogic_sim
         /// </summary>
         private void check_status()
         {
+            //TODO update the trap to the new model
+            //needs to handle unlocked / disabled / delay / retry / kernel / user disabled / user delay
+
+            //TODO update this to use the new get / set / clear helper methods
+
             //retrieve the contents of FLAG, the control register
             uint flag_contents = Utility.uint32_from_byte_array(registers[FLAG].data_array);
+
+            if (flag_contents == 0)
+            {
+                //do nothing if FLAG is clear
+                return;
+            }
+
+
+            //check the DISABLED flag to determine if interrupts are being ignored
+            uint ignore_flag = flag_contents & get_flag_mask(FLAGS.DISABLED);
+
+            //ignore flag is 1 if iterrupts should be ignored
+            if (ignore_flag != 0)
+            {
+                //do not enter the trap; do nothing
+                return;
+            }
+
+            uint delay_flag = flag_contents & get_flag_mask(FLAGS.DELAY);
+            if (delay_flag != 0)
+            {
+                //the delay flag is set
+                //change it 0
+                //this.registers[FLAG] = this.registers[FLAG] & 
+                throw new NotImplementedException();
+            }
+
+            //TODO continue implementing this
+
+
+            //////////////////////////////////////////////////////////////////////////////////////////
+            //retrieve the contents of FLAG, the control register
+            //uint flag_contents = Utility.uint32_from_byte_array(registers[FLAG].data_array);
 
             if (flag_contents == 0)
             {
@@ -436,7 +495,7 @@ namespace nlogic_sim
             //check the most significant bit to determine if interrupts are being ignored
             //mask for only the most significant of 32 bits
             uint ignore_flag_mask = 0x80000000;
-            uint ignore_flag = flag_contents & ignore_flag_mask;
+            //uint ignore_flag = flag_contents & ignore_flag_mask;
 
             //ignore flag is 1 if iterrupts should be ignored
             if (!(ignore_flag == 0))
@@ -463,6 +522,68 @@ namespace nlogic_sim
             registers[PC].data_array = Utility.byte_array_from_uint32(registers[PC].size_in_bytes, interrupt_handler_address);
             registers[EXE].data_array = Utility.byte_array_from_uint32(registers[EXE].size_in_bytes, 0);
 
+        }
+
+        /// <summary>
+        /// Returns a bit mask with all bits set to 0 except the bit corresponding to the given flag,
+        /// which is set to 1
+        /// </summary>
+        /// <param name="flag">The flag to generate a bit mask for</param>
+        /// <returns>A bit mask</returns>
+        private uint get_flag_mask(FLAGS flag)
+        {
+            //TODO update this and other helpers to operate on a uint, rather than directly on the FLAG register
+            uint width = this.registers[FLAG].size_in_bytes * 8;
+            return ((uint)0b1 << ((int)width - (int)flag - 1));
+
+        }
+
+        /// <summary>
+        /// Set the bit of the given flag to 1
+        /// </summary>
+        /// <param name="flag">The flag to set to 1</param>
+        private void set_flag_bit(FLAGS flag)
+        {
+            uint set_mask = get_flag_mask(flag);
+
+            //get the current contents of FLAG
+            uint flag_contents = ((Register_32)registers[FLAG]).data;
+
+            //OR the mask and the contents, setting the target flag's bit
+            uint updated_flag_contents = flag_contents & set_mask;
+
+            //set the contents of the register
+            ((Register_32)registers[FLAG]).data = updated_flag_contents;
+        }
+
+        /// <summary>
+        /// Clear the bit of the given flag
+        /// </summary>
+        /// <param name="flag">The flag to set to 0</param>
+        private void clear_flag_bit(FLAGS flag)
+        {
+            //create a mask like 1111 0111, with a 0 in the position of the target flag
+            uint clear_mask = uint.MaxValue ^ get_flag_mask(flag);
+
+            //get the current contents of FLAG
+            uint flag_contents = ((Register_32)registers[FLAG]).data;
+
+            //AND the mask and the contents, clearing the target flag's bit
+            uint updated_flag_contents = flag_contents & clear_mask;
+
+            //set the contents of the register
+            ((Register_32)registers[FLAG]).data = updated_flag_contents;
+        }
+
+        /// <summary>
+        /// Returns true if the bit for the given flag is set, false if it is not
+        /// </summary>
+        /// <param name="flag">The flag to check</param>
+        /// <returns>True if the the bit for the given flag is set</returns>
+        private bool get_flag_bit(FLAGS flag)
+        {
+            uint masked_status = ((Register_32)registers[FLAG]).data & get_flag_mask(flag);
+            return masked_status != 0;
         }
 
 
