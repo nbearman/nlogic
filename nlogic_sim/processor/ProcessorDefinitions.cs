@@ -70,7 +70,7 @@ namespace nlogic_sim
     /// List of flags in the status register (FLAG); the enum value is the number
     /// of bits right of the most significant bit where the flag's corresponding bit is
     /// </summary>
-    public enum FLAGS
+    public enum Flags
     {
         UNLOCKED = 0,
         DISABLED = 1,

@@ -99,8 +99,8 @@ namespace nlogic_sim
 
             //create the masks to apply to the FLAG register
             //changing the bit of the signal channel and the corresponding flags to 1
-            uint retry_mask = (uint)0b1 << ((int)num_channels - (int)FLAGS.RETRY - 1);
-            uint kernel_mask = (uint)0b1 << ((int)num_channels - (int)FLAGS.KERNEL - 1);
+            uint retry_mask = (uint)0b1 << ((int)num_channels - (int)Flags.RETRY - 1);
+            uint kernel_mask = (uint)0b1 << ((int)num_channels - (int)Flags.KERNEL - 1);
             uint signal_mask = (uint)0b1 << (int)channel;
 
             //combine the masks into 1
@@ -451,35 +451,98 @@ namespace nlogic_sim
             //TODO update this to use the new get / set / clear helper methods
 
             //retrieve the contents of FLAG, the control register
-            uint flag_contents = Utility.uint32_from_byte_array(registers[FLAG].data_array);
+            uint flag_contents = ((Register_32)registers[FLAG]).data;
 
             if (flag_contents == 0)
             {
                 //do nothing if FLAG is clear
                 return;
-            }
+            }            
 
-
-            //check the DISABLED flag to determine if interrupts are being ignored
-            uint ignore_flag = flag_contents & get_flag_mask(FLAGS.DISABLED);
 
             //ignore flag is 1 if iterrupts should be ignored
-            if (ignore_flag != 0)
+            if (Utility.get_flag_bit(flag_contents, Flags.DISABLED))
             {
                 //do not enter the trap; do nothing
                 return;
             }
 
-            uint delay_flag = flag_contents & get_flag_mask(FLAGS.DELAY);
-            if (delay_flag != 0)
+            if (Utility.get_flag_bit(flag_contents, Flags.DELAY))
             {
                 //the delay flag is set
-                //change it 0
-                //this.registers[FLAG] = this.registers[FLAG] & 
+                //change it to 0
+                flag_contents = Utility.clear_flag_bit(flag_contents, Flags.DELAY);
+
+                //store the updated flag contents back to the FLAG register
+                ((Register_32)registers[FLAG]).data = flag_contents;
+
+                //do nothing this cycle, return
+                return;
+            }
+
+            //determine if the kernel needs to handle this interrupt
+            if (Utility.get_flag_bit(flag_contents, Flags.KERNEL))
+            {
+                //disable interrupts
+                flag_contents = Utility.set_flag_bit(flag_contents, Flags.DISABLED);
+
+                //unlock the FLAG register
+                flag_contents = Utility.set_flag_bit(flag_contents, Flags.UNLOCKED);
+
+                //send the kernel signal to the environment
+                environment.signal_kernel_mode();
+            }
+
+            //otherwise, this interrupt can be handled in user mode
+            else
+            {
+                //if user interrupts are disabled, return
+                if (Utility.get_flag_bit(flag_contents, Flags.USER_DISABLED))
+                {
+                    return;
+                }
+
+                if (Utility.get_flag_bit(flag_contents, Flags.USER_DELAY))
+                {
+                    //the delay flag is set
+                    //change it to 0
+                    flag_contents = Utility.clear_flag_bit(flag_contents, Flags.USER_DELAY);
+
+                    //store the updated flag contents back to the FLAG register
+                    ((Register_32)registers[FLAG]).data = flag_contents;
+
+                    //do nothing this cycle, return
+                    return;
+                }
+
+                //disabled user interrupts
+                flag_contents = Utility.set_flag_bit(flag_contents, Flags.USER_DISABLED);
+            }
+
+            //if the RETRY flag is set, dump the last instruction cache
+            if (Utility.get_flag_bit(flag_contents, Flags.RETRY))
+            {
+                //TODO
                 throw new NotImplementedException();
             }
 
-            //TODO continue implementing this
+            //otherwise, dump the current instruction
+            else
+            {
+                //TODO
+                throw new NotImplementedException();
+            }
+
+            //set PC to the interrupt handler location
+            ((Register_32)registers[PC]).data = interrupt_handler_address;
+
+            //store the updated flag contents back to the FLAG register
+            ((Register_32)registers[FLAG]).data = flag_contents;
+
+            //return
+            return;
+
+            throw new NotImplementedException();
 
 
             //////////////////////////////////////////////////////////////////////////////////////////
@@ -522,68 +585,6 @@ namespace nlogic_sim
             registers[PC].data_array = Utility.byte_array_from_uint32(registers[PC].size_in_bytes, interrupt_handler_address);
             registers[EXE].data_array = Utility.byte_array_from_uint32(registers[EXE].size_in_bytes, 0);
 
-        }
-
-        /// <summary>
-        /// Returns a bit mask with all bits set to 0 except the bit corresponding to the given flag,
-        /// which is set to 1
-        /// </summary>
-        /// <param name="flag">The flag to generate a bit mask for</param>
-        /// <returns>A bit mask</returns>
-        private uint get_flag_mask(FLAGS flag)
-        {
-            //TODO update this and other helpers to operate on a uint, rather than directly on the FLAG register
-            uint width = this.registers[FLAG].size_in_bytes * 8;
-            return ((uint)0b1 << ((int)width - (int)flag - 1));
-
-        }
-
-        /// <summary>
-        /// Set the bit of the given flag to 1
-        /// </summary>
-        /// <param name="flag">The flag to set to 1</param>
-        private void set_flag_bit(FLAGS flag)
-        {
-            uint set_mask = get_flag_mask(flag);
-
-            //get the current contents of FLAG
-            uint flag_contents = ((Register_32)registers[FLAG]).data;
-
-            //OR the mask and the contents, setting the target flag's bit
-            uint updated_flag_contents = flag_contents & set_mask;
-
-            //set the contents of the register
-            ((Register_32)registers[FLAG]).data = updated_flag_contents;
-        }
-
-        /// <summary>
-        /// Clear the bit of the given flag
-        /// </summary>
-        /// <param name="flag">The flag to set to 0</param>
-        private void clear_flag_bit(FLAGS flag)
-        {
-            //create a mask like 1111 0111, with a 0 in the position of the target flag
-            uint clear_mask = uint.MaxValue ^ get_flag_mask(flag);
-
-            //get the current contents of FLAG
-            uint flag_contents = ((Register_32)registers[FLAG]).data;
-
-            //AND the mask and the contents, clearing the target flag's bit
-            uint updated_flag_contents = flag_contents & clear_mask;
-
-            //set the contents of the register
-            ((Register_32)registers[FLAG]).data = updated_flag_contents;
-        }
-
-        /// <summary>
-        /// Returns true if the bit for the given flag is set, false if it is not
-        /// </summary>
-        /// <param name="flag">The flag to check</param>
-        /// <returns>True if the the bit for the given flag is set</returns>
-        private bool get_flag_bit(FLAGS flag)
-        {
-            uint masked_status = ((Register_32)registers[FLAG]).data & get_flag_mask(flag);
-            return masked_status != 0;
         }
 
 

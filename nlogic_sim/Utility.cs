@@ -337,5 +337,59 @@ namespace nlogic_sim
             Console.WriteLine("b = " + b.ToString("X2"));
             Console.ReadKey();
         }
+
+        /// <summary>
+        /// Returns a bit mask with all bits set to 0 except the bit corresponding to the given flag,
+        /// which is set to 1
+        /// </summary>
+        /// <param name="flag">The flag to generate a bit mask for</param>
+        /// <returns>A bit mask</returns>
+        public static uint get_flag_mask(Flags flag)
+        {
+            return ((uint)0b1 << (32 - (int)flag - 1));
+
+        }
+
+
+        /// <summary>
+        /// Returns a new uint with the bit of the given flag on the operand set to 1.
+        /// </summary>
+        /// <param name="operand">The value on which to operate</param>
+        /// <param name="flag">The flag to set</param>
+        /// <returns>The operand with the flag's bit set to 1</returns>
+        public static uint set_flag_bit(uint operand, Flags flag)
+        {
+            uint set_mask = get_flag_mask(flag);
+            //OR the mask and the contents, setting the target flag's bit
+            return operand | set_mask;
+
+
+        }
+
+        /// <summary>
+        /// Returns a new uint with the bit of the given flag on the target set to 0.
+        /// </summary>
+        /// <param name="operand">The value on which to operate</param>
+        /// <param name="flag">The flag to clear</param>
+        /// <returns>The target with the flag's bit set to 0</returns>
+        public static uint clear_flag_bit(uint operand, Flags flag)
+        {
+            //create a mask like 1111 0111, with a 0 in the position of the target flag
+            uint clear_mask = uint.MaxValue ^ get_flag_mask(flag);
+            //AND the mask and the contents, clearing the target flag's bit
+            return operand & clear_mask;
+        }
+
+        /// <summary>
+        /// Returns true if the bit for the given flag is set, false if it is not
+        /// </summary>
+        /// <param name="operand">The value to check</param>
+        /// <param name="flag">The flag to check on the value</param>
+        /// <returns>True if the the bit for the given flag is set on the operand</returns>
+        public static bool get_flag_bit(uint operand, Flags flag)
+        {
+            uint masked_status = operand & get_flag_mask(flag);
+            return masked_status != 0;
+        }
     }
 }
