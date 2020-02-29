@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 
 namespace nlogic_sim
 {
@@ -64,8 +65,34 @@ namespace nlogic_sim
         public const byte SKIP = 0x9F;
         public const byte RTRN = 0xA0;
         public const byte DMEM = 0xC0;
+
+        public struct LastStateCache
+        {
+            public uint PC;
+            public uint EXE;
+            //the contents of the cached register
+            public uint stored_register_contents;
+            //the register that was cached before the last instruction
+            public byte stored_register;
+        }
+
+        /// <summary>
+        /// The list of registers which must be restored when if an instruction that
+        /// writes to them is retried.
+        /// </summary>
+        public static List<byte> cacheable_registers = new List<byte>(new byte[] 
+        {
+            COMPA,
+            COMPB,
+            RBASE,
+            ROFST,
+            WBASE,
+            WOFST,
+        });
     }
 
+
+    //TODO should probably move this into the processor class
     /// <summary>
     /// List of flags in the status register (FLAG); the enum value is the number
     /// of bits right of the most significant bit where the flag's corresponding bit is

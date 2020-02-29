@@ -14,8 +14,8 @@ namespace nlogic_sim
         private bool trap_enabled;
 
         //processor constants
-        public const ushort interrupt_handler_address = 0x9999;
-        public const ushort interrupt_register_dump_address = 0x001A;
+        public const ushort interrupt_handler_address = 0x9999; //arbitrary address for now
+        public const ushort interrupt_register_dump_address = 0x0033; //selected so that FLAG, GPA, and PC get stored at the end of the DMEM accessible region
 
         //processor state
         public ushort current_instruction;
@@ -23,10 +23,9 @@ namespace nlogic_sim
         { 
             get { return Utility.instruction_string_from_uint32(current_instruction); }
         }
+        //store the part of the processor state that needs to be restored if an instruction is retried
+        private LastStateCache last_instruction_cache = new LastStateCache();
 
-        //TODO implement the UNLOCKED bit logic
-        //add special case if the destination is FLAG; should be faster than invoking getter and setter methods
-        //everytime a register is written
         public Dictionary<byte, I_Register> registers;
 
         /// <summary>
@@ -185,13 +184,32 @@ namespace nlogic_sim
                 source_data = 0;
             }
 
+            //update the last instruction cache before changing the state of any registers
+            //cache the PC of the current instruction (PC is incremented before executing instructions)
+            this.last_instruction_cache.PC = ((Register_32)registers[PC]).data - 2;
+            this.last_instruction_cache.PC = ((Register_32)registers[EXE]).data;
+            //destination needs to be cached in case we need to retry this instruction
+            this.last_instruction_cache.stored_register = destination;
+            this.last_instruction_cache.stored_register_contents = ((Register_32)registers[destination]).data;
+
             //store to the destination
             //if not writeable, do nothing
 
             if (registers.ContainsKey(destination) && registers[destination].writeable)
             {
-                //destination is a writeable register
-                ((Register_32)registers[destination]).data = source_data;
+                //only some bits of FLAG can be written if the UNLOCKED bit is not set
+                //use special writing behavior when writing to this register
+                if (destination == FLAG)
+                {
+                    write_FLAG(source_data);
+                }
+
+                //the destination is not FLAG; write the register normally
+                else
+                {
+                    //destination is a writeable register
+                    ((Register_32)registers[destination]).data = source_data;
+                }
             }
             else if (destination >= DMEM)
             {
@@ -275,6 +293,45 @@ namespace nlogic_sim
             update_accessor_a();
             update_accessor_b();
 
+        }
+
+        /// <summary>
+        /// Store a new value to the FLAG register, following the lock adhering to the UNLOCKED bit
+        /// </summary>
+        /// <param name="data">Data to write to FLAG</param>
+        private void write_FLAG(uint data)
+        {
+            uint flag_data = ((Register_32)registers[FLAG]).data;
+
+            //check the unlocked bit
+            if (!Utility.get_flag_bit(flag_data, Flags.UNLOCKED))
+            {
+                //FLAG is not unlocked; prevent changing the upper 5 bits
+
+                //flag_data & M(ask) = (L)ocked portion = [L | 0000...]
+                //data & N(mask 2) = U(nlocked portion) = [...0000 | U]
+                //U | L = new flag contents             = [L | U]
+
+                //create M and N
+                uint M = ((uint)0b11111) << 27;
+                uint N = ~M;
+
+                //create L and U
+                uint L = flag_data & M;
+                uint U = data & N;
+
+                //create the result
+                uint R = L | U;
+
+                //store the result into FLAG
+                ((Register_32)registers[FLAG]).data = R;
+
+            }
+            else
+            {
+                //FLAG is unlocked; directly write the new data
+                ((Register_32)registers[FLAG]).data = data;
+            }
         }
 
         private void update_accessor_a()
@@ -445,10 +502,6 @@ namespace nlogic_sim
         /// </summary>
         private void check_status()
         {
-            //TODO update the trap to the new model
-            //needs to handle unlocked / disabled / delay / retry / kernel / user disabled / user delay
-
-            //TODO update this to use the new get / set / clear helper methods
 
             //retrieve the contents of FLAG, the control register
             uint flag_contents = ((Register_32)registers[FLAG]).data;
@@ -467,6 +520,7 @@ namespace nlogic_sim
                 return;
             }
 
+            //check if the DELAY flag is set
             if (Utility.get_flag_bit(flag_contents, Flags.DELAY))
             {
                 //the delay flag is set
@@ -502,6 +556,7 @@ namespace nlogic_sim
                     return;
                 }
 
+                //check if the USER DELAY flag is set
                 if (Utility.get_flag_bit(flag_contents, Flags.USER_DELAY))
                 {
                     //the delay flag is set
@@ -519,19 +574,35 @@ namespace nlogic_sim
                 flag_contents = Utility.set_flag_bit(flag_contents, Flags.USER_DISABLED);
             }
 
+            //dump FLAG, GPA, and processor state
+
+            //create a list (to convert to array) of all the data that will be dumped to memory
+            //in order to consolidate the dump to a single call to write_memory()
+            List<byte> dumped_data = new List<byte>();
+
+            //add the contents of FLAG and GPA
+            dumped_data.AddRange(((Register_32)registers[FLAG]).data_array);
+            dumped_data.AddRange(((Register_32)registers[GPA]).data_array);
+
             //if the RETRY flag is set, dump the last instruction cache
             if (Utility.get_flag_bit(flag_contents, Flags.RETRY))
             {
-                //TODO
-                throw new NotImplementedException();
+                //add the contents of the last instruction cache
+                dumped_data.AddRange(Utility.byte_array_from_uint32(4, last_instruction_cache.PC));
+                dumped_data.AddRange(Utility.byte_array_from_uint32(4, last_instruction_cache.EXE));
+                dumped_data.AddRange(Utility.byte_array_from_uint32(4, last_instruction_cache.stored_register_contents));
+                dumped_data.Add(last_instruction_cache.stored_register);
             }
 
             //otherwise, dump the current instruction
             else
             {
-                //TODO
-                throw new NotImplementedException();
+                dumped_data.AddRange(((Register_32)registers[PC]).data_array);
+                dumped_data.AddRange(((Register_32)registers[EXE]).data_array);
             }
+
+            //write the dumped data to memory
+            write_memory(interrupt_register_dump_address, dumped_data.ToArray());
 
             //set PC to the interrupt handler location
             ((Register_32)registers[PC]).data = interrupt_handler_address;
@@ -541,49 +612,6 @@ namespace nlogic_sim
 
             //return
             return;
-
-            throw new NotImplementedException();
-
-
-            //////////////////////////////////////////////////////////////////////////////////////////
-            //retrieve the contents of FLAG, the control register
-            //uint flag_contents = Utility.uint32_from_byte_array(registers[FLAG].data_array);
-
-            if (flag_contents == 0)
-            {
-                //do nothing if FLAG is clear
-                return;
-            }
-
-            //check the most significant bit to determine if interrupts are being ignored
-            //mask for only the most significant of 32 bits
-            uint ignore_flag_mask = 0x80000000;
-            //uint ignore_flag = flag_contents & ignore_flag_mask;
-
-            //ignore flag is 1 if iterrupts should be ignored
-            if (!(ignore_flag == 0))
-            {
-                //ignore the flag register; do nothing
-                return;
-            }
-
-
-            //if flag register is non 0, we are interrupted
-
-            //dump PC, EXE, FLAG, GPA to memory
-            uint address_increment = registers[PC].size_in_bytes;
-            write_memory(interrupt_register_dump_address, registers[PC].data_array);
-            write_memory(interrupt_register_dump_address + address_increment, registers[EXE].data_array);
-            write_memory(interrupt_register_dump_address + (2 * address_increment), registers[FLAG].data_array);
-            write_memory(interrupt_register_dump_address + (3 * address_increment), registers[GPA].data_array);
-
-            //enable ignore interrupts
-            uint new_flag_value = flag_contents | ignore_flag_mask;
-            registers[FLAG].data_array = Utility.byte_array_from_uint32(registers[FLAG].size_in_bytes, new_flag_value);
-
-            //change PC/EXE to trap address
-            registers[PC].data_array = Utility.byte_array_from_uint32(registers[PC].size_in_bytes, interrupt_handler_address);
-            registers[EXE].data_array = Utility.byte_array_from_uint32(registers[EXE].size_in_bytes, 0);
 
         }
 
