@@ -43,8 +43,10 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="Assembler.cs" />
+    <Compile Include="AssemblerPro.cs" />
     <Compile Include="devices\display_test.cs" />
     <Compile Include="devices\MemoryManagementUnit.cs" />
+    <Compile Include="devices\SimpleVirtualDisplay.cs" />
     <Compile Include="devices\VirtualKeyboard.cs" />
     <Compile Include="entry_points\AssembleProgram.cs" />
     <Compile Include="File.cs" />
@@ -68,7 +70,9 @@
     <None Include="App.config" />
   </ItemGroup>
   <ItemGroup>
+    <Content Include="builder.txt" />
     <Content Include="documentation\memory_layout.txt" />
+    <Content Include="os\boot.txt" />
     <Content Include="programs\alu_shift_test.txt">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
@@ -79,6 +83,9 @@
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
     <Content Include="programs\dmem2.txt">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="programs\locked_flag.txt">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
     <Content Include="programs\log_testing\add_test.txt">

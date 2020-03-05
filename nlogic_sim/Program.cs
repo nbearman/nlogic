@@ -7,6 +7,8 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
+using System.Text.RegularExpressions;
+
 namespace nlogic_sim
 {
     class Program
@@ -15,7 +17,6 @@ namespace nlogic_sim
 
         static void Main(string[] args)
         {
-
             if (args.Length == 0)
             {
                 Console.WriteLine("no command line arguments given; run with 'help' to get options");
@@ -43,7 +44,7 @@ namespace nlogic_sim
             //add remaining non-flag arguments to the additional args list
             foreach (string a in arg_list)
             {
-                additional_args.Add(a);
+                additional_args.Add(a.Replace("\r", ""));
             }
 
             //debug mode
@@ -150,6 +151,19 @@ namespace nlogic_sim
                 return;
             }
 
+            if (command == "pro")
+            {
+                if (additional_args.Count == 0)
+                {
+                    Console.WriteLine("No pro files provided");
+                    return;
+                }
+
+                string[] code_files = additional_args.ToArray();
+                AssemblerPro.run(code_files);
+                return;
+            }
+
             return;
         }
 
@@ -171,12 +185,14 @@ namespace nlogic_sim
             Console.ForegroundColor = ConsoleColor.Cyan;
             Console.WriteLine("Program assembly successful");
 
+            SimpleVirtualDisplay VIRTUAL_DISPLAY = new SimpleVirtualDisplay();
+
             //set up the simulation environment
             SimulationEnvironment environment =
                 new SimulationEnvironment(
                     65536,
                     Assembler.program_data,
-                    new MMIO[] { new VirtualDisplay(90, 30) });
+                    new MMIO[] { VIRTUAL_DISPLAY });
 
             Console.ForegroundColor = ConsoleColor.Green;
             Console.WriteLine("Simluation environment setup successful");

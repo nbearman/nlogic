@@ -213,11 +213,14 @@ namespace nlogic_sim
             }
 
             //else use physical memory
-            //no translation required, because physical memory always has a base address of 
-            //write the given bytes to memory at the given address
-            for (int i = 0; i < data_array.Length; i++)
+            else
             {
-                memory[physical_address + i] = data_array[i];
+                //no translation required, because physical memory always has a base address of 0
+                //write the given bytes to memory at the given address
+                for (int i = 0; i < data_array.Length; i++)
+                {
+                    memory[physical_address + i] = data_array[i];
+                }
             }
 
             return;

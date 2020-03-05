@@ -58,11 +58,12 @@ namespace nlogic_sim
             active_back = 2;
         }
 
-        public void enable_display()
+        public Thread enable_display()
         {
             Console.CursorVisible = false;
             Thread p = new Thread(display_thread);
             p.Start();
+            return p;
         }
 
         private void display_thread()
@@ -191,8 +192,10 @@ namespace nlogic_sim
         byte[] MMIO.read_memory(uint address, uint length)
         {
             //the processor may not read from the virtual display
-            Debug.Assert(false);
-            return null;
+            //Debug.Assert(false);
+
+            byte[] result = new byte[length];
+            return result;
         }
 
         private void draw_frame()
