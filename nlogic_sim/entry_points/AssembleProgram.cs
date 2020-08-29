@@ -4,7 +4,7 @@ namespace nlogic_sim
 {
     public class AssembleProgram
     {
-        public static void main(string[] args)
+        public static void _Main(string[] args)
         {
             const string OUTPUT_FILEPATH = "assembler_output/add_test_assembly.txt";
 

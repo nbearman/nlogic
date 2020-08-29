@@ -358,6 +358,79 @@ namespace nlogic_sim
 
             File_Input.write_file("memory_test.txt", contents);
         }
+
+        static void array_read_test()
+        {
+            Stopwatch s = new Stopwatch();
+            s.Reset();
+            s.Start();
+            Thread.Sleep(10);
+            s.Stop();
+            Console.WriteLine(s.ElapsedMilliseconds);
+            Console.ReadKey();
+
+            int memory_size = 65536;
+            int reads = 10000;
+            Random random = new Random();
+
+            List<long> for_loop_times = new List<long>();
+            for (int run = 0; run < 10; run++)
+            {
+                byte[] memory = make_mock_memory(memory_size);
+                byte[] result = new byte[4];
+
+                for (int read = 0; read < reads; read++)
+                {
+                    int address = random.Next(memory_size - 4);
+
+                    s.Reset();
+                    s.Start();
+                    for (int i = 0; i < 4; i++)
+                    {
+                        result[i] = memory[address + i];
+                    }
+                    s.Stop();
+                    for_loop_times.Add(s.ElapsedMilliseconds);
+                    Console.WriteLine(s.Elapsed);
+                }
+            }
+
+            Console.WriteLine("Moving to array take");
+
+            List<long> array_take_times = new List<long>();
+            for (int run = 0; run < 10; run++)
+            {
+                byte[] memory = make_mock_memory(memory_size);
+                byte[] result = new byte[4];
+
+                for (int read = 0; read < reads; read++)
+                {
+                    int address = random.Next(memory_size - 4);
+
+                    s.Reset();
+                    s.Start();
+                    result = memory.Skip(address).Take(4).ToArray();
+                    s.Stop();
+                    array_take_times.Add(s.ElapsedMilliseconds);
+                    Console.WriteLine(s.Elapsed);
+                }
+            }
+
+            Console.WriteLine("for loop avg: {0}", for_loop_times.Average());
+            Console.WriteLine("arr take avg: {0}", array_take_times.Average());
+            Console.ReadKey();
+        }
+
+        static byte[] make_mock_memory(int size)
+        {
+            byte[] result = new byte[size];
+            Random random = new Random();
+            for (int i = 0; i < size; i++)
+            {
+                result[i] = (byte)random.Next(255);
+            }
+            return result;
+        }
         
     }
 

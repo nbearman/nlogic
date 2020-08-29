@@ -339,6 +339,30 @@ namespace nlogic_sim
         }
 
         /// <summary>
+        /// Returns a bit mask with all bits set to 0 except the bit corresponding to the given index,
+        /// which is set to 1, with index 0 being the MSB, and index 31 being the LSB
+        /// </summary>
+        /// <param name="bit_index">Index of the bit to create a mask for (0 is the MSB)</param>
+        /// <returns></returns>
+        public static uint get_bit_mask(uint bit_index)
+        {
+            return ((uint)0b1 << (32 - (int)bit_index - 1));
+        }
+
+        /// <summary>
+        /// Returns true if the bit at the given index is set, false if it is not.
+        /// Index 0 is the MSB, index 31 is the LSB
+        /// </summary>
+        /// <param name="operand">The value to check</param>
+        /// <param name="bit_index">The bit to check on the value</param>
+        /// <returns>True if the the bit for the given flag is set on the operand</returns>
+        public static bool get_bit(uint operand, uint bit_index)
+        {
+            uint masked_status = operand & get_bit_mask(bit_index);
+            return masked_status != 0;
+        }
+
+        /// <summary>
         /// Returns a bit mask with all bits set to 0 except the bit corresponding to the given flag,
         /// which is set to 1
         /// </summary>
@@ -346,8 +370,7 @@ namespace nlogic_sim
         /// <returns>A bit mask</returns>
         public static uint get_flag_mask(Flags flag)
         {
-            return ((uint)0b1 << (32 - (int)flag - 1));
-
+            return get_bit_mask((uint)flag);
         }
 
 
@@ -362,8 +385,6 @@ namespace nlogic_sim
             uint set_mask = get_flag_mask(flag);
             //OR the mask and the contents, setting the target flag's bit
             return operand | set_mask;
-
-
         }
 
         /// <summary>
@@ -388,8 +409,7 @@ namespace nlogic_sim
         /// <returns>True if the the bit for the given flag is set on the operand</returns>
         public static bool get_flag_bit(uint operand, Flags flag)
         {
-            uint masked_status = operand & get_flag_mask(flag);
-            return masked_status != 0;
+            return get_bit(operand, (uint)flag);
         }
     }
 }

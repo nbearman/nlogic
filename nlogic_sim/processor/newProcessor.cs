@@ -575,6 +575,7 @@ namespace nlogic_sim
             }
 
             //dump FLAG, GPA, and processor state
+            //TODO determine if any other registers need to be dumped
 
             //create a list (to convert to array) of all the data that will be dumped to memory
             //in order to consolidate the dump to a single call to write_memory()

@@ -28,7 +28,7 @@ namespace nlogic_sim
         /// </summary>
         private IntervalTree<uint, Tuple<uint, MMIO>> MMIO_devices_by_address;
 
-        private MemoryManagementUnit MMU = new MemoryManagementUnit();
+        private MemoryManagementUnit MMU;
 
         //enable the trap on the processor
         public bool trap_enabled = false;
@@ -55,6 +55,9 @@ namespace nlogic_sim
         {
             //create memory
             memory = new byte[memory_size];
+
+            //creat the MMU
+            this.MMU = new MemoryManagementUnit(this.memory);
 
             //create the MMIO devices
             this.MMIO_devices_by_address = new IntervalTree<uint, Tuple<uint, MMIO>>();
@@ -141,7 +144,7 @@ namespace nlogic_sim
 
 
             uint physical_address;
-            if (!MMU.translate_address(address, out physical_address))
+            if (!MMU.translate_address(address, false, out physical_address))
             {
                 //the translation failed
                 //return garbage
@@ -181,15 +184,15 @@ namespace nlogic_sim
         }
 
         /// <summary>
-        /// Writes the given data to the given address,
+        /// Writes the given data to the given virtual address,
         /// which may not necessarily be in memory
         /// </summary>
-        /// <param name="address">Starting address to write the data to</param>
+        /// <param name="address">Starting virtual address to write the data to</param>
         /// <param name="data_array">Array of bytes to write at the address</param>
         public void write_address(uint address, byte[] data_array)
         {
             uint physical_address;
-            if (!MMU.translate_address(address, out physical_address))
+            if (!MMU.translate_address(address, true, out physical_address))
             {
                 //the translation failed
                 //do nothing
@@ -360,6 +363,9 @@ namespace nlogic_sim
             /// <summary>
             /// Callback to be used by the hardware interrupter on its own thread to raise an interrupt
             /// signal on the appropriate channel with the given additional flags
+            /// 
+            /// Only "retry" and "kernel only" flags can be specified by interrupters
+            /// Other flags on the interrupt can only be set directly by the processor
             /// </summary>
             /// <param name="retry">True if the RETRY flag should be used on the interrupt</param>
             /// <param name="kernel">True if the KERNEL flag should be used on the interrupt</param>

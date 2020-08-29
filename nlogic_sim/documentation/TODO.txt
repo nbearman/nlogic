@@ -1,4 +1,14 @@
-﻿change processor current instruction debugger display to show the instruction expansion ("src -> dst")
+﻿
+Determine how to handle reading / writing over page boundaries
+	Currently, environment gets translated base address from the MMU
+	Processor can only read and write 4 bytes at a time due to using 4 byte registers
+	The processor could issue a read where the base address is translated without fault (first byte is in bounds)
+		The fourth byte might be on a different page, but the MMU can't stop reading this byte because the environment
+		takes the MMU-translated address and just reads the next 4 addresses
+
+====================================================================================
+
+change processor current instruction debugger display to show the instruction expansion ("src -> dst")
 
 continue testing the test program
 
