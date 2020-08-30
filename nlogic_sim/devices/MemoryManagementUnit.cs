@@ -74,6 +74,9 @@ namespace nlogic_sim
         /// <returns></returns>
         public bool translate_address(uint address, bool write, out uint translation)
         {
+            translation = address;
+            return true;
+
             translation = 0;
 
             //do not translate any addresses while faulted
@@ -82,6 +85,17 @@ namespace nlogic_sim
             {
                 return false;
             }
+
+            //swap the active page directory and queued page directory if hitting the breakpoint
+            if (address == this.mmu_breakpoint)
+            {
+                uint swap = this.active_page_directory_base_address;
+                this.active_page_directory_base_address = this.queued_page_directory_base_address;
+                this.queued_page_directory_base_address = swap;
+            }
+
+
+            //proceed with translation
 
 
             //get page directory entry from active page directory
@@ -93,32 +107,52 @@ namespace nlogic_sim
             ProtectionCheckResult protection = check_protection(PDE, false);
             if (protection != ProtectionCheckResult.SAFE)
             {
+                //store the PTE whose protection would be violated for reference by the kernel
+                this.faulted_pte = PDE.original_pte_data;
+
                 //raise a kernel-handled interrupt and abort translation
                 //set the RETRY flag if the protection requires a retry interrupt
                 this.raise_interrupt(protection == ProtectionCheckResult.RETRY_INTERRUPT, true);
                 return false;
             }
-
-            //set the refernced bit on the PDE for this page table, since we just accessed it
-            //TODO set the referenced bit
 
             //get page table entry from page table
             uint page_table_entry_address = get_page_table_entry_address(PDE.number, address);
             uint page_table_entry_data = read_environment_memory_byte(page_table_entry_address);
             PageTableEntry PTE = new PageTableEntry(page_table_entry_data);
 
+            //set the refernced bit on the PDE for this page table, since we just accessed the page table
+            PDE.referenced = true;
+
             //check that the physical page allows the planned memory operation
             protection = check_protection(PTE, false);
             if (protection != ProtectionCheckResult.SAFE)
             {
+                //store the PTE whose protection would be violated for reference by the kernel
+                this.faulted_pte = PTE.original_pte_data;
+
+                //update the page directory entry in memory, since we set the referenced bit
+                write_pte_to_environment_memory(PDE, page_directory_entry_address);
+
                 //raise a kernel-handled interrupt and abort translation
                 //set the RETRY flag if the protection requires a retry interrupt
                 this.raise_interrupt(protection == ProtectionCheckResult.RETRY_INTERRUPT, true);
                 return false;
             }
 
-            //set the refernced bit on the PTE for this page, since we're about to access it
-            //TODO set the referenced bit
+            //set the dirty bit of the page if we are about to write to the page
+            if (write)
+            {
+                PTE.dirty = true;
+            }
+            //set the refernced bit on the PTE for this page, since we're about to access the page
+            PTE.referenced = true;
+            write_pte_to_environment_memory(PTE, page_table_entry_address);
+
+            //set the dirty bit for the page directory entry, since we just modified the page table it points to
+            PDE.dirty = true;
+            write_pte_to_environment_memory(PDE, page_directory_entry_address);
+
 
             //the page table is safe to access
             //get the final physical address
@@ -156,13 +190,33 @@ namespace nlogic_sim
 
         void MMIO.write_memory(uint address, byte[] data)
         {
-            throw new NotImplementedException();
+            uint new_value = Utility.uint32_from_byte_array(data);
+            if (address == (uint)MMIOLayout.ACTIVE_PAGE_DIRECTORY_BASE_ADDRESS_REGISTER)
+                this.active_page_directory_base_address = new_value;
+            else if (address == (uint)MMIOLayout.QUEUED_PAGE_DIRECTORY_BASE_ADDRESS_REGISTER)
+                this.queued_page_directory_base_address = new_value;
+            else if (address == (uint)MMIOLayout.MMU_DIRECTORY_SWAP_BREAKPOINT_REGISTER)
+                this.mmu_breakpoint = new_value;
+            else if (address == (uint)MMIOLayout.FAULTED_PTE_REGISTER)
+                throw new ArgumentException("MMU access error: the faulted PTE register is read-only");
+            else
+                throw new ArgumentException("MMU access error: the given address is not a writable register's address");
         }
 
         byte[] MMIO.read_memory(uint address, uint length)
         {
-            throw new NotImplementedException();
-            return null;
+            if (length > 4)
+                throw new ArgumentException("MMU access error: cannot read more than 4 bytes from an MMU register");
+            if (address == (uint)MMIOLayout.ACTIVE_PAGE_DIRECTORY_BASE_ADDRESS_REGISTER)
+                return Utility.byte_array_from_uint32(length, this.active_page_directory_base_address);
+            else if (address == (uint)MMIOLayout.QUEUED_PAGE_DIRECTORY_BASE_ADDRESS_REGISTER)
+                return Utility.byte_array_from_uint32(length, this.queued_page_directory_base_address);
+            else if (address == (uint)MMIOLayout.MMU_DIRECTORY_SWAP_BREAKPOINT_REGISTER)
+                return Utility.byte_array_from_uint32(length, this.mmu_breakpoint);
+            else if (address == (uint)MMIOLayout.FAULTED_PTE_REGISTER)
+                return Utility.byte_array_from_uint32(length, this.faulted_pte);
+            else
+                throw new ArgumentException("MMU access error: the given address is not a readable register's address");
         }
 
         /// <summary>
@@ -224,6 +278,16 @@ namespace nlogic_sim
             return Utility.uint32_from_byte_array(result);
         }
 
+        private void write_pte_to_environment_memory(PageTableEntry pte, uint address)
+        {
+            byte[] data = Utility.byte_array_from_uint32(4, pte.pte_to_uint());
+            for (int i = 0; i < 4; i++)
+            {
+                environment_memory[address + i] = data[i];
+            }
+
+        }
+
         private static uint get_page_directory_entry_address(uint page_directory_base_address, uint virtual_address)
         {
             //virtual address mask:
@@ -276,7 +340,7 @@ namespace nlogic_sim
             public uint number;
 
             //original uint used to create this PTE
-            public uint full_pte_data;
+            public uint original_pte_data;
 
             public PageTableEntry(uint data)
             {
@@ -290,8 +354,30 @@ namespace nlogic_sim
 
                 //store the original PTE as it was read from; this will allow the MMU to 
                 //fill a register with the faulty PTE for the processor to retrieve later
-                this.full_pte_data = data;
+                this.original_pte_data = data;
             }
+
+            /// <summary>
+            /// Creates a new uint from this PageTableEntry based on the state of the
+            /// bits variables (readable, writable, referenced, dirty) and the number;
+            /// data contained in the officailly unused bits of the PTE are lost
+            /// </summary>
+            /// <returns></returns>
+            public uint pte_to_uint()
+            {
+                uint result = this.number;
+                if (this.readable)
+                    result = Utility.set_bit(result, (uint)PageTableEntryProtectionBits.READABLE);
+                if (this.writable)
+                    result = Utility.set_bit(result, (uint)PageTableEntryProtectionBits.WRITABLE);
+                if (this.referenced)
+                    result = Utility.set_bit(result, (uint)PageTableEntryProtectionBits.REFERENCED);
+                if (this.dirty)
+                    result = Utility.set_bit(result, (uint)PageTableEntryProtectionBits.DIRTY);
+                return result;
+            }
+
+
         }
 
         private enum PageTableEntryProtectionBits
@@ -307,6 +393,14 @@ namespace nlogic_sim
             SAFE = 0,
             RETRY_INTERRUPT = 1,
             NON_RETRY_INTERRUPT = 2,
+        }
+
+        private enum MMIOLayout
+        {
+            ACTIVE_PAGE_DIRECTORY_BASE_ADDRESS_REGISTER = 0,
+            QUEUED_PAGE_DIRECTORY_BASE_ADDRESS_REGISTER = 4,
+            MMU_DIRECTORY_SWAP_BREAKPOINT_REGISTER = 8,
+            FAULTED_PTE_REGISTER = 12,
         }
     }
 }

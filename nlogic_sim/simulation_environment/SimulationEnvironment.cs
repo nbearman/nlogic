@@ -169,7 +169,7 @@ namespace nlogic_sim
             }
 
             //else use physical memory
-            //no translation required, because physical memory always has a base address of 
+            //no translation required, because physical memory always has a base address of 0
             //read the bytes from memory at the given address
             else
             {

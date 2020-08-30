@@ -363,6 +363,20 @@ namespace nlogic_sim
         }
 
         /// <summary>
+        /// Returns a new uint with the bit of the given index on the operand set to 1.
+        /// Index 0 is the MSB, index 31 is the LSB
+        /// </summary>
+        /// <param name="operand">The value on which to operate</param>
+        /// <param name="bit_index">The bit to set on the value</param>
+        /// <returns>The operand with the flag's bit set to 1</returns>
+        public static uint set_bit(uint operand, uint bit_index)
+        {
+            uint set_mask = get_bit_mask(bit_index);
+            //OR the mask and the contents, setting the target flag's bit
+            return operand | set_mask;
+        }
+
+        /// <summary>
         /// Returns a bit mask with all bits set to 0 except the bit corresponding to the given flag,
         /// which is set to 1
         /// </summary>
@@ -382,9 +396,7 @@ namespace nlogic_sim
         /// <returns>The operand with the flag's bit set to 1</returns>
         public static uint set_flag_bit(uint operand, Flags flag)
         {
-            uint set_mask = get_flag_mask(flag);
-            //OR the mask and the contents, setting the target flag's bit
-            return operand | set_mask;
+            return set_bit(operand, (uint)flag);
         }
 
         /// <summary>

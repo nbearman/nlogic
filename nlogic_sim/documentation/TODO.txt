@@ -1,4 +1,8 @@
 ﻿
+Change simulator to accept configuration file as command line argument to set up memory, MMIO devices, etc.
+
+====================================================================================
+
 Determine how to handle reading / writing over page boundaries
 	Currently, environment gets translated base address from the MMU
 	Processor can only read and write 4 bytes at a time due to using 4 byte registers
