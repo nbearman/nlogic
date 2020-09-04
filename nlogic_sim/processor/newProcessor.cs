@@ -14,8 +14,8 @@ namespace nlogic_sim
         private bool trap_enabled;
 
         //processor constants
-        public const ushort interrupt_handler_address = 0x9999; //arbitrary address for now
-        public const ushort interrupt_register_dump_address = 0x0033; //selected so that FLAG, GPA, and PC get stored at the end of the DMEM accessible region
+        public const ushort interrupt_handler_address = 0x9999; //TODO arbitrary address for now
+        public const ushort interrupt_register_dump_address = 0x0033; //TODO reevaluate if this is the best place for these; selected so that FLAG, GPA, and PC get stored at the end of the DMEM accessible region
 
         //processor state
         public ushort current_instruction;
@@ -187,10 +187,13 @@ namespace nlogic_sim
             //update the last instruction cache before changing the state of any registers
             //cache the PC of the current instruction (PC is incremented before executing instructions)
             this.last_instruction_cache.PC = ((Register_32)registers[PC]).data - 2;
-            this.last_instruction_cache.PC = ((Register_32)registers[EXE]).data;
+            this.last_instruction_cache.EXE = ((Register_32)registers[EXE]).data;
             //destination needs to be cached in case we need to retry this instruction
+            //TODO determine if we still need to be caching this (for undoing writing to a register from a memory read?)
             this.last_instruction_cache.stored_register = destination;
-            this.last_instruction_cache.stored_register_contents = ((Register_32)registers[destination]).data;
+            //TODO this conditional is temporary until it is determined what storing the destination is needed for
+            if (destination >= Processor.FLAG && destination < Processor.DMEM)
+                this.last_instruction_cache.stored_register_contents = ((Register_32)registers[destination]).data;
 
             //store to the destination
             //if not writeable, do nothing

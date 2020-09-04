@@ -89,12 +89,9 @@ namespace nlogic_sim
                     //both arguments are ranges
                     if (!x.value && !y.value)
                     {
-                        //intervals cannot overlap
-                        //lower bound of x < lower bound of y
-                        bool ranges_overlap = (x.lower_inlcusive.CompareTo(y.lower_inlcusive) < 0);
-                        //also upper bound of x <= lower bound of y
-                        ranges_overlap = ranges_overlap && (x.upper_exclusive.CompareTo(y.lower_inlcusive) < 1);
-                        Debug.Assert(!ranges_overlap);
+                        //TODO removed asserting that the ranges do not overlap
+                        //(the check didnt work because it assumed the ranges were given in sorted order)
+                        //should this assertion be restored?
 
                         return x.lower_inlcusive.CompareTo(y.lower_inlcusive);
                     }

@@ -38,10 +38,10 @@ namespace nlogic_sim
         /// <returns>The file contents with "DMEM##" macros replaced</returns>
         private static string dmem_macro(string contents)
         {
-            return Regex.Replace(contents, "(dmem)[0-9]+", new MatchEvaluator(
+            return Regex.Replace(contents, "(dmem)[0-9a-f][0-9a-f]", new MatchEvaluator(
                 match => {
                     //replace the number in the instruction with the correct instruction
-                    string dmem_string = Regex.Replace(match.Value, "[0-9]+", new MatchEvaluator(
+                    string dmem_string = Regex.Replace(match.Value, "[0-9a-f][0-9a-f]", new MatchEvaluator(
                         num =>
                         {
                             bool parse_result = uint.TryParse(
@@ -57,11 +57,12 @@ namespace nlogic_sim
                             number += Processor.DMEM;
 
                             //the highest DMEM instruction is FF
-                            Debug.Assert(number < 0xFF);
+                            Debug.Assert(number < 0xFF, String.Format("{0} not less than 255", number));
 
+                            Console.WriteLine("number being used: {0}", number);
                             return number.ToString("X2");
                         }
-                    ));
+                    ), RegexOptions.IgnoreCase);
 
                     //remove the "DMEM" part from the input string, leaving only the instruction
                     return dmem_string.ToUpper().Replace("DMEM", "");

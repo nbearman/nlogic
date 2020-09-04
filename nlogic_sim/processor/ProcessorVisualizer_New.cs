@@ -414,9 +414,10 @@ namespace nlogic_sim
                         {
                             ColorString cs = new ColorString();
                             cs.value = s;
+                            string register_name = s.Trim();
                             //color known register names with the corresponding color
-                            if (Processor.register_name_to_color.Keys.Contains(s))
-                                cs.color = Processor.register_name_to_color[s];
+                            if (Processor.register_name_to_color.Keys.Contains(register_name))
+                                cs.color = Processor.register_name_to_color[register_name];
                             else
                                 cs.color = ConsoleColor.Gray;
 

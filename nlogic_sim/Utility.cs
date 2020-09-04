@@ -163,11 +163,15 @@ namespace nlogic_sim
             byte d_byte = instruction_bytes[1];
 
             string s = s_byte.ToString("X2");
-            if (Utility.register_location_to_name.ContainsKey(s_byte))
+            if (s_byte >= Processor.DMEM)
+                s = "DM" + (s_byte - Processor.DMEM).ToString("X2");
+            else if (Utility.register_location_to_name.ContainsKey(s_byte))
                 s = Utility.register_location_to_name[s_byte];
 
             string d = d_byte.ToString("X2");
-            if (Utility.register_location_to_name.ContainsKey(d_byte))
+            if (d_byte >= Processor.DMEM)
+                d = "DM" + (d_byte - Processor.DMEM).ToString("X2");
+            else if (Utility.register_location_to_name.ContainsKey(d_byte))
                 d = Utility.register_location_to_name[d_byte];
 
             string instruction_expansion = s + " -> " + d;

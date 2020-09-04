@@ -51,7 +51,7 @@ namespace nlogic_sim
         private object signal_queue_mutex = new object();
         private Queue<Interrupt> signal_queue = new Queue<Interrupt>();
 
-        public SimulationEnvironment(uint memory_size, byte[] initial_memory, MMIO[] MMIO_devices)
+        public SimulationEnvironment(uint memory_size, byte[] initial_memory, List<MMIO> MMIO_devices)
         {
             //create memory
             memory = new byte[memory_size];
@@ -61,10 +61,12 @@ namespace nlogic_sim
 
             //create the MMIO devices
             this.MMIO_devices_by_address = new IntervalTree<uint, Tuple<uint, MMIO>>();
-            initialize_MMIO(MMIO_devices);
+            MMIO_devices.Insert(0, this.MMU);
+            //TODO setting the first MMIO device address to arbitrary constant for now
+            initialize_MMIO(MMIO_devices, 0xFF000000);
 
             //initialize the hardware interrupters
-            initialize_hardware_interrupters(new HardwareInterrupter[] { });
+            initialize_hardware_interrupters(new HardwareInterrupter[] { this.MMU });
 
             //create the processor
             this.processor = new Processor(this, false);
@@ -263,7 +265,7 @@ namespace nlogic_sim
         /// <summary>
         /// Set up all the MMIO devices in the environment
         /// </summary>
-        private void initialize_MMIO(MMIO[] MMIO_devices)
+        private void initialize_MMIO(List<MMIO> MMIO_devices, uint base_address)
         {
             if (MMIO_devices == null)
             {
@@ -272,10 +274,12 @@ namespace nlogic_sim
 
             //assign base addresses to all MMIO devices
 
-            uint base_address = (uint)memory.Length;
             //for each device
-            for (int i = 0; i < MMIO_devices.Length; i++)
+            for (int i = 0; i < MMIO_devices.Count; i++)
             {
+                //ensure that MMIO devices aren't mapped outside of 32 bit address space
+                Debug.Assert(base_address < 0xFFFFFFFF, "MMIO address beyond addressable range");
+
                 //get size to calculate base address for next device
                 uint next_base_address = base_address + MMIO_devices[i].get_size();
 

@@ -29,6 +29,15 @@ namespace nlogic_sim
         private uint faulted_pte;
 
         /// <summary>
+        /// An MMU register controlling the function of the MMU. If true, the MMU will attempt to
+        /// translate addresses as usual. If false, the MMU will pass all addresses through without
+        /// translation and without raising any faults or interrupts.
+        /// The MMU should start disabled; the boot sequence of the kernel can set up its memory using
+        /// physical addresses directly, then enable the MMU by writing to this register.
+        /// </summary>
+        private bool enabled = false;
+
+        /// <summary>
         /// The MMU receives a signal when the processor cycles in order to know
         /// when to clear this faulted state. Currently occurs in: SimulationEnvironment.run(),
         /// immediately before cycling
@@ -74,8 +83,11 @@ namespace nlogic_sim
         /// <returns></returns>
         public bool translate_address(uint address, bool write, out uint translation)
         {
-            translation = address;
-            return true;
+            if (!this.enabled)
+            {
+                translation = address;
+                return true;
+            }
 
             translation = 0;
 
@@ -180,12 +192,13 @@ namespace nlogic_sim
 
         uint MMIO.get_size()
         {
-            //16 bytes for 4 uint registers:
+            //20 bytes for 5 uint registers:
             //  active page directory base address
             //  queued page directory base address
             //  virtual address mmu breakpoint
             //  faulted PTE
-            return 16;
+            //  enabled
+            return 20;
         }
 
         void MMIO.write_memory(uint address, byte[] data)
@@ -197,6 +210,9 @@ namespace nlogic_sim
                 this.queued_page_directory_base_address = new_value;
             else if (address == (uint)MMIOLayout.MMU_DIRECTORY_SWAP_BREAKPOINT_REGISTER)
                 this.mmu_breakpoint = new_value;
+            else if (address == (uint)MMIOLayout.ENABLED)
+                //set the MMU to enabled only if a non-zero value is written
+                this.enabled = new_value > 0 ? true : false;
             else if (address == (uint)MMIOLayout.FAULTED_PTE_REGISTER)
                 throw new ArgumentException("MMU access error: the faulted PTE register is read-only");
             else
@@ -215,6 +231,8 @@ namespace nlogic_sim
                 return Utility.byte_array_from_uint32(length, this.mmu_breakpoint);
             else if (address == (uint)MMIOLayout.FAULTED_PTE_REGISTER)
                 return Utility.byte_array_from_uint32(length, this.faulted_pte);
+            else if (address == (uint)MMIOLayout.ENABLED)
+                return Utility.byte_array_from_uint32(length, this.enabled ? (uint)1 : (uint)0);
             else
                 throw new ArgumentException("MMU access error: the given address is not a readable register's address");
         }
@@ -401,6 +419,7 @@ namespace nlogic_sim
             QUEUED_PAGE_DIRECTORY_BASE_ADDRESS_REGISTER = 4,
             MMU_DIRECTORY_SWAP_BREAKPOINT_REGISTER = 8,
             FAULTED_PTE_REGISTER = 12,
+            ENABLED = 16,
         }
     }
 }

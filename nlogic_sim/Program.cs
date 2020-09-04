@@ -192,7 +192,7 @@ namespace nlogic_sim
                 new SimulationEnvironment(
                     65536,
                     Assembler.program_data,
-                    new MMIO[] { VIRTUAL_DISPLAY });
+                    new List<MMIO> { VIRTUAL_DISPLAY });
 
             Console.ForegroundColor = ConsoleColor.Green;
             Console.WriteLine("Simluation environment setup successful");
@@ -262,7 +262,7 @@ namespace nlogic_sim
                 new SimulationEnvironment(
                     65536,
                     Assembler.program_data,
-                    new MMIO[] { new VirtualDisplay(90, 30) });
+                    new List<MMIO> { new VirtualDisplay(90, 30) });
 
 
             Console.WriteLine("simulation environment setup complete");

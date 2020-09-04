@@ -1,10 +1,14 @@
+#delete all the existing .nlog files
+echo deleting .nlog files:
+ls $1*.nlog 
+rm $1*.nlog 
 #get all the pro files from the given directory (1)
 pro_files=$(find $1 -type f -name "*.pro")
 echo .pro files found in $1:
 echo $pro_files
 #create assembly from the pro files
 echo running assembler pro
-bin/Debug/nlogic_sim.exe pro $pro_files
+bin/Debug/nlogic_sim.exe pro -d $pro_files
 #get the output files
 asm_files=$(find $1 -type f -name "*.nlog")
 echo produced .nlog files:

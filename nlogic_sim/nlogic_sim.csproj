@@ -51,6 +51,7 @@
     <Compile Include="entry_points\AssembleProgram.cs" />
     <Compile Include="File.cs" />
     <Compile Include="processor\newProcessor.cs" />
+    <None Include="os\boot.pro" />
     <None Include="processor\oldProcessor.cs" />
     <Compile Include="processor\ProcessorDefinitions.cs" />
     <Compile Include="processor\ProcessorVisualizer.cs" />
@@ -141,7 +142,8 @@
     </Content>
   </ItemGroup>
   <ItemGroup>
-    <Folder Include="os\" />
+    <Folder Include="programs\const_label_loading\" />
+    <Folder Include="programs\virtual_display_program\" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
 </Project>

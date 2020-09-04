@@ -1,5 +1,20 @@
 ﻿
+Separate visualizer logic from execution logic to have the visualizer work better with virtual memory
+    Updating the accessors on every cycle is no bueno
+        Pretty much only needed for visualizer to have up-to-date read outs
+        Change so accesor registers don't actually store value?
+    Visualizing accessor registers with virtual memory
+        Add a "preview memory" translation function to MMU?
+            Visualizer calls preview translator
+            If preview translator faults, visualizer shows ?? ?? ?? ??
+            If preview translator succeeds, visualizer access that address in memory
+                Careful with addresses that fall into MMIO devices
+
+====================================================================================
+
 Change simulator to accept configuration file as command line argument to set up memory, MMIO devices, etc.
+
+Document current state of assembler and assembler pro functionality
 
 ====================================================================================
 
