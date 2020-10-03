@@ -80,15 +80,15 @@ namespace nlogic_sim
         /// The list of registers which must be restored when if an instruction that
         /// writes to them is retried.
         /// </summary>
-        public static List<byte> cacheable_registers = new List<byte>(new byte[] 
-        {
-            COMPA,
-            COMPB,
-            RBASE,
-            ROFST,
-            WBASE,
-            WOFST,
-        });
+        //public static List<byte> cacheable_registers = new List<byte>(new byte[] 
+        //{
+        //    COMPA,
+        //    COMPB,
+        //    RBASE,
+        //    ROFST,
+        //    WBASE,
+        //    WOFST,
+        //});
     }
 
 
@@ -150,6 +150,15 @@ namespace nlogic_sim
         /// <param name="length">The number of bytes to be read</param>
         /// <returns></returns>
         byte[] read_memory(uint address, uint length);
+
+        /// <summary>
+        /// Read a single byte of data from the device.
+        /// </summary>
+        /// <param name="address">The address of the byte to read in the device's address space</param>
+        /// <returns></returns>
+        byte read_byte(uint address);
+
+        void write_byte(uint address, byte data);
     }
 
     public interface HardwareInterrupter
@@ -168,7 +177,7 @@ namespace nlogic_sim
     /// </summary>
     public interface I_Environment
     {
-        byte[] read_address(uint address, uint length);
+        byte[] read_address(uint address, uint length, bool debug_visualizer_read=false);
         void write_address(uint address, byte[] data_array);
         void register_signal_callback(Action<Interrupt> signal_callback);
         void signal_kernel_mode();

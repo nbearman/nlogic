@@ -198,6 +198,17 @@ namespace nlogic_sim
             return result;
         }
 
+        byte MMIO.read_byte(uint address)
+        {
+            throw new NotImplementedException();
+            return 0;
+        }
+
+        void MMIO.write_byte(uint address, byte data)
+        {
+            throw new NotImplementedException();
+        }
+
         private void draw_frame()
         {
             int front_buffer = 0;

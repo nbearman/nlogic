@@ -150,6 +150,62 @@ namespace nlogic_sim
             return true;
         }
 
+        private static bool replace_fills(string amalgamated_code, out string instructions)
+        {
+            instructions = "";
+            string[] split = amalgamated_code.Split(new string[] { " ", "\t", "\n", "\r", Environment.NewLine }, StringSplitOptions.RemoveEmptyEntries);
+            int i = 0;
+            for (int inst = 0; inst < split.Length; inst++)
+            {
+                string next = split[inst];
+                if (next.Contains(":"))
+                {
+                    //count references to labels that will be replaced with addresses as 4 bytes
+                    i += 4;
+                    instructions += next + " ";
+                }
+                else if (next.Contains("@"))
+                {
+                    //don't count definitions of labels; they don't impact placement of instructions
+                    i += 0;
+                    instructions += next + " ";
+                }
+                else if (next.Contains("FILL"))
+                {
+                    uint fill_target;
+                    bool parsed_fill = uint.TryParse(
+                                next.Replace("FILL", ""),
+                                System.Globalization.NumberStyles.HexNumber,
+                                null,
+                                out fill_target);
+
+                    if (!parsed_fill)
+                    {
+                        Assembler.print_message("FILL not followed by number: \t\t\"" + next + "\"", MESSAGE_TYPE.Error);
+                        return false;
+                    }
+
+                    if (fill_target < i)
+                    {
+                        Assembler.print_message("Already past fill target, cannot fill: \t\t\"" + fill_target + "\"", MESSAGE_TYPE.Error);
+                        return false;
+                    }
+
+                    while (i < fill_target)
+                    {
+                        instructions += "00 ";
+                        i += 1;
+                    }
+                }
+                else
+                {
+                    i += 1;
+                    instructions += next + " ";
+                }
+            }
+            return true;
+        }
+
 
         private static bool code_to_instructions(string[] code_files, out string instructions)
         {
@@ -179,7 +235,10 @@ namespace nlogic_sim
 
             //return the success state of the assembly process so far
             //also pass out intructions
-            return strip_labels(amalgamated_code, out instructions);
+
+            if (!replace_fills(amalgamated_code, out instructions))
+                return false;
+            return strip_labels(instructions, out instructions);
         }
 
         private static bool instructions_to_binary(string instructions)

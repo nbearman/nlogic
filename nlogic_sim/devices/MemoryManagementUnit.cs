@@ -1,10 +1,16 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 
 namespace nlogic_sim
 {
     public class MemoryManagementUnit : MMIO, HardwareInterrupter
     {
+        /// <summary>
+        /// The size of a physical and virtual pages in bytes using this MMU; 4096 bytes (4 kilobytes)
+        /// </summary>
+        public const uint PAGE_SIZE = 0x1000;
+
         /// <summary>
         /// The base address in physical memory of the active process's page directory
         /// </summary>
@@ -69,6 +75,57 @@ namespace nlogic_sim
 
         //simulation environment interface methods
 
+        public bool translate_address_for_preview(uint address, out uint translation)
+        {
+            if (!this.enabled)
+            {
+                translation = address;
+                return true;
+            }
+
+            translation = 0;
+
+            //do not translate any addresses while faulted
+            //no reads or writes should occur until the processor cycles and enters the trap
+            if (this.faulted)
+            {
+                return false;
+            }
+
+            //proceed with translation
+
+
+            //get page directory entry from active page directory
+            uint page_directory_entry_address = get_page_directory_entry_address(this.active_page_directory_base_address, address);
+            uint page_directory_entry_data = read_environment_memory_byte(page_directory_entry_address);
+            PageTableEntry PDE = new PageTableEntry(page_directory_entry_data);
+
+            //check that the page table is safe to read
+            ProtectionCheckResult protection = check_protection(PDE, false);
+            if (protection != ProtectionCheckResult.SAFE)
+            {
+                return false;
+            }
+
+            //get page table entry from page table
+            uint page_table_entry_address = get_page_table_entry_address(PDE.number, address);
+            uint page_table_entry_data = read_environment_memory_byte(page_table_entry_address);
+            PageTableEntry PTE = new PageTableEntry(page_table_entry_data);
+
+            //check that the physical page allows the planned memory operation
+            protection = check_protection(PTE, false);
+            if (protection != ProtectionCheckResult.SAFE)
+            {
+                return false;
+            }
+
+            //the page table is safe to access
+            //get the final physical address
+            translation = get_physical_address(PTE.number, address);
+
+            return true;
+        }
+
         /// <summary>
         /// Translates a virtual address into a physical address.
         /// Raises and interrupt and returns false if translation
@@ -101,9 +158,7 @@ namespace nlogic_sim
             //swap the active page directory and queued page directory if hitting the breakpoint
             if (address == this.mmu_breakpoint)
             {
-                uint swap = this.active_page_directory_base_address;
-                this.active_page_directory_base_address = this.queued_page_directory_base_address;
-                this.queued_page_directory_base_address = swap;
+                this.swap_directories();
             }
 
 
@@ -125,6 +180,7 @@ namespace nlogic_sim
                 //raise a kernel-handled interrupt and abort translation
                 //set the RETRY flag if the protection requires a retry interrupt
                 this.raise_interrupt(protection == ProtectionCheckResult.RETRY_INTERRUPT, true);
+
                 return false;
             }
 
@@ -149,6 +205,7 @@ namespace nlogic_sim
                 //raise a kernel-handled interrupt and abort translation
                 //set the RETRY flag if the protection requires a retry interrupt
                 this.raise_interrupt(protection == ProtectionCheckResult.RETRY_INTERRUPT, true);
+
                 return false;
             }
 
@@ -169,6 +226,7 @@ namespace nlogic_sim
             //the page table is safe to access
             //get the final physical address
             translation = get_physical_address(PTE.number, address);
+
             return true;
         }
 
@@ -178,6 +236,13 @@ namespace nlogic_sim
         public void clear_fault()
         {
             this.faulted = false;
+        }
+
+        public void swap_directories()
+        {
+            uint swap = this.active_page_directory_base_address;
+            this.active_page_directory_base_address = this.queued_page_directory_base_address;
+            this.queued_page_directory_base_address = swap;
         }
 
         //hardware interrupter device interface methods
@@ -219,7 +284,7 @@ namespace nlogic_sim
                 throw new ArgumentException("MMU access error: the given address is not a writable register's address");
         }
 
-        byte[] MMIO.read_memory(uint address, uint length)
+        public byte[] read_memory(uint address, uint length)
         {
             if (length > 4)
                 throw new ArgumentException("MMU access error: cannot read more than 4 bytes from an MMU register");
@@ -237,6 +302,64 @@ namespace nlogic_sim
                 throw new ArgumentException("MMU access error: the given address is not a readable register's address");
         }
 
+        public void write_byte(uint address, byte data)
+        {
+            //TODO clean this mess up by changing the MMU's registers from uint variables
+            //to some kind of dictionary or array or something with accessors to make it convenient
+            uint value;
+            if (address >= (uint)MMIOLayout.ENABLED + 4)
+                throw new ArgumentException("MMU access error: the given address is beyond the range of writable registers");
+            else if (address >= (uint)MMIOLayout.ENABLED)
+                value = this.enabled ? (uint)1 : (uint)0;
+            else if (address >= (uint)MMIOLayout.FAULTED_PTE_REGISTER)
+                throw new ArgumentException("MMU access error: the faulted PTE register is read-only");
+            else if (address >= (uint)MMIOLayout.MMU_DIRECTORY_SWAP_BREAKPOINT_REGISTER)
+                value = this.mmu_breakpoint;
+            else if (address >= (uint)MMIOLayout.QUEUED_PAGE_DIRECTORY_BASE_ADDRESS_REGISTER)
+                value = this.queued_page_directory_base_address;
+            else if (address >= (uint)MMIOLayout.ACTIVE_PAGE_DIRECTORY_BASE_ADDRESS_REGISTER)
+                value = this.active_page_directory_base_address;
+            else
+                throw new ArgumentException("MMU access error: the given address is not a writable register's address");
+
+            byte[] register_bytes = Utility.byte_array_from_uint32(4, value);
+            register_bytes[address % 4] = data;
+            uint new_value = Utility.uint32_from_byte_array(register_bytes);
+
+            if (address >= (uint)MMIOLayout.ENABLED)
+                this.enabled = (new_value != 0);
+            else if (address >= (uint)MMIOLayout.MMU_DIRECTORY_SWAP_BREAKPOINT_REGISTER)
+                this.mmu_breakpoint = new_value;
+            else if (address >= (uint)MMIOLayout.QUEUED_PAGE_DIRECTORY_BASE_ADDRESS_REGISTER)
+                this.queued_page_directory_base_address = new_value;
+            else if (address >= (uint)MMIOLayout.ACTIVE_PAGE_DIRECTORY_BASE_ADDRESS_REGISTER)
+                this.active_page_directory_base_address = new_value;
+            else
+                throw new ArgumentException("MMU access error: the given address is not a writable register's address");
+        }
+
+        public byte read_byte(uint address)
+        {
+            uint value;
+            if (address >= (uint)MMIOLayout.ENABLED + 4)
+                throw new ArgumentException("MMU access error: the given address is beyond the range of readable registers");
+            else if (address >= (uint)MMIOLayout.ENABLED)
+                value = this.enabled ? (uint)1 : (uint)0;
+            else if (address >= (uint)MMIOLayout.FAULTED_PTE_REGISTER)
+                value = this.faulted_pte;
+            else if (address >= (uint)MMIOLayout.MMU_DIRECTORY_SWAP_BREAKPOINT_REGISTER)
+                value = this.mmu_breakpoint;
+            else if (address >= (uint)MMIOLayout.QUEUED_PAGE_DIRECTORY_BASE_ADDRESS_REGISTER)
+                value = this.queued_page_directory_base_address;
+            else if (address >= (uint)MMIOLayout.ACTIVE_PAGE_DIRECTORY_BASE_ADDRESS_REGISTER)
+                value = this.active_page_directory_base_address;
+            else
+                throw new ArgumentException("MMU access error: the given address is not a readable register's address");
+
+            byte[] register_bytes = Utility.byte_array_from_uint32(4, value);
+            return register_bytes[address % 4];
+        }
+
         /// <summary>
         /// Check if the target page associated with a page table (or page directory)
         /// entry is protected and should therefore fault during the given operation (reading or writing).
@@ -247,7 +370,7 @@ namespace nlogic_sim
         /// </param>
         /// <returns>The type of interrupt the MMU should raise if the page is protected, or a safe status if
         /// the planned operation is permitted.</returns>
-        private ProtectionCheckResult check_protection(PageTableEntry pte, bool write)
+        private static ProtectionCheckResult check_protection(PageTableEntry pte, bool write)
         {
             if (pte.readable)
             {
@@ -316,7 +439,7 @@ namespace nlogic_sim
             //page directory entry address:
             //[directory base address]  [directory #] [00]
             //[0000 0000 0000 0000 0000][00 0000 0000][00]
-            return page_directory_base_address | (directory_number << 2);
+            return (page_directory_base_address << 12) | (directory_number << 2);
         }
 
         private static uint get_page_table_entry_address(uint page_table_physical_page_number, uint virtual_address)
@@ -367,7 +490,7 @@ namespace nlogic_sim
                 this.referenced = Utility.get_bit(data, (uint)PageTableEntryProtectionBits.REFERENCED);
                 this.dirty = Utility.get_bit(data, (uint)PageTableEntryProtectionBits.DIRTY);
 
-                //the number (page table number or physical page number) is held in the bottom 20 bits
+                //physical page number is held in the bottom 20 bits
                 this.number = data & 0x000FFFFF;
 
                 //store the original PTE as it was read from; this will allow the MMU to 

@@ -53,6 +53,7 @@
     <Compile Include="processor\newProcessor.cs" />
     <None Include="os\boot.pro" />
     <None Include="processor\oldProcessor.cs" />
+    <Compile Include="processor\Processor3.cs" />
     <Compile Include="processor\ProcessorDefinitions.cs" />
     <Compile Include="processor\ProcessorVisualizer.cs" />
     <Compile Include="devices\VirtualDisplay.cs" />
@@ -66,6 +67,7 @@
     <Compile Include="simulation_environment\SimulationEnvironment.cs" />
     <Compile Include="entry_points\TestMain.cs" />
     <Compile Include="Utility.cs" />
+    <None Include="programs\mmu_enable\boot.pro" />
   </ItemGroup>
   <ItemGroup>
     <None Include="App.config" />
@@ -76,6 +78,9 @@
     </Content>
     <Content Include="documentation\memory_layout.txt" />
     <Content Include="documentation\Readme.txt" />
+    <Content Include="programs\alu_shift_delayed_test.txt">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
     <Content Include="programs\alu_shift_test.txt">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
@@ -100,6 +105,7 @@
     <Content Include="programs\numbers.txt">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
+    <Content Include="programs\offset_reads.txt" />
     <Content Include="programs\skip_test.txt">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>

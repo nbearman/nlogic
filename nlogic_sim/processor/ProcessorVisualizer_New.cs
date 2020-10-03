@@ -46,10 +46,6 @@ namespace nlogic_sim
 
             update_readout(READOUT.COMPA_contents, Utility.byte_array_string(registers[COMPA].data_array, "", false));
             update_readout(READOUT.COMPB_contents, Utility.byte_array_string(registers[COMPB].data_array, "", false));
-            update_readout(READOUT.COMPR_contents, Utility.byte_array_string(registers[COMPR].data_array, "", false));
-
-            update_readout(READOUT.IADN_contents, Utility.byte_array_string(registers[IADN].data_array, "", false));
-            update_readout(READOUT.IADF_contents, Utility.byte_array_string(registers[IADF].data_array, "", false));
 
             update_readout(READOUT.GPA_contents, Utility.byte_array_string(registers[GPA].data_array, "", false));
             update_readout(READOUT.GPB_contents, Utility.byte_array_string(registers[GPB].data_array, "", false));
@@ -123,18 +119,27 @@ namespace nlogic_sim
 
             update_readout(READOUT.RBASE_contents, Utility.byte_array_string(registers[RBASE].data_array, "", false));
             update_readout(READOUT.ROFST_contents, Utility.byte_array_string(registers[ROFST].data_array, "", false));
-            update_readout(READOUT.RMEM_contents, Utility.byte_array_string(registers[RMEM].data_array, "", false));
 
             update_readout(READOUT.WBASE_contents, Utility.byte_array_string(registers[WBASE].data_array, "", false));
             update_readout(READOUT.WOFST_contents, Utility.byte_array_string(registers[WOFST].data_array, "", false));
-            update_readout(READOUT.WMEM_contents, Utility.byte_array_string(registers[WMEM].data_array, "", false));
 
-            {
-                uint r_address = ((Register_32)registers[RBASE]).data + ((Register_32)registers[ROFST]).data;
-                uint w_address = ((Register_32)registers[WBASE]).data + ((Register_32)registers[WOFST]).data;
-                update_memory_context(READOUT.MemoryContext1, r_address, this.environment.get_memory());
-                update_memory_context(READOUT.MemoryContext2, w_address, this.environment.get_memory());
-            }
+            uint iadn_address = ((Register_32)registers[PC]).data + 4;
+            uint iadf_address = ((Register_32)registers[PC]).data + 6;
+
+            bool comparison = ((Register_32)registers[COMPA]).data == ((Register_32)registers[COMPB]).data;
+            uint compr_address = ((Register_32)registers[PC]).data + (comparison ? (uint)0 : (uint)4);
+            update_readout(READOUT.COMPR_contents, get_memory_value_for_visualizer(compr_address));
+            update_readout(READOUT.IADN_contents, get_memory_value_for_visualizer(iadn_address));
+            update_readout(READOUT.IADF_contents, get_memory_value_for_visualizer(iadf_address));
+
+            uint rmem_address = ((Register_32)registers[RBASE]).data + ((Register_32)registers[ROFST]).data;
+            uint wmem_address = ((Register_32)registers[WBASE]).data + ((Register_32)registers[WOFST]).data;
+            update_readout(READOUT.RMEM_contents, get_memory_value_for_visualizer(rmem_address));
+            update_readout(READOUT.WMEM_contents, get_memory_value_for_visualizer(wmem_address));
+
+
+            update_memory_context(READOUT.MemoryContext1, get_neighboring_memory_lines(rmem_address));
+            update_memory_context(READOUT.MemoryContext2, get_neighboring_memory_lines(wmem_address));
 
 
         }
@@ -225,6 +230,36 @@ namespace nlogic_sim
 
         }
 
+        private static void update_memory_context(READOUT memory_context, ColorString[][] neighboring_lines)
+        {
+            if (!(memory_context == READOUT.MemoryContext1 || memory_context == READOUT.MemoryContext2))
+            {
+                throw new Exception("the supplied READOUT must be a memory context readout");
+            }
+
+            //save the previous color and cursor position
+            ConsoleColor previous_color = Console.ForegroundColor;
+            Tuple<int, int> previous_coordinates =
+                new Tuple<int, int>(Console.CursorLeft, Console.CursorTop);
+
+            Tuple<int, int, int> start_position = readout_coordinates[memory_context];
+            //print all the lines of the context
+            for (int i = 0; i < neighboring_lines.Length; i++)
+            {
+                Console.SetCursorPosition(start_position.Item1, start_position.Item2 + i);
+                Console.Write("  ");
+                foreach (var colorstring in neighboring_lines[i])
+                {
+                    colorstring.print();
+                    Console.Write(' ');
+                }
+            }
+
+            //reset the console color and cursor position
+            Console.ForegroundColor = previous_color;
+            Console.SetCursorPosition(previous_coordinates.Item1, previous_coordinates.Item2);
+        }
+
         /// <summary>
         /// Print the string at the specified memory_context, using memory context formatting.
         /// Supplying a READOUT other than a memory context will cause an error.
@@ -232,9 +267,6 @@ namespace nlogic_sim
         /// <param name="memory_context">READOUT specifying which context to print to</param>
         private static void update_memory_context(READOUT memory_context, uint address, byte[] memory)
         {
-
-            //TODO add caching
-
             if (!(memory_context == READOUT.MemoryContext1 || memory_context == READOUT.MemoryContext2))
             {
                 throw new Exception("the supplied READOUT must be a memory context readout");
@@ -265,6 +297,83 @@ namespace nlogic_sim
             Console.ForegroundColor = previous_color;
             Console.SetCursorPosition(previous_coordinates.Item1, previous_coordinates.Item2);
 
+        }
+
+        private string get_memory_value_for_visualizer(uint address)
+        {
+            byte[] data = this.environment.read_address(address, 4, true);
+            if (data == null)
+                return "????????";
+            return Utility.uint32_from_byte_array(data).ToString("X8");
+        }
+
+        private ColorString[][] get_neighboring_memory_lines(uint address)
+        {
+            //8 bytes per line, so line number is byte's address divided by 8
+            uint line_number = address / 8;
+
+            //aim to show 3 lines before the current line, but not before the first line
+            uint base_line_number = line_number < 3 ? 0 : line_number - 3;
+
+            //last possible line in virtual address space
+            uint last_line = (uint.MaxValue / 8) - 1;
+
+            //don't put the base closer than the 8th line from the end
+            if (base_line_number > last_line - 8)
+                base_line_number = last_line - 7;
+
+            //readout shows 64 total bytes
+            List<string> byte_strings = new List<string>();
+
+            uint starting_address = base_line_number * 8;
+
+            //read memory 4 bytes at a time
+            //since the readout is page-aligned, it should be the case
+            //that, for each read, either all 4 bytes are readable or
+            //none of the 4 are
+            for (uint i = 0; i < 16; i++)
+            {
+                uint next_address = starting_address + (4 * i);
+                byte[] next_4_bytes = this.environment.read_address(next_address, 4, true);
+
+                //add all the bytes as strings to the list of byte strings
+                //if the read failed, add "??" for each byte
+                for (int b = 0; b < 4; b++)
+                {
+                    if (next_4_bytes == null)
+                        byte_strings.Add("??");
+                    else
+                        byte_strings.Add(next_4_bytes[b].ToString("X2"));
+                }
+            }
+
+            Debug.Assert(byte_strings.Count == 64, "the incorrect number of bytes was retrieved during context update");
+
+            ColorString[] all_color_strings = new ColorString[64];
+            for (int i = 0; i < byte_strings.Count; i++)
+            {
+                ColorString m = new ColorString();
+                m.value = byte_strings[i];
+                if (starting_address + i >= address && starting_address + i < address + 4)
+                    m.color = ConsoleColor.White;
+                else
+                    m.color = ConsoleColor.DarkGray;
+                all_color_strings[i] = m;
+            }
+
+            ColorString[][] result = new ColorString[8][];
+
+            for (int row = 0; row < 8; row++)
+            {
+                result[row] = new ColorString[8];
+
+                for (int col = 0; col < 8; col++)
+                {
+                    result[row][col] = all_color_strings[(row * 8) + col];
+                }
+            }
+
+            return result;
         }
 
         /// <summary>

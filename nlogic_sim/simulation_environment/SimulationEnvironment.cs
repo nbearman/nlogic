@@ -56,7 +56,7 @@ namespace nlogic_sim
             //create memory
             memory = new byte[memory_size];
 
-            //creat the MMU
+            //create the MMU
             this.MMU = new MemoryManagementUnit(this.memory);
 
             //create the MMIO devices
@@ -69,7 +69,7 @@ namespace nlogic_sim
             initialize_hardware_interrupters(new HardwareInterrupter[] { this.MMU });
 
             //create the processor
-            this.processor = new Processor(this, false);
+            this.processor = new Processor(this);
 
             //initialize memory
             this.write_address(0, initial_memory);
@@ -140,48 +140,66 @@ namespace nlogic_sim
         /// <param name="address">Address to begin reading at</param>
         /// <param name="length">Number of bytes to read</param>
         /// <returns>Returns an array of size length containing the data from the given address</returns>
-        public byte[] read_address(uint address, uint length)
+        public byte[] read_address(uint address, uint length, bool debug_visualizer_read=false)
         {
             byte[] result = new byte[length];
 
-
-            uint physical_address;
-            if (!MMU.translate_address(address, false, out physical_address))
+            VirtualAddressTranslation[] translations = get_translations_for_range(address, length, false, debug_visualizer_read);
+            if (translations == null)
             {
                 //the translation failed
                 //return garbage
-                return result;
+                //or return null as a sentinel if this read is for the visualizer
+                return debug_visualizer_read ? null : result;
             }
 
-
-            //address is beyond physical memory, check MMIO devices instead
-            if (physical_address >= memory.Length)
+            int current_page = 0;
+            uint page_offset = 0;
+            for (int virtual_offset = 0; virtual_offset < length; virtual_offset++)
             {
-                //get the target device and base address
-                Tuple<uint, MMIO> target_device = this.MMIO_devices_by_address.get_data(physical_address);
-                uint base_address = target_device.Item1;
-                MMIO device = target_device.Item2;
-
-                //translate the processor's requested address to the address space of the device
-                uint translated_address = physical_address - base_address;
-
-                //read the data from the device at the translated address
-                result = device.read_memory(translated_address, length);
-                return result;
-            }
-
-            //else use physical memory
-            //no translation required, because physical memory always has a base address of 0
-            //read the bytes from memory at the given address
-            else
-            {
-                for (int i = 0; i < length; i++)
+                //if in the last translation range, don't need to check if we're in the next range
+                if (current_page != translations.Length - 1)
                 {
-                    result[i] = memory[physical_address + i];
+                    if (address + virtual_offset >= translations[current_page + 1].virtual_address)
+                    {
+                        current_page += 1;
+                        page_offset = 0;
+                    }
                 }
 
-                return result;
+                uint physical_address = translations[current_page].physical_address + page_offset;
+
+                if (physical_address >= memory.Length)
+                {
+                    //address is beyond physical memory, check MMIO devices
+
+                    //memory previewer cannot read from MMIO devices, so return null
+                    //TODO look into changing this, possibly only for some types of devices?
+                    if (debug_visualizer_read)
+                        return null;
+
+                    //get the target device and base address
+                    Tuple<uint, MMIO> target_device = this.MMIO_devices_by_address.get_data(physical_address);
+                    uint base_address = target_device.Item1;
+                    MMIO device = target_device.Item2;
+
+                    //translate the processor's requested address to the address space of the device
+                    uint translated_address = physical_address - base_address;
+
+                    //read the data from the device at the translated address
+                    result[virtual_offset] = device.read_byte(translated_address);
+                    return result;
+                }
+                else
+                {
+                    result[virtual_offset] = memory[physical_address];
+                }
+
+                //increment the offset into the current page
+                page_offset += 1;
             }
+
+            return result;
 
         }
 
@@ -189,46 +207,59 @@ namespace nlogic_sim
         /// Writes the given data to the given virtual address,
         /// which may not necessarily be in memory
         /// </summary>
+        /// TODO update this summary and the one for read_address() to reflect new page-aware changes
         /// <param name="address">Starting virtual address to write the data to</param>
         /// <param name="data_array">Array of bytes to write at the address</param>
         public void write_address(uint address, byte[] data_array)
         {
-            uint physical_address;
-            if (!MMU.translate_address(address, true, out physical_address))
+            uint length = (uint)data_array.Length;
+            VirtualAddressTranslation[] translations = get_translations_for_range(address, length, true);
+            if (translations == null)
             {
                 //the translation failed
                 //do nothing
                 return;
             }
 
-
-            //address is beyond physical memory, check MMIO devices instead
-            if (physical_address >= memory.Length)
+            int current_page = 0;
+            uint page_offset = 0;
+            for (int virtual_offset = 0; virtual_offset < length; virtual_offset++)
             {
-                //get the target device and base address
-                Tuple<uint, MMIO> target_device = this.MMIO_devices_by_address.get_data(physical_address);
-                uint base_address = target_device.Item1;
-                MMIO device = target_device.Item2;
-
-                //translate the processor's requested address to the address space of the device
-                uint translated_address = physical_address - base_address;
-
-                //read the data from the device at the translated address
-                device.write_memory(translated_address, data_array);
-            }
-
-            //else use physical memory
-            else
-            {
-                //no translation required, because physical memory always has a base address of 0
-                //write the given bytes to memory at the given address
-                for (int i = 0; i < data_array.Length; i++)
+                //if in the last translation range, don't need to check if we're in the next range
+                if (current_page != translations.Length - 1)
                 {
-                    memory[physical_address + i] = data_array[i];
+                    if (address + virtual_offset >= translations[current_page + 1].virtual_address)
+                    {
+                        current_page += 1;
+                        page_offset = 0;
+                    }
                 }
-            }
 
-            return;
+                uint physical_address = translations[current_page].physical_address + page_offset;
+
+                if (physical_address >= memory.Length)
+                {
+                    //address is beyond physical memory, check MMIO devices
+
+                    //get the target device and base address
+                    Tuple<uint, MMIO> target_device = this.MMIO_devices_by_address.get_data(physical_address);
+                    uint base_address = target_device.Item1;
+                    MMIO device = target_device.Item2;
+
+                    //translate the processor's requested address to the address space of the device
+                    uint translated_address = physical_address - base_address;
+
+                    //write the data to the device at the translated address
+                    device.write_byte(translated_address, data_array[virtual_offset]);
+                }
+                else
+                {
+                    memory[physical_address] = data_array[virtual_offset];
+                }
+
+                //increment the offset into the current page
+                page_offset += 1;
+            }
         }
 
         /// <summary>
@@ -254,12 +285,74 @@ namespace nlogic_sim
         /// </summary>
         public void signal_kernel_mode()
         {
-            throw new NotImplementedException();
+            //change the MMU to the queued active page directory (the kernel page directory)
+            this.MMU.swap_directories();
         }
 
         public byte[] get_memory()
         {
             return this.memory;
+        }
+
+        /// <summary>
+        /// Return an array of translation results from the MMU. If any of the translations
+        /// fail (page fault), returns null.
+        /// </summary>
+        /// <param name="base_address">Starting address of the memory access</param>
+        /// <param name="length">Total length of the memory access, in bytes</param>
+        /// <param name="write">True if the memory access will be a write, false if only a read</param>
+        /// <returns></returns>
+        private VirtualAddressTranslation[] get_translations_for_range(uint base_address, uint length, bool write, bool debug_visualizer_read=false)
+        {
+            Debug.Assert(!(write && debug_visualizer_read), "cannot use debug_visualizer_read to alter memory");
+
+            List<uint> address_thresholds = new List<uint>();
+
+            address_thresholds.Add(base_address);
+
+            uint first_boundary = ((base_address / MemoryManagementUnit.PAGE_SIZE) + 1) * MemoryManagementUnit.PAGE_SIZE;
+
+            uint boundary_counter = first_boundary;
+            while (boundary_counter < base_address + length)
+            {
+                address_thresholds.Add(boundary_counter);
+                boundary_counter += MemoryManagementUnit.PAGE_SIZE;
+            }
+
+            List<VirtualAddressTranslation> result = new List<VirtualAddressTranslation>();
+
+            for (int i = 0; i < address_thresholds.Count; i++)
+            {
+                uint virtual_address = address_thresholds[i];
+                uint physical_address;
+                bool success;
+                if (debug_visualizer_read)
+                    success = this.MMU.translate_address_for_preview(virtual_address, out physical_address);
+                else
+                    success = this.MMU.translate_address(virtual_address, write, out physical_address);
+
+                if (!success)
+                {
+                    return null;
+                }
+                result.Add(new VirtualAddressTranslation(virtual_address, physical_address, success));
+            }
+
+            return result.ToArray();
+        }
+
+        private struct VirtualAddressTranslation
+        {
+            public uint virtual_address;
+            public uint physical_address;
+            public bool valid;
+
+            public VirtualAddressTranslation(uint virtual_address, uint physical_address, bool valid)
+            {
+                this.virtual_address = virtual_address;
+                this.physical_address = physical_address;
+                this.valid = valid;
+            }
         }
 
         /// <summary>
