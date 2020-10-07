@@ -129,6 +129,12 @@ namespace nlogic_sim
     public interface MMIO
     {
         /// <summary>
+        /// Called by the simulation environment before starting the simulation to
+        /// give the MMIO device access to the environment for any set up it requires.
+        /// </summary>
+        void initialize(SimulationEnvironment environment);
+
+        /// <summary>
         /// Get the size, in bytes, of the address space required by this device.
         /// </summary>
         /// <returns>The size of the address space required by this device in bytes.</returns>

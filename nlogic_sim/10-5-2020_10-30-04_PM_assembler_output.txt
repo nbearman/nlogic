@@ -1,0 +1,4 @@
+|ASSEMBLER
+|	:> Status: opening file for assembly...
+|	:> Success: assembly successful
+|end ASSEMBLER

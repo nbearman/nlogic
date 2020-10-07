@@ -186,13 +186,22 @@ namespace nlogic_sim
             Console.WriteLine("Program assembly successful");
 
             SimpleVirtualDisplay VIRTUAL_DISPLAY = new SimpleVirtualDisplay();
+            VirtualDisk VIRTUAL_DISK = new VirtualDisk("./virtual_disk");
+
+            List<MMIO> mmio_devices = new List<MMIO> { VIRTUAL_DISK, VIRTUAL_DISPLAY };
+
+            Console.ForegroundColor = ConsoleColor.DarkCyan;
+            Console.Write("Connected MMIO devices: ");
+            foreach (var mmio in mmio_devices)
+                Console.Write(mmio + ", ");
+            Console.WriteLine();
 
             //set up the simulation environment
             SimulationEnvironment environment =
                 new SimulationEnvironment(
                     65536,
                     Assembler.program_data,
-                    new List<MMIO> { VIRTUAL_DISPLAY });
+                    mmio_devices);
 
             Console.ForegroundColor = ConsoleColor.Green;
             Console.WriteLine("Simluation environment setup successful");

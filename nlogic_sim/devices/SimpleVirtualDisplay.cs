@@ -52,5 +52,10 @@ namespace nlogic_sim
             throw new NotImplementedException();
         }
 
+        public void initialize(SimulationEnvironment environment)
+        {
+            //no setup needed
+            return;
+        }
     }
 }

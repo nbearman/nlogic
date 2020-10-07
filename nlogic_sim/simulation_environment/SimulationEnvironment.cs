@@ -370,6 +370,9 @@ namespace nlogic_sim
             //for each device
             for (int i = 0; i < MMIO_devices.Count; i++)
             {
+                //run the device's setup
+                MMIO_devices[i].initialize(this);
+
                 //ensure that MMIO devices aren't mapped outside of 32 bit address space
                 Debug.Assert(base_address < 0xFFFFFFFF, "MMIO address beyond addressable range");
 

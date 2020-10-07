@@ -47,6 +47,7 @@
     <Compile Include="devices\display_test.cs" />
     <Compile Include="devices\MemoryManagementUnit.cs" />
     <Compile Include="devices\SimpleVirtualDisplay.cs" />
+    <Compile Include="devices\VirtualDisk.cs" />
     <Compile Include="devices\VirtualKeyboard.cs" />
     <Compile Include="entry_points\AssembleProgram.cs" />
     <Compile Include="File.cs" />
@@ -67,6 +68,7 @@
     <Compile Include="simulation_environment\SimulationEnvironment.cs" />
     <Compile Include="entry_points\TestMain.cs" />
     <Compile Include="Utility.cs" />
+    <None Include="programs\loaded\loaded.pro" />
     <None Include="programs\mmu_enable\boot.pro" />
   </ItemGroup>
   <ItemGroup>
@@ -93,6 +95,7 @@
     <Content Include="programs\dmem2.txt">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
+    <Content Include="programs\loaded\loaded.txt" />
     <Content Include="programs\locked_flag.txt">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
@@ -150,6 +153,7 @@
   <ItemGroup>
     <Folder Include="programs\const_label_loading\" />
     <Folder Include="programs\virtual_display_program\" />
+    <Folder Include="virtual_disk\" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
 </Project>

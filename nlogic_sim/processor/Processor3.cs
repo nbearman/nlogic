@@ -9,7 +9,7 @@ namespace nlogic_sim
     {
         private I_Environment environment;
 
-        public const ushort interrupt_handler_address = 0x0090; //TODO arbitrary address for now
+        public const ushort interrupt_handler_address = 0x0200; //TODO arbitrary address for now
         public const ushort interrupt_register_dump_address = 0x0033; //TODO reevaluate if this is the best place for these; selected so that FLAG, GPA, and PC get stored at the end of the DMEM accessible region
 
         private ushort current_instruction;
@@ -79,7 +79,7 @@ namespace nlogic_sim
                 //source is an immediate value
                 source_data = (uint)source;
             }
-            else if (memory_read_registers.Contains(source) || source > DMEM)
+            else if (memory_read_registers.Contains(source) || source >= DMEM)
             {
                 //source data comes from memory
                 //determine the address of the source data in memory
@@ -97,7 +97,7 @@ namespace nlogic_sim
                     source_address = ((Register_32)registers[RBASE]).data + ((Register_32)registers[ROFST]).data;
                 else if (source == WMEM)
                     source_address = ((Register_32)registers[WBASE]).data + ((Register_32)registers[WOFST]).data;
-                else if (source > DMEM)
+                else if (source >= DMEM)
                     source_address = source - (uint)DMEM;
                 else
                     throw new NotImplementedException("source register in memory_read_registers has no access logic");
@@ -125,15 +125,15 @@ namespace nlogic_sim
                 //destination is read-only
                 //do nothing
             }
-            else if (memory_write_registers.Contains(destination) || destination > DMEM)
+            else if (memory_write_registers.Contains(destination) || destination >= DMEM)
             {
                 //destination is in memory
                 if (destination == RMEM)
                     destination_address = ((Register_32)registers[RBASE]).data + ((Register_32)registers[ROFST]).data;
                 else if (destination == WMEM)
                     destination_address = ((Register_32)registers[WBASE]).data + ((Register_32)registers[WOFST]).data;
-                else if (destination > DMEM)
-                    destination_address = source - (uint)DMEM;
+                else if (destination >= DMEM)
+                    destination_address = destination - (uint)DMEM;
                 else
                     throw new NotImplementedException("destination register in memory_write_registers has no access logic");
 

@@ -259,5 +259,11 @@ namespace nlogic_sim
                     Console.WriteLine();
             }
         }
+
+        public void initialize(SimulationEnvironment environment)
+        {
+            //no setup required
+            return;
+        }
     }
 }

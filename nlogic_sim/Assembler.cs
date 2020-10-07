@@ -416,7 +416,7 @@ namespace nlogic_sim
         private static void redirect_output(string file_path)
         {
             original_out_stream = Console.Out;
-            file_out_stream = new System.IO.StreamWriter(file_path);
+            file_out_stream = new System.IO.StreamWriter(file_path, false);
             Console.SetOut(file_out_stream);
         }
 

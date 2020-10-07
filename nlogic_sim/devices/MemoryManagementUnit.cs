@@ -193,7 +193,7 @@ namespace nlogic_sim
             PDE.referenced = true;
 
             //check that the physical page allows the planned memory operation
-            protection = check_protection(PTE, false);
+            protection = check_protection(PTE, write);
             if (protection != ProtectionCheckResult.SAFE)
             {
                 //store the PTE whose protection would be violated for reference by the kernel
@@ -466,6 +466,12 @@ namespace nlogic_sim
             //[physical page #]         [offset]
             //[0000 0000 0000 0000 0000][0000 0000 0000]
             return (physical_page_number << 12) | offset_into_page;
+        }
+
+        public void initialize(SimulationEnvironment environment)
+        {
+            //no set up required
+            return;
         }
 
         private struct PageTableEntry
