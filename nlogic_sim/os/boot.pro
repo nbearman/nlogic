@@ -86,6 +86,7 @@ C0 0F F0 00
 //=========================================================================
 
 //create a PDE in the users's page directory (page 5)
+00 WOFST
 IADF WBASE
 SKIP PC
 00 00 50 00
@@ -93,10 +94,10 @@ SKIP PC
 IADF WMEM
 SKIP PC
 // R !W physical page 6
-80 00 00 02
+80 00 00 06
 
 //create a PTE in the user page table for virtual page 0
-//the page table is at physical address 00 00 50 00, so write the PTE there
+//the page table is at physical address 00 00 60 00, so write the PTE there
 IADF WBASE
 SKIP PC
 00 00 60 00
@@ -106,6 +107,13 @@ SKIP PC
 // R !W physical page 7
 80 00 00 07
 
+//create a PTE in the user page table for virtual page 1, the second instruction page
+04 WOFST
+IADF WMEM
+SKIP PC
+// !R !W disk block 101
+00 00 00 65
+
 //=========================================================================
 // load user program into memory from disk
 //=========================================================================
@@ -113,7 +121,7 @@ SKIP PC
 //virtual disk is MMIO device; MMIO devices start at 0xFF 00 00 00
 IADF WBASE
 SKIP PC
-FF 00 00 14
+FF 00 00 18
 
 //load into physical page 7
 00 WOFST
@@ -129,7 +137,7 @@ FF 00 00 14
 
 //initiate the transfer
 0C WOFST
-01 WMEM
+//01 WMEM
 
 
 //=========================================================================
@@ -169,7 +177,7 @@ SKIP PC
 RMEM WBASE
 
 //enable the MMU and see what happens
-10 WOFST
+14 WOFST
 01 WMEM
 
 //=========================================================================
@@ -192,7 +200,8 @@ FF 00 00 00
 //04 queued page dir base addr
 //08 virtual addr mmu breakpoint
 //0C faulted pte
-//10 enabled
+//10 breakpoint enabled
+//14 enabled
 
 //=========================================================================
 //=========================================================================
@@ -217,9 +226,13 @@ FILL3090
 //set the MMU VA break point
 IADF WBASE
 SKIP PC
-00 00 10 00
-08 WOFST
-00 WMEM
+00 00 10 00 //MMIO base address (in VA)
+08 WOFST //breakpoint register
+00 WMEM //breakpoint at 0
+
+//enabled the breakpoint
+10 WOFST //breakpoint enabled register
+01 WMEM //non-zero -> enabled
 
 00 RBASE
 00 ROFST
@@ -230,7 +243,64 @@ SKIP PC
 
 ///////////////////////////
 
+
+//=========================================================================
+// interrupt handler
+//=========================================================================
 FILL3200
+WBASE DMEM00
+WOFST DMEM04
+
+//dump registers to VA 0100
+IADF WBASE
+SKIP PC
+00 00 01 00
+00 WOFST
+GPA WMEM
+04 WOFST
+GPB WMEM
+08 WOFST
+GPC WMEM
+0C WOFST
+GPD WMEM
+10 WOFST
+GPE WMEM
+14 WOFST
+GPF WMEM
+18 WOFST
+GPG WMEM
+1C WOFST
+GPH WMEM
+
+20 WOFST
+COMPA WMEM
+24 WOFST
+COMPB WMEM
+28 WOFST
+RBASE WMEM
+2C WOFST
+ROFST WMEM
+30 WOFST
+ALUM WMEM
+34 WOFST
+ALUA WMEM
+38 WOFST
+ALUB WMEM
+3C WOFST
+FPUM WMEM
+40 WOFST
+FPUA WMEM
+44 WOFST
+FPUB WMEM
+
+
+
+
+02 FPUM
+11 FPUA
+22 FPUB
+FPUR GPC
+7F FLAG
 
 FILL3300
 //physical page map
@@ -294,3 +364,18 @@ FILL3440
 
 //end process map (16 process descriptors)
 FILL3540
+
+FILL7000
+12 GPB
+GPB GPC
+GPC ALUA
+02 ALUB
+ALUR GPB
+
+IADN PC
+00 00 0F FE
+
+FILL7FFE
+11 GPG
+12 GPF
+13 GPE

@@ -23,8 +23,8 @@ namespace nlogic_sim
         private uint queued_page_directory_base_address;
 
         /// <summary>
-        /// A virtual address which, when the MMU is next instructed to access, will exit kernel
-        /// mode and swap to the queued page directory
+        /// When enabled (breakpoint_enabled), a virtual address which, when the MMU is next instructed to access,
+        /// will exit kernel mode and swap to the queued page directory
         /// </summary>
         private uint mmu_breakpoint;
 
@@ -54,6 +54,12 @@ namespace nlogic_sim
         /// When in kernel mode, the MMU will not raise interrupts
         /// </summary>
         private bool kernel_mode = false;
+
+        /// <summary>
+        /// When the MMU breakpoint is enabled, the breakpoint address will be checked for during translation. If
+        /// disabled, the breakpoint will not be triggered.
+        /// </summary>
+        private bool breakpoint_enabled = false;
 
         /// <summary>
         /// Physical memory of this MMU's environment (RAM)
@@ -156,8 +162,9 @@ namespace nlogic_sim
             }
 
             //swap the active page directory and queued page directory if hitting the breakpoint
-            if (address == this.mmu_breakpoint)
+            if (this.breakpoint_enabled && address == this.mmu_breakpoint)
             {
+                this.breakpoint_enabled = false;
                 this.swap_directories();
             }
 
@@ -262,10 +269,12 @@ namespace nlogic_sim
             //  queued page directory base address
             //  virtual address mmu breakpoint
             //  faulted PTE
+            //  breakpoint enabled
             //  enabled
-            return 20;
+            return 24;
         }
 
+        //TODO this is out of date (missing MMU registers) and currently not used (write_byte / read_byte currently used instead)
         void MMIO.write_memory(uint address, byte[] data)
         {
             uint new_value = Utility.uint32_from_byte_array(data);
@@ -284,6 +293,7 @@ namespace nlogic_sim
                 throw new ArgumentException("MMU access error: the given address is not a writable register's address");
         }
 
+        //TODO this is out of date (missing MMU registers) and currently not used (write_byte / read_byte currently used instead)
         public byte[] read_memory(uint address, uint length)
         {
             if (length > 4)
@@ -311,6 +321,8 @@ namespace nlogic_sim
                 throw new ArgumentException("MMU access error: the given address is beyond the range of writable registers");
             else if (address >= (uint)MMIOLayout.ENABLED)
                 value = this.enabled ? (uint)1 : (uint)0;
+            else if (address >= (uint)MMIOLayout.BREAKPOINT_ENABLED)
+                value = this.breakpoint_enabled ? (uint)1 : (uint)0;
             else if (address >= (uint)MMIOLayout.FAULTED_PTE_REGISTER)
                 throw new ArgumentException("MMU access error: the faulted PTE register is read-only");
             else if (address >= (uint)MMIOLayout.MMU_DIRECTORY_SWAP_BREAKPOINT_REGISTER)
@@ -328,6 +340,8 @@ namespace nlogic_sim
 
             if (address >= (uint)MMIOLayout.ENABLED)
                 this.enabled = (new_value != 0);
+            else if (address >= (uint)MMIOLayout.BREAKPOINT_ENABLED)
+                this.breakpoint_enabled = (new_value != 0);
             else if (address >= (uint)MMIOLayout.MMU_DIRECTORY_SWAP_BREAKPOINT_REGISTER)
                 this.mmu_breakpoint = new_value;
             else if (address >= (uint)MMIOLayout.QUEUED_PAGE_DIRECTORY_BASE_ADDRESS_REGISTER)
@@ -345,6 +359,8 @@ namespace nlogic_sim
                 throw new ArgumentException("MMU access error: the given address is beyond the range of readable registers");
             else if (address >= (uint)MMIOLayout.ENABLED)
                 value = this.enabled ? (uint)1 : (uint)0;
+            else if (address >= (uint)MMIOLayout.BREAKPOINT_ENABLED)
+                value = this.breakpoint_enabled ? (uint)1 : (uint)0;
             else if (address >= (uint)MMIOLayout.FAULTED_PTE_REGISTER)
                 value = this.faulted_pte;
             else if (address >= (uint)MMIOLayout.MMU_DIRECTORY_SWAP_BREAKPOINT_REGISTER)
@@ -548,7 +564,8 @@ namespace nlogic_sim
             QUEUED_PAGE_DIRECTORY_BASE_ADDRESS_REGISTER = 4,
             MMU_DIRECTORY_SWAP_BREAKPOINT_REGISTER = 8,
             FAULTED_PTE_REGISTER = 12,
-            ENABLED = 16,
+            BREAKPOINT_ENABLED = 16,
+            ENABLED = 20,
         }
     }
 }
