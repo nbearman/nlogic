@@ -53,6 +53,8 @@
     <Compile Include="File.cs" />
     <Compile Include="processor\newProcessor.cs" />
     <None Include="os\boot.pro" />
+    <None Include="os_disk\64\handler.pro" />
+    <None Include="os_disk\100\user.pro" />
     <None Include="processor\oldProcessor.cs" />
     <Compile Include="processor\Processor3.cs" />
     <Compile Include="processor\ProcessorDefinitions.cs" />
@@ -68,6 +70,9 @@
     <Compile Include="simulation_environment\SimulationEnvironment.cs" />
     <Compile Include="entry_points\TestMain.cs" />
     <Compile Include="Utility.cs" />
+    <None Include="programs\fill_test\2.pro" />
+    <None Include="programs\fill_test\1.pro" />
+    <None Include="programs\function_call\function.pro" />
     <None Include="programs\loaded\loaded.pro" />
     <None Include="programs\mmu_enable\boot.pro" />
   </ItemGroup>

@@ -115,7 +115,8 @@ namespace nlogic_sim
             if (command == "assemble")
             {
                 string assemble_time = (DateTime.Now.ToString().Replace(' ', '_').Replace('/', '-').Replace(':', '-'));
-                Assembler.assemble(additional_args.ToArray(), String.Format("{0}_assembler_output.txt", assemble_time));
+                //Assembler.assemble(additional_args.ToArray(), String.Format("{0}_assembler_output.txt", assemble_time));
+                Assembler.assemble(additional_args.ToArray(), "assembler_output.txt");
                 Console.WriteLine(Assembler.dump_assembly());
                 return;
             }

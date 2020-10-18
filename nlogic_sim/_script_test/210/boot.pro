@@ -104,40 +104,15 @@ SKIP PC
 
 IADF WMEM
 SKIP PC
-// R !W (resident, clean) physical page 7
+// R !W physical page 7
 80 00 00 07
 
 //create a PTE in the user page table for virtual page 1, the second instruction page
 04 WOFST
 IADF WMEM
 SKIP PC
-// !R W (mapped, evicted) disk block 101
-40 00 00 65
-
-//=========================================================================
-// load kernel program into memory from disk
-//=========================================================================
-
-//virtual disk is MMIO device; MMIO devices start at 0xFF 00 00 00
-IADF WBASE
-SKIP PC
-FF 00 00 18
-
-//load into physical page 3
-00 WOFST
-03 WMEM
-
-//read from disk block 64
-04 WOFST
-40 WMEM
-
-//set read mode by writing 0
-08 WOFST
-00 WMEM
-
-//initiate the transfer
-0C WOFST
-01 WMEM
+// !R !W disk block 101
+00 00 00 65
 
 //=========================================================================
 // load user program into memory from disk
@@ -162,7 +137,7 @@ FF 00 00 18
 
 //initiate the transfer
 0C WOFST
-01 WMEM
+//01 WMEM
 
 
 //=========================================================================

@@ -40,7 +40,7 @@ namespace nlogic_sim
             seg = new ArraySegment<byte>(this.memory, MODE, 4).ToArray();
             uint mode = Utility.uint32_from_byte_array(seg);
 
-            string filename = String.Format("{0}/{1}.txt", disk_folder_path, block);
+            string filename = String.Format("{0}/{1:D5}.txt", disk_folder_path, block);
 
             int page_address = PAGE_SIZE * (int)page;
 

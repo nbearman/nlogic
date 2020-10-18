@@ -1,7 +1,7 @@
 #delete all the existing .nlog files
 echo deleting .nlog files:
 ls $1*.nlog 
-rm $1*.nlog 
+rm -f $1*.nlog 
 #get all the pro files from the given directory (1)
 pro_files=$(find $1 -type f -name "*.pro")
 echo .pro files found in $1:

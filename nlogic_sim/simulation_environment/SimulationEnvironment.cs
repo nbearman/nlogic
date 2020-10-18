@@ -188,7 +188,6 @@ namespace nlogic_sim
 
                     //read the data from the device at the translated address
                     result[virtual_offset] = device.read_byte(translated_address);
-                    return result;
                 }
                 else
                 {
@@ -310,7 +309,9 @@ namespace nlogic_sim
 
             address_thresholds.Add(base_address);
 
-            uint first_boundary = ((base_address / MemoryManagementUnit.PAGE_SIZE) + 1) * MemoryManagementUnit.PAGE_SIZE;
+            long long_first_boundary = (((long)base_address / MemoryManagementUnit.PAGE_SIZE) + 1) * MemoryManagementUnit.PAGE_SIZE;
+            Debug.Assert(long_first_boundary < uint.MaxValue, "overflow: cannot calculate page boundaries when accessing past 32 bit address");
+            uint first_boundary = (uint)long_first_boundary;
 
             uint boundary_counter = first_boundary;
             while (boundary_counter < base_address + length)

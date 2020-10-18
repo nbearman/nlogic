@@ -1,0 +1,27 @@
+|ASSEMBLER
+|	:> Status: opening file for assembly...
+|	:> Warning: literal number not < 0x80: 		i = 513
+|	:> Warning: literal number not < 0x80: 		i = 515
+|	:> Warning: literal number not < 0x80: 		i = 644
+|	:> Warning: literal number not < 0x80: 		i = 665
+|	:> Warning: literal number not < 0x80: 		i = 669
+|	:> Warning: literal number not < 0x80: 		i = 677
+|	:> Warning: literal number not < 0x80: 		i = 681
+|	:> Warning: literal number not < 0x80: 		i = 689
+|	:> Warning: literal number not < 0x80: 		i = 693
+|	:> Warning: literal number not < 0x80: 		i = 708
+|	:> Warning: literal number not < 0x80: 		i = 709
+|	:> Warning: literal number not < 0x80: 		i = 2369
+|	:> Warning: literal number not < 0x80: 		i = 2371
+|	:> Warning: literal number not < 0x80: 		i = 2373
+|	:> Warning: literal number not < 0x80: 		i = 2422
+|	:> Warning: literal number not < 0x80: 		i = 2428
+|	:> Warning: literal number not < 0x80: 		i = 2434
+|	:> Warning: literal number not < 0x80: 		i = 2571
+|	:> Warning: literal number not < 0x80: 		i = 2577
+|	:> Warning: literal number not < 0x80: 		i = 2583
+|	:> Warning: literal number not < 0x80: 		i = 2630
+|	:> Warning: literal number not < 0x80: 		i = 2632
+|	:> Warning: literal number not < 0x80: 		i = 2634
+|	:> Success: assembly successful
+|end ASSEMBLER
