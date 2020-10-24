@@ -71,6 +71,7 @@
     <Compile Include="simulation_environment\SimulationEnvironment.cs" />
     <Compile Include="entry_points\TestMain.cs" />
     <Compile Include="Utility.cs" />
+    <None Include="programs\const_label_loading\boot.pro" />
     <None Include="programs\fill_test\2.pro" />
     <None Include="programs\fill_test\1.pro" />
     <None Include="programs\function_call\function.pro" />
@@ -84,6 +85,7 @@
     <Content Include="builder.txt">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
+    <Content Include="disk_builder.txt" />
     <Content Include="documentation\memory_layout.txt" />
     <Content Include="documentation\Readme.txt" />
     <Content Include="programs\alu_shift_delayed_test.txt">
@@ -157,7 +159,6 @@
     </Content>
   </ItemGroup>
   <ItemGroup>
-    <Folder Include="programs\const_label_loading\" />
     <Folder Include="programs\virtual_display_program\" />
     <Folder Include="virtual_disk\" />
   </ItemGroup>
