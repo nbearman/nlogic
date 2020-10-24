@@ -53,6 +53,7 @@
     <Compile Include="File.cs" />
     <Compile Include="processor\newProcessor.cs" />
     <None Include="os\boot.pro" />
+    <None Include="os_disk\64\func.pro" />
     <None Include="os_disk\64\handler.pro" />
     <None Include="os_disk\100\user.pro" />
     <None Include="processor\oldProcessor.cs" />
