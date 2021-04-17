@@ -9,19 +9,21 @@
 |	:> Warning: literal number not < 0x80: 		i = 681
 |	:> Warning: literal number not < 0x80: 		i = 689
 |	:> Warning: literal number not < 0x80: 		i = 693
-|	:> Warning: literal number not < 0x80: 		i = 708
-|	:> Warning: literal number not < 0x80: 		i = 709
-|	:> Warning: literal number not < 0x80: 		i = 2369
-|	:> Warning: literal number not < 0x80: 		i = 2371
-|	:> Warning: literal number not < 0x80: 		i = 2373
-|	:> Warning: literal number not < 0x80: 		i = 2422
-|	:> Warning: literal number not < 0x80: 		i = 2428
-|	:> Warning: literal number not < 0x80: 		i = 2434
-|	:> Warning: literal number not < 0x80: 		i = 2571
-|	:> Warning: literal number not < 0x80: 		i = 2577
-|	:> Warning: literal number not < 0x80: 		i = 2583
-|	:> Warning: literal number not < 0x80: 		i = 2630
-|	:> Warning: literal number not < 0x80: 		i = 2632
-|	:> Warning: literal number not < 0x80: 		i = 2634
+|	:> Warning: literal number not < 0x80: 		i = 742
+|	:> Warning: literal number not < 0x80: 		i = 743
+|	:> Warning: literal number not < 0x80: 		i = 2377
+|	:> Warning: literal number not < 0x80: 		i = 2379
+|	:> Warning: literal number not < 0x80: 		i = 2381
+|	:> Warning: literal number not < 0x80: 		i = 2383
+|	:> Warning: literal number not < 0x80: 		i = 2398
+|	:> Warning: literal number not < 0x80: 		i = 2446
+|	:> Warning: literal number not < 0x80: 		i = 2452
+|	:> Warning: literal number not < 0x80: 		i = 2458
+|	:> Warning: literal number not < 0x80: 		i = 2605
+|	:> Warning: literal number not < 0x80: 		i = 2611
+|	:> Warning: literal number not < 0x80: 		i = 2617
+|	:> Warning: literal number not < 0x80: 		i = 2666
+|	:> Warning: literal number not < 0x80: 		i = 2668
+|	:> Warning: literal number not < 0x80: 		i = 2670
 |	:> Success: assembly successful
 |end ASSEMBLER

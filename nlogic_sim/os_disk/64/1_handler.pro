@@ -11,7 +11,7 @@ SKIP PC
 08 WOFST //breakpoint register
 00 WMEM //breakpoint at 0
 
-//enabled the breakpoint
+//enable the breakpoint
 10 WOFST //breakpoint enabled register
 01 WMEM //non-zero -> enabled
 
@@ -255,6 +255,10 @@ FILL940
 @@get_open_physical_page
 //returns physical page number that is available for incoming page
 //may or may not result in page eviction
+00 RBASE
+00 ROFST
+7F RMEM
+LINK PC
 
 
 @@KERNEL_STACK
