@@ -53,8 +53,8 @@
     <Compile Include="File.cs" />
     <Compile Include="processor\newProcessor.cs" />
     <None Include="os\boot.pro" />
-    <None Include="os_disk\64\func.pro" />
-    <None Include="os_disk\64\handler.pro" />
+    <None Include="os_disk\64\2_func.pro" />
+    <None Include="os_disk\64\1_handler.pro" />
     <None Include="os_disk\100\user.pro" />
     <None Include="processor\oldProcessor.cs" />
     <Compile Include="processor\Processor3.cs" />
@@ -82,11 +82,13 @@
     <None Include="App.config" />
   </ItemGroup>
   <ItemGroup>
+    <Content Include="AssembleDebug.py" />
     <Content Include="builder.txt">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
     <Content Include="disk_builder.txt" />
     <Content Include="documentation\memory_layout.txt" />
+    <Content Include="documentation\os_overview.txt" />
     <Content Include="documentation\Readme.txt" />
     <Content Include="programs\alu_shift_delayed_test.txt">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>

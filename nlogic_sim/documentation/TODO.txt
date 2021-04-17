@@ -1,4 +1,12 @@
 ﻿
+build advanced debugger
+    output original code -> virtual address mapping from assembler
+    create program (web file generator? annotated text file?) to show PCs in original code file
+    allow adding breakpoints
+        opens visualizer
+        jumps to line in annotated code
+
+====================================================================================
 
 Change simulator to accept configuration file as command line argument to set up memory, MMIO devices, etc.
 
