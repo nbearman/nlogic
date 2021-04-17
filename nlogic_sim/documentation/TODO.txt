@@ -1,10 +1,9 @@
 ﻿
-build advanced debugger
-    output original code -> virtual address mapping from assembler
-    create program (web file generator? annotated text file?) to show PCs in original code file
-    allow adding breakpoints
-        opens visualizer
-        jumps to line in annotated code
+test debug assembler
+
+allow adding breakpoints
+    opens visualizer
+    jumps to line in annotated code
 
 ====================================================================================
 
