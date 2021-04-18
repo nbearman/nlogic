@@ -1,5 +1,0 @@
-|ASSEMBLER
-|	:> Status: opening file for assembly...
-|	:> Warning: literal number not < 0x80: 		i = 15
-|	:> Success: assembly successful
-|end ASSEMBLER

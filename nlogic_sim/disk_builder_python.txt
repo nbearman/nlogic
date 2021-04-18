@@ -1,5 +1,13 @@
 #move into each folder in the given directory and assemble the program from pro files
-#each should be numbered as a disk block
+#each folder should be numbered as a starting disk block
+
+echo "    create virtual_disk/"
+mkdir -p virtual_disk/
+echo "    removing .asm from virtual_disk/"
+cd virtual_disk/
+rm -f *.asm
+cd ..
+
 for d in $1*; do
   if [ -d "$d" ]; then
     echo "entering: $d"
@@ -11,15 +19,9 @@ for d in $1*; do
     pro_files=$(find . -type f -name "*.pro")
     echo "    found .pro files in $d: $pro_files"
     echo "    running PYTHON DEBUG assembler"
-    python3 ../../AssembleDebug.py -p -o DISK_DEBUG $pro_files > $disk_folder_name.asm
+    python3 ../../AssembleDebug.py -p -o ../../DISK_DEBUG/$disk_folder_name $pro_files > ../../virtual_disk/$disk_folder_name.asm
     cd ../..
   fi
-done
-
-#find all assembled programs and move them into the virtual disk folder
-programs=$(find $1 -type f -name "*.asm")
-for f in $programs; do
-   cp $f virtual_disk/
 done
 
 #move into the virtual disk and break programs up into disk blocks
@@ -33,5 +35,4 @@ done
 #remove the complete programs from the virtual disk folder, leaving only disk blocks
 rm -f *.asm
 
-#move back out into the starting directory
 cd ..
