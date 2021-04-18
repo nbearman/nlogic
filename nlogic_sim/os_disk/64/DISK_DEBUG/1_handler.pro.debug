@@ -1,0 +1,264 @@
+-- -- -- -- |	//=========================================================================
+-- -- -- -- |	// kernel entry point
+-- -- -- -- |	//=========================================================================
+00 00 00 00 |	FILLB0
+00 00 00 B0 |	33 GPE
+-- -- -- -- |	
+-- -- -- -- |	//set the MMU VA break point
+00 00 00 B2 |	IADF WBASE
+00 00 00 B4 |	SKIP PC
+00 00 00 B6 |	00 00 10 00 //MMIO base address (in VA)
+00 00 00 BA |	08 WOFST //breakpoint register
+00 00 00 BC |	00 WMEM //breakpoint at 0
+-- -- -- -- |	
+-- -- -- -- |	//enable the breakpoint
+00 00 00 BE |	10 WOFST //breakpoint enabled register
+00 00 00 C0 |	01 WMEM //non-zero -> enabled
+-- -- -- -- |	
+00 00 00 C2 |	00 RBASE
+00 00 00 C4 |	00 ROFST
+-- -- -- -- |	
+-- -- -- -- |	//jump to 0 in user space
+00 00 00 C6 |	00 PC
+-- -- -- -- |	
+-- -- -- -- |	//=========================================================================
+-- -- -- -- |	// interrupt handler
+-- -- -- -- |	//=========================================================================
+00 00 00 C8 |	FILL200
+00 00 02 00 |	WBASE DMEM00
+00 00 02 02 |	WOFST DMEM04
+-- -- -- -- |	
+-- -- -- -- |	//TODO change this to save registers to kernel's stack
+-- -- -- -- |	//dump registers to VA 0100
+00 00 02 04 |	IADF WBASE
+00 00 02 06 |	SKIP PC
+00 00 02 08 |	00 00 01 00
+00 00 02 0C |	00 WOFST
+00 00 02 0E |	GPA WMEM
+00 00 02 10 |	04 WOFST
+00 00 02 12 |	GPB WMEM
+00 00 02 14 |	08 WOFST
+00 00 02 16 |	GPC WMEM
+00 00 02 18 |	0C WOFST
+00 00 02 1A |	GPD WMEM
+00 00 02 1C |	10 WOFST
+00 00 02 1E |	GPE WMEM
+00 00 02 20 |	14 WOFST
+00 00 02 22 |	GPF WMEM
+00 00 02 24 |	18 WOFST
+00 00 02 26 |	GPG WMEM
+00 00 02 28 |	1C WOFST
+00 00 02 2A |	GPH WMEM
+-- -- -- -- |	
+00 00 02 2C |	20 WOFST
+00 00 02 2E |	COMPA WMEM
+00 00 02 30 |	24 WOFST
+00 00 02 32 |	COMPB WMEM
+00 00 02 34 |	28 WOFST
+00 00 02 36 |	RBASE WMEM
+00 00 02 38 |	2C WOFST
+00 00 02 3A |	ROFST WMEM
+00 00 02 3C |	30 WOFST
+00 00 02 3E |	ALUM WMEM
+00 00 02 40 |	34 WOFST
+00 00 02 42 |	ALUA WMEM
+00 00 02 44 |	38 WOFST
+00 00 02 46 |	ALUB WMEM
+00 00 02 48 |	3C WOFST
+00 00 02 4A |	FPUM WMEM
+00 00 02 4C |	40 WOFST
+00 00 02 4E |	FPUA WMEM
+00 00 02 50 |	44 WOFST
+00 00 02 52 |	FPUB WMEM
+-- -- -- -- |	
+-- -- -- -- |	//determine the cause of the interrupt
+-- -- -- -- |	//mask flag to check if interrupt was raised on MMU channel
+00 00 02 54 |	FLAG ALUA
+00 00 02 56 |	IADF ALUB
+00 00 02 58 |	SKIP PC
+00 00 02 5A |	00 00 00 01 //mask for the first channel (MMU)
+00 00 02 5E |	08 ALUM //AND mode
+00 00 02 60 |	ALUR COMPA
+00 00 02 62 |	00 COMPB //if flag channel is 1, jump to mmu interrupt handler
+00 00 02 64 |	COMPR PC
+00 00 02 66 |	:non_mmu_interrupt
+00 00 02 6A |	:mmu_interrupt
+-- -- -- -- |	
+-- -- -- -- |	@non_mmu_interrupt
+-- -- -- -- |	//if interrupt is not from MMU
+-- -- -- -- |	//do nothing if the interrupt is from anywhere besides the MMU
+00 00 02 6E |	7F FLAG
+-- -- -- -- |	
+-- -- -- -- |	@mmu_interrupt
+00 00 02 70 |	7F GPB
+-- -- -- -- |	//else interrupt is from MMU
+-- -- -- -- |	//retrieve the faulted PTE from the MMU
+00 00 02 72 |	IADF RBASE
+00 00 02 74 |	SKIP PC
+00 00 02 76 |	00 00 10 00
+00 00 02 7A |	0C ROFST
+00 00 02 7C |	RMEM GPA
+-- -- -- -- |	
+-- -- -- -- |	//check PTE protections
+-- -- -- -- |	//get them from PTE
+00 00 02 7E |	GPA ALUA //PTE to ALU
+00 00 02 80 |	IADF ALUB //mask to ALU
+00 00 02 82 |	SKIP PC
+00 00 02 84 |	C0 00 00 00 //mask for the RW bits of the PTE
+00 00 02 88 |	08 ALUM //AND mode
+-- -- -- -- |	
+00 00 02 8A |	ALUR ALUA //RW bits to ALU
+00 00 02 8C |	1E ALUB //shift 30 bits right
+00 00 02 8E |	06 ALUM //right shift mode
+-- -- -- -- |	
+-- -- -- -- |	//see which of 00, 01, 10, 11 the RW bits are
+00 00 02 90 |	ALUR COMPA
+00 00 02 92 |	00 COMPB
+00 00 02 94 |	COMPR PC
+00 00 02 96 |	:r0w0
+00 00 02 9A |	:_r0w0
+-- -- -- -- |	@_r0w0
+00 00 02 9E |	01 COMPB
+00 00 02 A0 |	COMPR PC
+00 00 02 A2 |	:r0w1
+00 00 02 A6 |	:_r0w1
+-- -- -- -- |	@_r0w1
+00 00 02 AA |	02 COMPB
+00 00 02 AC |	COMPR PC
+00 00 02 AE |	:r1w0
+00 00 02 B2 |	:_r1w0
+-- -- -- -- |	@_r1w0
+00 00 02 B6 |	7F FLAG //halt; RW was 11, no page fault should have occurred
+-- -- -- -- |	
+-- -- -- -- |	@r0w0
+-- -- -- -- |	//not mapped (possibly syscall)
+00 00 02 B8 |	7F FLAG //TODO for now, just halt
+-- -- -- -- |	
+-- -- -- -- |	@r0w1
+-- -- -- -- |	//write protected; clean page, possibly shared
+-- -- -- -- |	//must have been write to raise interrupt
+00 00 02 BA |	7F FLAG //TODO for now, just halt
+-- -- -- -- |	
+-- -- -- -- |	@r1w0
+-- -- -- -- |	//page not resident
+-- -- -- -- |	
+-- -- -- -- |	//set up the stack
+00 00 02 BC |	00 WOFST
+00 00 02 BE |	IADF WBASE
+00 00 02 C0 |	SKIP PC
+00 00 02 C2 |	::KERNEL_STACK
+-- -- -- -- |	
+-- -- -- -- |	//push function address onto stack
+00 00 02 C6 |	04 WOFST
+00 00 02 C8 |	IADF WMEM
+00 00 02 CA |	08 WOFST
+00 00 02 CC |	SKIP PC
+00 00 02 CE |	::get_open_physical_page
+00 00 02 D2 |	RTRN LINK
+00 00 02 D4 |	IADN PC
+00 00 02 D6 |	::FUNC
+-- -- -- -- |	
+-- -- -- -- |	//result of function call is target physical page number
+-- -- -- -- |	//pop result from stack
+00 00 02 DA |	04 WOFST
+00 00 02 DC |	WMEM GPH
+-- -- -- -- |	
+-- -- -- -- |	
+-- -- -- -- |	
+-- -- -- -- |	//evict page
+-- -- -- -- |	//load page from disk
+-- -- -- -- |	//return from interrupt
+-- -- -- -- |	
+-- -- -- -- |	//load page from disk
+-- -- -- -- |	//get disk block from PTE
+00 00 02 DE |	GPA ALUA //PTE to ALU
+00 00 02 E0 |	IADF ALUB //mask to ALU
+00 00 02 E2 |	SKIP PC
+00 00 02 E4 |	00 0F FF FF
+00 00 02 E8 |	08 ALUM //AND mode
+00 00 02 EA |	ALUR GPD
+-- -- -- -- |	
+-- -- -- -- |	
+-- -- -- -- |	
+-- -- -- -- |	
+-- -- -- -- |	
+-- -- -- -- |	//nothing left
+00 00 02 EC |	02 FPUM
+00 00 02 EE |	11 FPUA
+00 00 02 F0 |	22 FPUB
+00 00 02 F2 |	FPUR GPC
+00 00 02 F4 |	7F FLAG
+-- -- -- -- |	
+00 00 02 F6 |	FILL600
+-- -- -- -- |	//physical page map
+-- -- -- -- |	
+-- -- -- -- |	//=========================
+-- -- -- -- |	// physcial page mapping entry
+-- -- -- -- |	//==========
+-- -- -- -- |	// 0x00 |   uint    |   process id
+-- -- -- -- |	// 0x04 |   uint    |   directory physical page
+-- -- -- -- |	// 0x08 |   uint    |   virtual page number
+-- -- -- -- |	// 0x0C |   uint    |   number of references
+-- -- -- -- |	// 0x10 |   uint    |   disk block number
+-- -- -- -- |	//=========================
+-- -- -- -- |	
+-- -- -- -- |	//boot sequence (no owner)
+00 00 06 00 |	00 00 00 00
+00 00 06 04 |	00 00 00 00
+00 00 06 08 |	00 00 00 00
+00 00 06 0C |	00 00 00 00
+00 00 06 10 |	00 00 00 00
+-- -- -- -- |	
+-- -- -- -- |	//kernel page directory
+00 00 06 14 |	00 00 00 01 //kernel process ID == 1
+00 00 06 18 |	00 00 00 01 //owning page directory is this directory, kernel's page directory
+00 00 06 1C |	00 00 00 00 //this is a directory
+00 00 06 20 |	00 00 00 01 //kernel process references this physical page
+00 00 06 24 |	00 00 00 00 //no disk block number, can never be evicted
+-- -- -- -- |	
+-- -- -- -- |	//kernel page table 0
+00 00 06 28 |	00 00 00 01 //kernel process ID == 1
+00 00 06 2C |	00 00 00 01 //owning page directory is kernel directory
+00 00 06 30 |	00 00 00 00 //virtual page 0
+00 00 06 34 |	00 00 00 01 //kernel process references this physical page
+00 00 06 38 |	00 00 00 00 //no disk block number, can never be evicted
+-- -- -- -- |	
+-- -- -- -- |	//kernel virtual page 0
+00 00 06 3C |	00 00 00 01 //kernel process ID == 1
+00 00 06 40 |	00 00 00 01 //owning page directory is kernel directory
+00 00 06 44 |	00 00 00 00 //virtual page 0
+00 00 06 48 |	00 00 00 01 //kernel process references this physical page
+00 00 06 4C |	00 00 00 00 //no disk block number, can never be evicted
+-- -- -- -- |	
+-- -- -- -- |	//end physical page map (16 page mappings)
+00 00 06 50 |	FILL840
+-- -- -- -- |	//process map
+-- -- -- -- |	
+-- -- -- -- |	//=========================
+-- -- -- -- |	// process map entry
+-- -- -- -- |	//==========
+-- -- -- -- |	// 0x00 |   uint    |   process id
+-- -- -- -- |	// 0x04 |   uint    |   number of mapped virtual pages
+-- -- -- -- |	// 0x08 |   uint    |   number of pages resident in memory
+-- -- -- -- |	// 0x0C |   uint    |   disk block of process page directory
+-- -- -- -- |	//=========================
+-- -- -- -- |	
+-- -- -- -- |	//kernel process descriptor
+00 00 08 40 |	00 00 00 01 //kernel process ID == 1
+00 00 08 44 |	00 00 00 03 //3 pages are mapped: 2 pages of memory and 1 mapped to the MMU
+00 00 08 48 |	00 00 00 03 //page directory, page table, 1 page of memory
+00 00 08 4C |	00 00 00 00 //no disk block number, kernel page directory can never be evicted
+-- -- -- -- |	
+-- -- -- -- |	//end process map (16 process descriptors)
+00 00 08 50 |	FILL940
+-- -- -- -- |	
+-- -- -- -- |	@@get_open_physical_page
+-- -- -- -- |	//returns physical page number that is available for incoming page
+-- -- -- -- |	//may or may not result in page eviction
+00 00 09 40 |	00 RBASE
+00 00 09 42 |	00 ROFST
+00 00 09 44 |	7F RMEM
+00 00 09 46 |	LINK PC
+-- -- -- -- |	
+-- -- -- -- |	
+-- -- -- -- |	@@KERNEL_STACK

@@ -227,6 +227,8 @@ class Program:
             # create a Line object with original file information
             line_num = 0
             for line in file:
+                # some files start with byte order markers that need to be removed, apparently
+                line = bytes(line, "utf-8").decode("utf-8-sig")
                 all_lines.append(Line(name, line_num, line))
             file.close()
 
@@ -341,21 +343,32 @@ parser.add_argument(
     type=str,
     help="directory to write output files to"
 )
+parser.add_argument(
+    "-p",
+    "--print",
+    action="store_true",
+    help="print final assembly to stdout"
+)
 
 # parse command line arguments
 args = parser.parse_args()
 
 # assemble program
-p = Program(args.code_files)
+p = Program(args.code_files, print_final=False)
 
 # create output path if provided and it doesn't exist
 if args.out:
     Path(args.out).mkdir(parents=True, exist_ok=True)
 
+# either print the output to stdout or create program.asm in output directory
 # write the assembled program to file
-asm_file = open(os.path.join(args.out or "", "program.asm"), "w+")
-asm_file.write(" ".join(p.code))
-asm_file.close()
+final_assembly = " ".join(p.code).upper()
+if args.print:
+    print(final_assembly)
+else:
+    asm_file = open(os.path.join(args.out or "", "program.asm"), "w+")
+    asm_file.write(final_assembly)
+    asm_file.close()
 
 # create the annotated debug source files
 for filename in p.annotated_files:
