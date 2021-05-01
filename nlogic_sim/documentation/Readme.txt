@@ -59,3 +59,13 @@ Use the bash script "disk_builder_python.txt" to create a virtual disk and debug
     outputs a folder called "DISK_DEBUG"
         contains a folder for each original numbered folder
             each folder contains a debug annotated version of the source contained in the corresponding original numbered folder
+
+
+AssembleDebug.py
+    build .pro files into an assembled program
+    run "python3 AssembleDebug.py [File names] [-p] [-o]" to assemble the give files into a program and produce debug annotated versions of source files
+        add the "-p" flag to print the fully assembled program to stdout
+        add the "-o" to specify an output directory for the debug annotated source files
+            uses or creates a folder with the name specified after "-o"
+            folder contains annotated source files with ".debug" extensions corresponding to original source files
+    run "python3 AssembleDebug.py --help" to see the usage guide
