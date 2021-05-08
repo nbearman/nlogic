@@ -187,6 +187,13 @@ class Line:
                 result.append(Fill(word))
                 continue
 
+            # find BREAKPOINT macros
+            breakpoint_match = re.match("(break)$", word.lower())
+            if breakpoint_match:
+                result.append(Literal("7b"))
+                result.append(Literal("7b"))
+                continue
+
             # identify byte literals
             literal_match = re.match("^[0-9a-f][0-9a-f]$", word.lower())
             if literal_match:
