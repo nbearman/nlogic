@@ -57,6 +57,17 @@ GPA DMEM0C
 WOFST ALUA
 04 ALUB //4 bytes per register
 
+
+// STACK ////////////////////////////////////////
+// ... local variables      <--- FP
+// arg2
+// arg1
+// arg0
+// target function address
+//                          <--- SP
+//WBASE currently holds caller FP
+//WOFST currently holds caller SP
+
 //read top of stack: target function address
 ALUR WOFST //SP = SP - 4
 WMEM GPA

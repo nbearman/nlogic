@@ -12,5 +12,7 @@ IADN PC
 
 FILLFFE
 11 GPG
+
+//page boundary, trigger page fault on instruction fetch
 12 GPF
 13 GPE

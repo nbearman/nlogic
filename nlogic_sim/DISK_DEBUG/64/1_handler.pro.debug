@@ -90,78 +90,78 @@
 00 00 02 6E |	7F FLAG
 -- -- -- -- |	
 -- -- -- -- |	@mmu_interrupt
-00 00 02 70 |	7F GPB
 -- -- -- -- |	//else interrupt is from MMU
 -- -- -- -- |	//retrieve the faulted PTE from the MMU
-00 00 02 72 |	IADF RBASE
-00 00 02 74 |	SKIP PC
-00 00 02 76 |	00 00 10 00
-00 00 02 7A |	0C ROFST
-00 00 02 7C |	RMEM GPA
+00 00 02 70 |	IADF RBASE
+00 00 02 72 |	SKIP PC
+00 00 02 74 |	00 00 10 00
+00 00 02 78 |	0C ROFST
+00 00 02 7A |	RMEM GPA
 -- -- -- -- |	
 -- -- -- -- |	//check PTE protections
 -- -- -- -- |	//get them from PTE
-00 00 02 7E |	GPA ALUA //PTE to ALU
-00 00 02 80 |	IADF ALUB //mask to ALU
-00 00 02 82 |	SKIP PC
-00 00 02 84 |	C0 00 00 00 //mask for the RW bits of the PTE
-00 00 02 88 |	08 ALUM //AND mode
+00 00 02 7C |	GPA ALUA //PTE to ALU
+00 00 02 7E |	IADF ALUB //mask to ALU
+00 00 02 80 |	SKIP PC
+00 00 02 82 |	C0 00 00 00 //mask for the RW bits of the PTE
+00 00 02 86 |	08 ALUM //AND mode
 -- -- -- -- |	
-00 00 02 8A |	ALUR ALUA //RW bits to ALU
-00 00 02 8C |	1E ALUB //shift 30 bits right
-00 00 02 8E |	06 ALUM //right shift mode
+00 00 02 88 |	ALUR ALUA //RW bits to ALU
+00 00 02 8A |	1E ALUB //shift 30 bits right
+00 00 02 8C |	06 ALUM //right shift mode
 -- -- -- -- |	
 -- -- -- -- |	//see which of 00, 01, 10, 11 the RW bits are
-00 00 02 90 |	ALUR COMPA
-00 00 02 92 |	00 COMPB
-00 00 02 94 |	COMPR PC
-00 00 02 96 |	:r0w0
-00 00 02 9A |	:_r0w0
+00 00 02 8E |	ALUR COMPA
+00 00 02 90 |	00 COMPB
+00 00 02 92 |	COMPR PC
+00 00 02 94 |	:r0w0
+00 00 02 98 |	:_r0w0
 -- -- -- -- |	@_r0w0
-00 00 02 9E |	01 COMPB
-00 00 02 A0 |	COMPR PC
-00 00 02 A2 |	:r0w1
-00 00 02 A6 |	:_r0w1
+00 00 02 9C |	01 COMPB
+00 00 02 9E |	COMPR PC
+00 00 02 A0 |	:r0w1
+00 00 02 A4 |	:_r0w1
 -- -- -- -- |	@_r0w1
-00 00 02 AA |	02 COMPB
-00 00 02 AC |	COMPR PC
-00 00 02 AE |	:r1w0
-00 00 02 B2 |	:_r1w0
+00 00 02 A8 |	02 COMPB
+00 00 02 AA |	COMPR PC
+00 00 02 AC |	:r1w0
+00 00 02 B0 |	:_r1w0
 -- -- -- -- |	@_r1w0
-00 00 02 B6 |	7F FLAG //halt; RW was 11, no page fault should have occurred
+00 00 02 B4 |	7F FLAG //halt; RW was 11, no page fault should have occurred
 -- -- -- -- |	
 -- -- -- -- |	@r0w0
 -- -- -- -- |	//not mapped (possibly syscall)
+00 00 02 B6 |	7F FLAG //TODO for now, just halt
+-- -- -- -- |	
+-- -- -- -- |	@r1w0
+-- -- -- -- |	//page is readable but not writable
+-- -- -- -- |	//either a shared page or a clean page
+-- -- -- -- |	//page needs to be split or marked as dirty
 00 00 02 B8 |	7F FLAG //TODO for now, just halt
 -- -- -- -- |	
 -- -- -- -- |	@r0w1
--- -- -- -- |	//write protected; clean page, possibly shared
--- -- -- -- |	//must have been write to raise interrupt
-00 00 02 BA |	7F FLAG //TODO for now, just halt
--- -- -- -- |	
--- -- -- -- |	@r1w0
+-- -- -- -- |	//not readable and "writable" indicates the page is mapped but paged out
 -- -- -- -- |	//page not resident
 -- -- -- -- |	
 -- -- -- -- |	//set up the stack
-00 00 02 BC |	00 WOFST
-00 00 02 BE |	IADF WBASE
-00 00 02 C0 |	SKIP PC
-00 00 02 C2 |	::KERNEL_STACK
+00 00 02 BA |	00 WOFST
+00 00 02 BC |	IADF WBASE
+00 00 02 BE |	SKIP PC
+00 00 02 C0 |	::KERNEL_STACK
 -- -- -- -- |	
 -- -- -- -- |	//push function address onto stack
-00 00 02 C6 |	04 WOFST
-00 00 02 C8 |	IADF WMEM
-00 00 02 CA |	08 WOFST
-00 00 02 CC |	SKIP PC
-00 00 02 CE |	::get_open_physical_page
-00 00 02 D2 |	RTRN LINK
-00 00 02 D4 |	IADN PC
-00 00 02 D6 |	::FUNC
+00 00 02 C4 |	IADF WMEM
+00 00 02 C6 |	SKIP PC
+00 00 02 C8 |	::get_open_physical_page
+00 00 02 CC |	04 WOFST
+00 00 02 CE |	RTRN LINK
+00 00 02 D0 |	IADN PC
+00 00 02 D2 |	::FUNC
 -- -- -- -- |	
 -- -- -- -- |	//result of function call is target physical page number
 -- -- -- -- |	//pop result from stack
-00 00 02 DA |	04 WOFST
-00 00 02 DC |	WMEM GPH
+00 00 02 D6 |	00 WOFST
+00 00 02 D8 |	WMEM GPH
 -- -- -- -- |	
 -- -- -- -- |	
 -- -- -- -- |	
@@ -171,25 +171,25 @@
 -- -- -- -- |	
 -- -- -- -- |	//load page from disk
 -- -- -- -- |	//get disk block from PTE
-00 00 02 DE |	GPA ALUA //PTE to ALU
-00 00 02 E0 |	IADF ALUB //mask to ALU
-00 00 02 E2 |	SKIP PC
-00 00 02 E4 |	00 0F FF FF
-00 00 02 E8 |	08 ALUM //AND mode
-00 00 02 EA |	ALUR GPD
+00 00 02 DA |	GPA ALUA //PTE to ALU
+00 00 02 DC |	IADF ALUB //mask to ALU
+00 00 02 DE |	SKIP PC
+00 00 02 E0 |	00 0F FF FF
+00 00 02 E4 |	08 ALUM //AND mode
+00 00 02 E6 |	ALUR GPD
 -- -- -- -- |	
 -- -- -- -- |	
 -- -- -- -- |	
 -- -- -- -- |	
 -- -- -- -- |	
 -- -- -- -- |	//nothing left
-00 00 02 EC |	02 FPUM
-00 00 02 EE |	11 FPUA
-00 00 02 F0 |	22 FPUB
-00 00 02 F2 |	FPUR GPC
-00 00 02 F4 |	7F FLAG
+00 00 02 E8 |	02 FPUM
+00 00 02 EA |	11 FPUA
+00 00 02 EC |	22 FPUB
+00 00 02 EE |	FPUR GPC
+00 00 02 F0 |	7F FLAG
 -- -- -- -- |	
-00 00 02 F6 |	FILL600
+00 00 02 F2 |	FILL600
 -- -- -- -- |	//physical page map
 -- -- -- -- |	
 -- -- -- -- |	//=========================
@@ -255,10 +255,9 @@
 -- -- -- -- |	@@get_open_physical_page
 -- -- -- -- |	//returns physical page number that is available for incoming page
 -- -- -- -- |	//may or may not result in page eviction
-00 00 09 40 |	00 RBASE
-00 00 09 42 |	00 ROFST
-00 00 09 44 |	7F RMEM
-00 00 09 46 |	LINK PC
--- -- -- -- |	
--- -- -- -- |	
--- -- -- -- |	@@KERNEL_STACK
+00 00 09 40 |	BREAK
+-- -- -- -- |	//TODO implement this
+00 00 09 42 |	00 RBASE
+00 00 09 44 |	00 ROFST
+00 00 09 46 |	7F RMEM
+00 00 09 48 |	LINK PC

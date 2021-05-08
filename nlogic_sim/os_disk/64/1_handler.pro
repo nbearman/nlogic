@@ -90,7 +90,6 @@ COMPR PC
 7F FLAG
 
 @mmu_interrupt
-7F GPB
 //else interrupt is from MMU
 //retrieve the faulted PTE from the MMU
 IADF RBASE
@@ -134,12 +133,14 @@ COMPR PC
 //not mapped (possibly syscall)
 7F FLAG //TODO for now, just halt
 
-@r0w1
-//write protected; clean page, possibly shared
-//must have been write to raise interrupt
+@r1w0
+//page is readable but not writable
+//either a shared page or a clean page
+//page needs to be split or marked as dirty
 7F FLAG //TODO for now, just halt
 
-@r1w0
+@r0w1
+//not readable and "writable" indicates the page is mapped but paged out
 //page not resident
 
 //set up the stack
@@ -149,18 +150,17 @@ SKIP PC
 ::KERNEL_STACK
 
 //push function address onto stack
-04 WOFST
 IADF WMEM
-08 WOFST
 SKIP PC
 ::get_open_physical_page
+04 WOFST
 RTRN LINK
 IADN PC
 ::FUNC
 
 //result of function call is target physical page number
 //pop result from stack
-04 WOFST
+00 WOFST
 WMEM GPH
 
 
@@ -255,10 +255,9 @@ FILL940
 @@get_open_physical_page
 //returns physical page number that is available for incoming page
 //may or may not result in page eviction
+BREAK
+//TODO implement this
 00 RBASE
 00 ROFST
 7F RMEM
 LINK PC
-
-
-@@KERNEL_STACK
