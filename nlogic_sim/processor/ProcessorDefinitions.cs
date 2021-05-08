@@ -30,6 +30,8 @@ namespace nlogic_sim
             Divide = 4,
         }
 
+        public const byte BREAKPOINT = 0x7B;
+
         public const byte IMM = 0x00;
         public const byte FLAG = 0x80;
         public const byte EXE = 0x81;

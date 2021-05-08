@@ -100,6 +100,14 @@ namespace nlogic_sim
             uint cycle_status = 0;
             while (cycle_status != halt_status)
             {
+                //enable the visualizer if a breakpoint was hit
+                if (cycle_status == Processor.BREAKPOINT && !visualizer_enabled)
+                {
+                    Console.Clear();
+                    this.processor.initialize_visualizer();
+                    visualizer_enabled = true;
+                }
+
                 //save the state of the processor if logging is enabled
                 if (logging_enabled)
                 {
@@ -127,7 +135,8 @@ namespace nlogic_sim
             if (visualizer_enabled)
             {
                 this.processor.print_current_state();
-                Console.ReadKey();
+                Console.WriteLine("Press enter.");
+                Console.ReadLine();
             }
 
         }

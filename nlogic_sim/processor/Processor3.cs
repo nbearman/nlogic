@@ -114,6 +114,16 @@ namespace nlogic_sim
 
 
             //write to the destination
+
+            if (destination == Processor.BREAKPOINT)
+            {
+                //special breakpoint logic
+                //not part of the spec; if the instruction writes to 7B, do not do anything
+                //and return the breakpoint code as this cycle's status so the simulation environment
+                //can enable the visualizer
+                return Processor.BREAKPOINT;
+            }
+
             uint destination_address;
             if (destination < FLAG)
             {

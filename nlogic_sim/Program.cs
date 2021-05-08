@@ -234,11 +234,6 @@ namespace nlogic_sim
                 File_Input.write_file(logging_file_path, environment.get_log());
             }
 
-            if (visualizer_enabled)
-            {
-                Console.WriteLine("Press enter.");
-                Console.ReadLine();
-            }
             Console.WriteLine("Press any key to end...");
             Console.ReadKey();
             Console.Clear();
