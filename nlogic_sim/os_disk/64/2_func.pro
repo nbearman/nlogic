@@ -13,8 +13,8 @@
 //target function address will be overwritten with
 //function call result
 
-//target function should store result at (FP - 54)
-//first function argument is accessible at (FP - 58)
+//target function should store result at (FP - 54 (0x36))
+//first function argument is accessible at (FP - 58 (0x3A))
 
 //invoke this helper with:
 //RTRN LINK

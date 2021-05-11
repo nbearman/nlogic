@@ -190,10 +190,11 @@ FPUR GPC
 7F FLAG
 
 FILL600
+@@physical_page_map
 //physical page map
 
 //=========================
-// physcial page mapping entry
+// physical page mapping entry
 //==========
 // 0x00 |   uint    |   process id
 // 0x04 |   uint    |   directory physical page
@@ -252,10 +253,94 @@ FILL840
 //end process map (16 process descriptors)
 FILL940
 
+
+//=========================================================================
+// [function] get_open_physical_page | void
+//=========================================================================
 @@get_open_physical_page
 //returns physical page number that is available for incoming page
 //may or may not result in page eviction
 BREAK
+
+//calculate address where return value should be stored
+    03 ALUM //subtract
+    WBASE ALUA //original FP
+    36 ALUB // -54
+    ALUR WBASE //FP = FP - 54
+    00 WOFST
+    WMEM GPH //GPH = result address, FP - 54
+    ALUA WBASE //put original FP back into WBASE
+
+
+//look for open pages, which we can use without evicting anything
+//open pages have a process ID of 0
+
+//iterate over physical page map
+    //point RMEM to physical page map array
+        IADF RBASE
+        SKIP PC
+        ::physical_page_map
+        00 ROFST
+
+    00 GPA //GPA = index
+    10 GPB //GPB = max_index
+
+    @open_page_loop
+    //check if we're at the end of the loop (index == 16?)
+        GPA COMPA
+        GPB COMPB
+        COMPR PC
+        :open_page_loop_end
+        :open_page_loop_go
+
+    @open_page_loop_go
+    //calculate offset from index
+        02 ALUM //multiply mode
+        GPA ALUA // ALUA = index
+        14 ALUB //20 bytes per entry
+        ALUR ROFST
+
+    //read process ID (offset 0)
+    RMEM GPC //GPC = process id
+
+    //process id == 0?
+        GPC COMPA
+        00 COMPB
+        COMPR PC
+        :open_page_proc_id_0
+        :open_page_loop_next
+    
+    @open_page_proc_id_0
+    // found an open page
+    // return the index as the open physical page
+        WBASE ALUA //store FP somewhere
+        GPH WBASE //point WMEM to the result address
+        00 WOFST
+        GPA WMEM //result = index
+        ALUA WBASE //restore FP
+        LINK PC //return
+
+    
+
+    @open_page_loop_next
+    //increment index
+        01 ALUM //add mode
+        GPA ALUA
+        01 ALUB
+        ALUR GPA //index += 1
+    //go to start of loop
+    IADN PC
+    :open_page_loop
+
+
+
+    //TODO implement this
+
+
+@open_page_loop_end
+//no open pages
+
+
 //TODO implement this
 00 RBASE
 00 ROFST
