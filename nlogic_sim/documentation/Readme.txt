@@ -1,4 +1,19 @@
-﻿Use the bash script "builder.txt" to run programs:
+﻿=====================================
+Go
+=====================================
+
+Use the bash script "go.txt" to run programs using the python debug assembler
+    run "./go.txt [disk folder] [boot program folder] [-v] [-d]" to fully build the disk and run the boot program
+        shortcut for running ./disk_builder_python and then ./builder_python
+        use the guide in "Debug Build" section for how to configure the disk and boot program folders
+
+
+=====================================
+Original build scripts
+=====================================
+
+
+Use the bash script "builder.txt" to run programs:
 	create a folder with assembly files
 		"pro files", can contain comments, dmem instructions, labels, etc.
 	name each file with ".pro" extension
@@ -50,7 +65,7 @@ Use the bash script "disk_builder_python.txt" to create a virtual disk and debug
             programs may be larger than 1 disk block, and will therefore overwrite programs that are not spaced far enough aprt
             1 disk block is 4096 bytes, so if finished assembled programs are each 8KB, each numbered folder should be at least 2 away from any other
                 e.g. folders should be "20" and "22", because "20" and "21" are too close to each other
-    run "./disk_builder_python.txt [folder] to fully assemble all programs in "[folder]" and populate the virtual disk
+    run "./disk_builder_python.txt [folder]" to fully assemble all programs in "[folder]" and populate the virtual disk
     the virtual disk will be output to a folder called "virtual_disk"
         contains a ".txt" file for each disk block
         each file is named by its disk block number, e.g. "20.txt" for block 20

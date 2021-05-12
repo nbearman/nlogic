@@ -115,6 +115,7 @@ namespace nlogic_sim
             if (address >= INITIATE + 4)
                 throw new NotImplementedException();
             else if (address >= INITIATE)
+                //TODO this should only happen when writing the first byte; otherwise, we transfer 4 times
                 this.begin_transfer();
             else
                 this.memory[address] = data;

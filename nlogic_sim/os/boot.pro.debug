@@ -38,7 +38,7 @@
 -- -- -- -- |	//==========
 -- -- -- -- |	// page 3: kernel page 0, 0x00 00 00 00 in kernel VM
 -- -- -- -- |	//==========
--- -- -- -- |	// page 4: empty
+-- -- -- -- |	// page 4: kernel page 1, MMIO devices, 0x00 00 10 00 in kernel VM
 -- -- -- -- |	//==========
 -- -- -- -- |	// page 5: user page directory
 -- -- -- -- |	//==========

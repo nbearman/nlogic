@@ -1,9 +1,18 @@
 ﻿
-test debug assembler
 
-allow adding breakpoints
-    opens visualizer
-    jumps to line in annotated code
+continue with loading page from disk:
+    make MMU store faulted virtual address (if it doesn't already)
+    in fault handler, retrieve faulted virtual address from MMU
+        currently we're only getting the faulted PTE
+        we need the virtual address to know what virtual page / page table we're fetching, and to store that info in the physical page map
+    update the physical page map
+        make process ID not hardcoded
+        make page directory physical block not hardcoded
+            accessible from the process map once we know the process ID
+    update the process map
+
+Fix virtual disk so that writing 4 bytes to the transfer register doesn't initiate 4 transfers
+    just make the nominal byte start the transfer
 
 ====================================================================================
 

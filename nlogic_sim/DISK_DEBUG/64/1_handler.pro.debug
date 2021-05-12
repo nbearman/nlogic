@@ -163,37 +163,53 @@
 00 00 02 D6 |	00 WOFST
 00 00 02 D8 |	WMEM GPH
 -- -- -- -- |	
--- -- -- -- |	
--- -- -- -- |	
--- -- -- -- |	//evict page
--- -- -- -- |	//load page from disk
--- -- -- -- |	//return from interrupt
--- -- -- -- |	
 -- -- -- -- |	//load page from disk
 -- -- -- -- |	//get disk block from PTE
-00 00 02 DA |	GPA ALUA //PTE to ALU
-00 00 02 DC |	IADF ALUB //mask to ALU
-00 00 02 DE |	SKIP PC
-00 00 02 E0 |	00 0F FF FF
-00 00 02 E4 |	08 ALUM //AND mode
-00 00 02 E6 |	ALUR GPD
+00 00 02 DA |	    GPA ALUA //PTE to ALU
+00 00 02 DC |	    IADF ALUB //mask to ALU
+00 00 02 DE |	    SKIP PC
+00 00 02 E0 |	    00 0F FF FF
+00 00 02 E4 |	    08 ALUM //AND mode
+00 00 02 E6 |	    ALUR GPD
+-- -- -- -- |	
+-- -- -- -- |	//load from disk
+00 00 02 E8 |	    IADF RBASE
+00 00 02 EA |	    SKIP PC
+00 00 02 EC |	    00 00 10 18 //MMIO address of disk
+-- -- -- -- |	    //tell disk the target physical page (stored in GPH)
+00 00 02 F0 |	        00 ROFST
+00 00 02 F2 |	        GPH RMEM
+-- -- -- -- |	    //tell disk target disk block (stored in GPD)
+00 00 02 F4 |	        04 ROFST
+00 00 02 F6 |	        GPD RMEM
+-- -- -- -- |	    //use read mode
+00 00 02 F8 |	        08 ROFST
+00 00 02 FA |	        00 RMEM
+-- -- -- -- |	    //initiate transfer from disk to memory
+00 00 02 FC |	        0C ROFST
+00 00 02 FE |	        01 RMEM
+-- -- -- -- |	
+00 00 03 00 |	BREAK
 -- -- -- -- |	
 -- -- -- -- |	
+-- -- -- -- |	//update process map and physical page map
 -- -- -- -- |	
+-- -- -- -- |	//return from interrupt
 -- -- -- -- |	
 -- -- -- -- |	
 -- -- -- -- |	//nothing left
-00 00 02 E8 |	02 FPUM
-00 00 02 EA |	11 FPUA
-00 00 02 EC |	22 FPUB
-00 00 02 EE |	FPUR GPC
-00 00 02 F0 |	7F FLAG
+00 00 03 02 |	02 FPUM
+00 00 03 04 |	11 FPUA
+00 00 03 06 |	22 FPUB
+00 00 03 08 |	FPUR GPC
+00 00 03 0A |	7F FLAG
 -- -- -- -- |	
-00 00 02 F2 |	FILL600
+00 00 03 0C |	FILL600
+-- -- -- -- |	@@physical_page_map
 -- -- -- -- |	//physical page map
 -- -- -- -- |	
 -- -- -- -- |	//=========================
--- -- -- -- |	// physcial page mapping entry
+-- -- -- -- |	// physical page mapping entry
 -- -- -- -- |	//==========
 -- -- -- -- |	// 0x00 |   uint    |   process id
 -- -- -- -- |	// 0x04 |   uint    |   directory physical page
@@ -219,7 +235,7 @@
 -- -- -- -- |	//kernel page table 0
 00 00 06 28 |	00 00 00 01 //kernel process ID == 1
 00 00 06 2C |	00 00 00 01 //owning page directory is kernel directory
-00 00 06 30 |	00 00 00 00 //virtual page 0
+00 00 06 30 |	00 00 00 00 //virtual table 0
 00 00 06 34 |	00 00 00 01 //kernel process references this physical page
 00 00 06 38 |	00 00 00 00 //no disk block number, can never be evicted
 -- -- -- -- |	
@@ -230,8 +246,87 @@
 00 00 06 48 |	00 00 00 01 //kernel process references this physical page
 00 00 06 4C |	00 00 00 00 //no disk block number, can never be evicted
 -- -- -- -- |	
+-- -- -- -- |	//empty (no owner)
+00 00 06 50 |	00 00 00 00
+00 00 06 54 |	00 00 00 00
+00 00 06 58 |	00 00 00 00
+00 00 06 5C |	00 00 00 00
+00 00 06 60 |	00 00 00 00
+-- -- -- -- |	
+-- -- -- -- |	//user page directory
+00 00 06 64 |	00 00 00 02 //user process ID == 2
+00 00 06 68 |	00 00 00 05 //owning page directory is this directory, user's page directory
+00 00 06 6C |	00 00 00 00 //this is a directory
+00 00 06 70 |	00 00 00 01 //user process references this physical page
+00 00 06 74 |	00 00 00 00 //no disk block number yet
+-- -- -- -- |	
+-- -- -- -- |	//user page table 0
+00 00 06 78 |	00 00 00 02 //user process ID == 2
+00 00 06 7C |	00 00 00 05 //owning page directory is user page directory
+00 00 06 80 |	00 00 00 00 //virtual table 0
+00 00 06 84 |	00 00 00 01 //user process references this physical page
+00 00 06 88 |	00 00 00 00 //no disk block number yet
+-- -- -- -- |	
+-- -- -- -- |	//user virtual page 0
+00 00 06 8C |	00 00 00 02 //user process ID == 2
+00 00 06 90 |	00 00 00 05 //owning page directory is user page directory
+00 00 06 94 |	00 00 00 00 //virtual page 0
+00 00 06 98 |	00 00 00 01 //user process references this physical page
+00 00 06 9C |	00 00 00 64 //loaded from disk block 100
+-- -- -- -- |	
+-- -- -- -- |	
+-- -- -- -- |	
+-- -- -- -- |	//empty (no owner)
+00 00 06 A0 |	00 00 00 00
+00 00 06 A4 |	00 00 00 00
+00 00 06 A8 |	00 00 00 00
+00 00 06 AC |	00 00 00 00
+00 00 06 B0 |	00 00 00 00
+-- -- -- -- |	//empty (no owner)
+00 00 06 B4 |	00 00 00 00
+00 00 06 B8 |	00 00 00 00
+00 00 06 BC |	00 00 00 00
+00 00 06 C0 |	00 00 00 00
+00 00 06 C4 |	00 00 00 00
+-- -- -- -- |	//empty (no owner)
+00 00 06 C8 |	00 00 00 00
+00 00 06 CC |	00 00 00 00
+00 00 06 D0 |	00 00 00 00
+00 00 06 D4 |	00 00 00 00
+00 00 06 D8 |	00 00 00 00
+-- -- -- -- |	//empty (no owner)
+00 00 06 DC |	00 00 00 00
+00 00 06 E0 |	00 00 00 00
+00 00 06 E4 |	00 00 00 00
+00 00 06 E8 |	00 00 00 00
+00 00 06 EC |	00 00 00 00
+-- -- -- -- |	//empty (no owner)
+00 00 06 F0 |	00 00 00 00
+00 00 06 F4 |	00 00 00 00
+00 00 06 F8 |	00 00 00 00
+00 00 06 FC |	00 00 00 00
+00 00 07 00 |	00 00 00 00
+-- -- -- -- |	//empty (no owner)
+00 00 07 04 |	00 00 00 00
+00 00 07 08 |	00 00 00 00
+00 00 07 0C |	00 00 00 00
+00 00 07 10 |	00 00 00 00
+00 00 07 14 |	00 00 00 00
+-- -- -- -- |	//empty (no owner)
+00 00 07 18 |	00 00 00 00
+00 00 07 1C |	00 00 00 00
+00 00 07 20 |	00 00 00 00
+00 00 07 24 |	00 00 00 00
+00 00 07 28 |	00 00 00 00
+-- -- -- -- |	//empty (no owner)
+00 00 07 2C |	00 00 00 00
+00 00 07 30 |	00 00 00 00
+00 00 07 34 |	00 00 00 00
+00 00 07 38 |	00 00 00 00
+00 00 07 3C |	00 00 00 00
+-- -- -- -- |	
 -- -- -- -- |	//end physical page map (16 page mappings)
-00 00 06 50 |	FILL840
+00 00 07 40 |	FILL840
 -- -- -- -- |	//process map
 -- -- -- -- |	
 -- -- -- -- |	//=========================
@@ -252,12 +347,93 @@
 -- -- -- -- |	//end process map (16 process descriptors)
 00 00 08 50 |	FILL940
 -- -- -- -- |	
+-- -- -- -- |	
+-- -- -- -- |	//=========================================================================
+-- -- -- -- |	// [function] get_open_physical_page | void
+-- -- -- -- |	//=========================================================================
 -- -- -- -- |	@@get_open_physical_page
 -- -- -- -- |	//returns physical page number that is available for incoming page
 -- -- -- -- |	//may or may not result in page eviction
-00 00 09 40 |	BREAK
+-- -- -- -- |	
+-- -- -- -- |	
+-- -- -- -- |	//calculate address where return value should be stored
+00 00 09 40 |	    03 ALUM //subtract
+00 00 09 42 |	    WBASE ALUA //original FP
+00 00 09 44 |	    54 ALUB // -84
+00 00 09 46 |	    ALUR GPH //GPH = result address = FP - 84
+-- -- -- -- |	
+-- -- -- -- |	//look for open pages, which we can use without evicting anything
+-- -- -- -- |	//open pages have a process ID of 0
+-- -- -- -- |	
+-- -- -- -- |	//iterate over physical page map
+-- -- -- -- |	    //point RMEM to physical page map array
+00 00 09 48 |	        IADF RBASE
+00 00 09 4A |	        SKIP PC
+00 00 09 4C |	        ::physical_page_map
+00 00 09 50 |	        00 ROFST
+-- -- -- -- |	
+00 00 09 52 |	    00 GPA //GPA = index
+00 00 09 54 |	    10 GPB //GPB = max_index
+-- -- -- -- |	
+-- -- -- -- |	    @open_page_loop
+-- -- -- -- |	    //check if we're at the end of the loop (index == 16?)
+00 00 09 56 |	        GPA COMPA
+00 00 09 58 |	        GPB COMPB
+00 00 09 5A |	        COMPR PC
+00 00 09 5C |	        :open_page_loop_end
+00 00 09 60 |	        :open_page_loop_go
+-- -- -- -- |	
+-- -- -- -- |	    @open_page_loop_go
+-- -- -- -- |	    //calculate offset from index
+00 00 09 64 |	        02 ALUM //multiply mode
+00 00 09 66 |	        GPA ALUA // ALUA = index
+00 00 09 68 |	        14 ALUB //20 bytes per entry
+00 00 09 6A |	        ALUR ROFST
+-- -- -- -- |	
+-- -- -- -- |	    //read process ID (offset 0)
+00 00 09 6C |	    RMEM GPC //GPC = process id
+-- -- -- -- |	
+-- -- -- -- |	    //process id == 0?
+00 00 09 6E |	        GPC COMPA
+00 00 09 70 |	        00 COMPB
+00 00 09 72 |	        COMPR PC
+00 00 09 74 |	        :open_page_proc_id_0
+00 00 09 78 |	        :open_page_loop_next
+-- -- -- -- |	    
+-- -- -- -- |	    @open_page_proc_id_0
+-- -- -- -- |	    // found an open page
+-- -- -- -- |	    // return the index as the open physical page
+00 00 09 7C |	        WBASE ALUA //store FP somewhere
+00 00 09 7E |	        GPH WBASE //point WMEM to the result address
+00 00 09 80 |	        00 WOFST
+00 00 09 82 |	        GPA WMEM //result = index
+00 00 09 84 |	        ALUA WBASE //restore FP
+00 00 09 86 |	        LINK PC //return
+-- -- -- -- |	
+-- -- -- -- |	    
+-- -- -- -- |	
+-- -- -- -- |	    @open_page_loop_next
+-- -- -- -- |	    //increment index
+00 00 09 88 |	        01 ALUM //add mode
+00 00 09 8A |	        GPA ALUA
+00 00 09 8C |	        01 ALUB
+00 00 09 8E |	        ALUR GPA //index += 1
+-- -- -- -- |	    //go to start of loop
+00 00 09 90 |	    IADN PC
+00 00 09 92 |	    :open_page_loop
+-- -- -- -- |	
+-- -- -- -- |	    //TODO implement this
+-- -- -- -- |	
+-- -- -- -- |	
+-- -- -- -- |	@open_page_loop_end
+-- -- -- -- |	//no open pages
+00 00 09 96 |	BREAK
+-- -- -- -- |	
+-- -- -- -- |	
 -- -- -- -- |	//TODO implement this
-00 00 09 42 |	00 RBASE
-00 00 09 44 |	00 ROFST
-00 00 09 46 |	7F RMEM
-00 00 09 48 |	LINK PC
+00 00 09 98 |	00 RBASE
+00 00 09 9A |	00 ROFST
+00 00 09 9C |	7F RMEM
+-- -- -- -- |	
+-- -- -- -- |	//return
+00 00 09 9E |	LINK PC

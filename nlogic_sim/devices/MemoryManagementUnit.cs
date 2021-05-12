@@ -564,6 +564,7 @@ namespace nlogic_sim
             QUEUED_PAGE_DIRECTORY_BASE_ADDRESS_REGISTER = 4,
             MMU_DIRECTORY_SWAP_BREAKPOINT_REGISTER = 8,
             FAULTED_PTE_REGISTER = 12,
+            //TODO add faulted_virtual_address register
             BREAKPOINT_ENABLED = 16,
             ENABLED = 20,
         }

@@ -163,23 +163,94 @@ IADN PC
 00 WOFST
 WMEM GPH
 
-
-
-//evict page
-//load page from disk
-//return from interrupt
-
 //load page from disk
 //get disk block from PTE
-GPA ALUA //PTE to ALU
-IADF ALUB //mask to ALU
-SKIP PC
-00 0F FF FF
-08 ALUM //AND mode
-ALUR GPD
+    GPA ALUA //PTE to ALU
+    IADF ALUB //mask to ALU
+    SKIP PC
+    00 0F FF FF
+    08 ALUM //AND mode
+    ALUR GPD
+//get virtual page / virtual directory number from virtual address
+    //TODO get faulted virtual address from MMU
+    IADF ALUB //mask to ALU
+    SKIP PC
+    [mask]
+
+//load from disk
+    //point RMEM to virtual disk
+        IADF RBASE
+        SKIP PC
+        00 00 10 18 //MMIO starts at VA 1000
+    //tell disk the target physical page (stored in GPH)
+        00 ROFST
+        GPH RMEM
+    //tell disk target disk block (stored in GPD)
+        04 ROFST
+        GPD RMEM
+    //use read mode
+        08 ROFST
+        00 RMEM
+    //initiate transfer from disk to memory
+        0C ROFST
+        01 RMEM
+
+BREAK
+//update physical page map
+    //point RMEM to physical page map array
+        IADF RBASE
+        SKIP PC
+        ::physical_page_map
+
+        //calculate offset of target physical page entry
+        02 ALUM //multiply
+        GPH ALUA //target physical page
+        14 ALUB //20 bytes per entry
+        ALUR GPG //GPG = physical page map offset
+
+        GPG ROFST
+        IADF RMEM
+        SKIP PC
+        00 00 00 02 //set process ID to user process (hardcoded)
+
+        //move to next field in entry
+        01 ALUM //add
+        ROFST ALUA
+        04 ALUB
+        ALUR ROFST
+
+        IADF RMEM
+        SKIP PC
+        00 00 00 05 //set directory physical page to user directory (hardcoded)
+
+        //move to next field
+        ALUR ALUA
+        ALUR ROFST
+        
+        IADF RMEM
+        SKIP PC
+        [virtual page number]
+
+        //move to next field
+        ALUR ALUA
+        ALUR ROFST
+
+        IADF RMEM
+        SKIP PC
+        00 00 00 01 //only one process references this page
+
+        //move to next field
+        ALUR ALUA
+        ALUR ROFST
+
+        GPD RMEM //store origin disk block as the disk block
 
 
 
+
+//update process map
+
+//return from interrupt
 
 
 //nothing left
@@ -220,7 +291,7 @@ FILL600
 //kernel page table 0
 00 00 00 01 //kernel process ID == 1
 00 00 00 01 //owning page directory is kernel directory
-00 00 00 00 //virtual page 0
+00 00 00 00 //virtual table 0
 00 00 00 01 //kernel process references this physical page
 00 00 00 00 //no disk block number, can never be evicted
 
@@ -230,6 +301,85 @@ FILL600
 00 00 00 00 //virtual page 0
 00 00 00 01 //kernel process references this physical page
 00 00 00 00 //no disk block number, can never be evicted
+
+//empty (no owner)
+00 00 00 00
+00 00 00 00
+00 00 00 00
+00 00 00 00
+00 00 00 00
+
+//user page directory
+00 00 00 02 //user process ID == 2
+00 00 00 05 //owning page directory is this directory, user's page directory
+00 00 00 00 //this is a directory
+00 00 00 01 //user process references this physical page
+00 00 00 00 //no disk block number yet
+
+//user page table 0
+00 00 00 02 //user process ID == 2
+00 00 00 05 //owning page directory is user page directory
+00 00 00 00 //virtual table 0
+00 00 00 01 //user process references this physical page
+00 00 00 00 //no disk block number yet
+
+//user virtual page 0
+00 00 00 02 //user process ID == 2
+00 00 00 05 //owning page directory is user page directory
+00 00 00 00 //virtual page 0
+00 00 00 01 //user process references this physical page
+00 00 00 64 //loaded from disk block 100
+
+
+
+//empty (no owner)
+00 00 00 00
+00 00 00 00
+00 00 00 00
+00 00 00 00
+00 00 00 00
+//empty (no owner)
+00 00 00 00
+00 00 00 00
+00 00 00 00
+00 00 00 00
+00 00 00 00
+//empty (no owner)
+00 00 00 00
+00 00 00 00
+00 00 00 00
+00 00 00 00
+00 00 00 00
+//empty (no owner)
+00 00 00 00
+00 00 00 00
+00 00 00 00
+00 00 00 00
+00 00 00 00
+//empty (no owner)
+00 00 00 00
+00 00 00 00
+00 00 00 00
+00 00 00 00
+00 00 00 00
+//empty (no owner)
+00 00 00 00
+00 00 00 00
+00 00 00 00
+00 00 00 00
+00 00 00 00
+//empty (no owner)
+00 00 00 00
+00 00 00 00
+00 00 00 00
+00 00 00 00
+00 00 00 00
+//empty (no owner)
+00 00 00 00
+00 00 00 00
+00 00 00 00
+00 00 00 00
+00 00 00 00
 
 //end physical page map (16 page mappings)
 FILL840
@@ -260,17 +410,13 @@ FILL940
 @@get_open_physical_page
 //returns physical page number that is available for incoming page
 //may or may not result in page eviction
-BREAK
+
 
 //calculate address where return value should be stored
     03 ALUM //subtract
     WBASE ALUA //original FP
-    36 ALUB // -54
-    ALUR WBASE //FP = FP - 54
-    00 WOFST
-    WMEM GPH //GPH = result address, FP - 54
-    ALUA WBASE //put original FP back into WBASE
-
+    54 ALUB // -84
+    ALUR GPH //GPH = result address = FP - 84
 
 //look for open pages, which we can use without evicting anything
 //open pages have a process ID of 0
@@ -332,17 +478,18 @@ BREAK
     IADN PC
     :open_page_loop
 
-
-
     //TODO implement this
 
 
 @open_page_loop_end
 //no open pages
+BREAK
 
 
 //TODO implement this
 00 RBASE
 00 ROFST
 7F RMEM
+
+//return
 LINK PC
