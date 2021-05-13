@@ -1,6 +1,6 @@
 ﻿//IADF WBASE
 //SKIP PC
-//FF 00 00 14
+//FF 00 00 18
 //
 ////physical page
 //00 WOFST
@@ -121,7 +121,7 @@ SKIP PC
 //virtual disk is MMIO device; MMIO devices start at 0xFF 00 00 00
 IADF WBASE
 SKIP PC
-FF 00 00 18
+FF 00 00 1C
 
 //load into physical page 3
 00 WOFST
@@ -146,7 +146,7 @@ FF 00 00 18
 //virtual disk is MMIO device; MMIO devices start at 0xFF 00 00 00
 IADF WBASE
 SKIP PC
-FF 00 00 18
+FF 00 00 1C
 
 //load into physical page 7
 00 WOFST
@@ -191,9 +191,6 @@ RMEM WBASE
 
 @@ENABLE_MMU
 
-//set ALU to add mode (pretty sure this instruction is only here as a sentinel for looking at the visualizer)
-01 ALUA
-
 //load address of MMU registers
 IADF RBASE
 SKIP PC
@@ -202,7 +199,7 @@ SKIP PC
 RMEM WBASE
 
 //enable the MMU and see what happens
-14 WOFST
+18 WOFST
 01 WMEM
 
 //=========================================================================
@@ -225,8 +222,9 @@ FF 00 00 00
 //04 queued page dir base addr
 //08 virtual addr mmu breakpoint
 //0C faulted pte
-//10 breakpoint enabled
-//14 enabled
+//10 fautled addr
+//14 breakpoint enabled
+//18 enabled
 
 //=========================================================================
 //=========================================================================

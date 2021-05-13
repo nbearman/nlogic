@@ -1,8 +1,8 @@
 ﻿//=========================================================================
 // kernel entry point
 //=========================================================================
+
 FILLB0
-33 GPE
 
 //set the MMU VA break point
 IADF WBASE
@@ -12,7 +12,7 @@ SKIP PC
 00 WMEM //breakpoint at 0
 
 //enable the breakpoint
-10 WOFST //breakpoint enabled register
+14 WOFST //breakpoint enabled register
 01 WMEM //non-zero -> enabled
 
 00 RBASE
@@ -92,11 +92,26 @@ COMPR PC
 @mmu_interrupt
 //else interrupt is from MMU
 //retrieve the faulted PTE from the MMU
-IADF RBASE
-SKIP PC
-00 00 10 00
-0C ROFST
-RMEM GPA
+    IADF RBASE
+    SKIP PC
+    00 00 10 00
+    0C ROFST
+    RMEM GPA
+
+//retrieve the faulted address from the MMU
+    10 ROFST
+    RMEM GPB
+
+//get the active process ID and page directory physical page from kernel memory
+    00 ROFST
+    IADF RBASE
+    SKIP PC
+    ::ACTIVE_PROCESS_ID
+    RMEM GPC
+    IADF RBASE
+    SKIP PC
+    ::ACTIVE_PROCESS_PAGE_DIRECTORY_PHYSICAL_PAGE
+    RMEM GPD
 
 //check PTE protections
 //get them from PTE
@@ -170,24 +185,25 @@ WMEM GPH
     SKIP PC
     00 0F FF FF
     08 ALUM //AND mode
-    ALUR GPD
+    ALUR GPE
 //get virtual page / virtual directory number from virtual address
-    //TODO get faulted virtual address from MMU
+    GPB ALUA //virtual address to ALU
     IADF ALUB //mask to ALU
     SKIP PC
-    [mask]
+    FF FF F0 00 //remove physical offset part of virtual address
+    ALUR GPF
 
 //load from disk
     //point RMEM to virtual disk
         IADF RBASE
         SKIP PC
-        00 00 10 18 //MMIO starts at VA 1000
+        00 00 10 1C //MMIO starts at VA 1000
     //tell disk the target physical page (stored in GPH)
         00 ROFST
         GPH RMEM
-    //tell disk target disk block (stored in GPD)
+    //tell disk target disk block (stored in GPE)
         04 ROFST
-        GPD RMEM
+        GPE RMEM
     //use read mode
         08 ROFST
         00 RMEM
@@ -195,60 +211,83 @@ WMEM GPH
         0C ROFST
         01 RMEM
 
-BREAK
+
+
 //update physical page map
     //point RMEM to physical page map array
         IADF RBASE
         SKIP PC
         ::physical_page_map
 
-        //calculate offset of target physical page entry
+    //calculate offset of target physical page entry
         02 ALUM //multiply
         GPH ALUA //target physical page
         14 ALUB //20 bytes per entry
-        ALUR GPG //GPG = physical page map offset
+        ALUR ROFST //physical page map offset
 
-        GPG ROFST
-        IADF RMEM
-        SKIP PC
-        00 00 00 02 //set process ID to user process (hardcoded)
+    GPC RMEM //set process ID to user process
 
-        //move to next field in entry
+    //move to next field in entry
         01 ALUM //add
         ROFST ALUA
         04 ALUB
         ALUR ROFST
 
-        IADF RMEM
-        SKIP PC
-        00 00 00 05 //set directory physical page to user directory (hardcoded)
+    GPD RMEM //set directory physical page to user directory
 
-        //move to next field
+    //move to next field
         ALUR ALUA
         ALUR ROFST
         
-        IADF RMEM
-        SKIP PC
-        [virtual page number]
+    GPF RMEM //set virtual page/directory number to that of the faulted address
 
-        //move to next field
+    //move to next field
         ALUR ALUA
         ALUR ROFST
 
-        IADF RMEM
-        SKIP PC
-        00 00 00 01 //only one process references this page
+    01 RMEM //only one process references this page
 
-        //move to next field
+    //move to next field
         ALUR ALUA
         ALUR ROFST
 
-        GPD RMEM //store origin disk block as the disk block
-
-
+    GPE RMEM //store origin disk block as the disk block
 
 
 //update process map
+    //point RMEM to process map
+        IADF RBASE
+        SKIP PC
+        ::process_map
+
+    BREAK
+
+    //calculate offset of target process entry ((process ID - 1) is index into map)
+        // (16 * (PID - 1)) + 8
+        03 ALUM //subtract
+        GPC ALUA //process ID
+        01 ALUB //minus 1
+        ALUR ALUA //ALUA = PID - 1
+
+        10 ALUB //16 byte per entry
+        02 ALUM //multiply
+        ALUR ALUA //process entry map offset
+        08 ALUB //offset into entry for number of resident pages
+        01 ALUM //add
+        ALUR ROFST //total offset into process map
+
+    //increment number of resident pages for this process
+        RMEM ALUA
+        01 ALUB
+        ALUR RMEM
+
+
+//update page table
+//TODO how do we know if we loaded a page table or a leaf page?
+//  if we loaded a leaf page, we need to update the page table
+//  but if we loaded a page table, we need to update the page directory
+//  traverse the page table: the first PDE/PTE with matching protection bits
+//  was the one that failed
 
 //return from interrupt
 
@@ -383,6 +422,7 @@ FILL600
 
 //end physical page map (16 page mappings)
 FILL840
+@@process_map
 //process map
 
 //=========================
@@ -399,6 +439,15 @@ FILL840
 00 00 00 03 //3 pages are mapped: 2 pages of memory and 1 mapped to the MMU
 00 00 00 03 //page directory, page table, 1 page of memory
 00 00 00 00 //no disk block number, kernel page directory can never be evicted
+
+//user process descriptor
+00 00 00 01 //user process ID == 2
+00 00 00 03 //2 pages are mapped: 2 pages of memory
+00 00 00 03 //page directory, page table, 1 page of memory
+00 00 00 00 //TODO figure out if we're supposed to load process page directory from disk...
+            //(it should probably be built dynamically from some kind of description file
+            // that the kernel can read to determine how many pages of the program are
+            // mapped out of the box [length of program data])
 
 //end process map (16 process descriptors)
 FILL940

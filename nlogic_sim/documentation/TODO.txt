@@ -14,6 +14,9 @@ continue with loading page from disk:
 Fix virtual disk so that writing 4 bytes to the transfer register doesn't initiate 4 transfers
     just make the nominal byte start the transfer
 
+Map physical memory to kernel's address space
+    could probably load these page tables from disk rather than building them during boot
+
 ====================================================================================
 
 Change simulator to accept configuration file as command line argument to set up memory, MMIO devices, etc.
