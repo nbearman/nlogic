@@ -81,6 +81,110 @@ IADF WMEM
 SKIP PC
 C0 0F F0 00
 
+//add PTEs for virtual pages 0x3F0-0x3FF
+//map them to physical physical memory in order (physical address 0x00 00 00 00 - 0x00 00 F0 00)
+//to access physical address from kernel virtual address space, add 0x00 3F 00 00
+IADF WOFST
+SKIP PC
+00 00 0F C0 //(0x3F0 * 4, 4 bytes per PTE, 3F0th entry)
+IADF WMEM
+SKIP PC
+C0 00 00 00
+
+01 ALUM //add
+WOFST ALUA
+04 ALUB
+ALUR WOFST
+
+IADF WMEM
+SKIP PC
+C0 00 00 01
+
+WOFST ALUA
+ALUR WOFST
+IADF WMEM
+SKIP PC
+C0 00 00 02
+
+WOFST ALUA
+ALUR WOFST
+IADF WMEM
+SKIP PC
+C0 00 00 03
+
+WOFST ALUA
+ALUR WOFST
+IADF WMEM
+SKIP PC
+C0 00 00 04
+
+WOFST ALUA
+ALUR WOFST
+IADF WMEM
+SKIP PC
+C0 00 00 05
+
+WOFST ALUA
+ALUR WOFST
+IADF WMEM
+SKIP PC
+C0 00 00 06
+
+WOFST ALUA
+ALUR WOFST
+IADF WMEM
+SKIP PC
+C0 00 00 07
+
+WOFST ALUA
+ALUR WOFST
+IADF WMEM
+SKIP PC
+C0 00 00 08
+
+WOFST ALUA
+ALUR WOFST
+IADF WMEM
+SKIP PC
+C0 00 00 09
+
+WOFST ALUA
+ALUR WOFST
+IADF WMEM
+SKIP PC
+C0 00 00 0A
+
+WOFST ALUA
+ALUR WOFST
+IADF WMEM
+SKIP PC
+C0 00 00 0B
+
+WOFST ALUA
+ALUR WOFST
+IADF WMEM
+SKIP PC
+C0 00 00 0C
+
+WOFST ALUA
+ALUR WOFST
+IADF WMEM
+SKIP PC
+C0 00 00 0D
+
+WOFST ALUA
+ALUR WOFST
+IADF WMEM
+SKIP PC
+C0 00 00 0E
+
+WOFST ALUA
+ALUR WOFST
+IADF WMEM
+SKIP PC
+C0 00 00 0F
+
+
 //=========================================================================
 // initialize user memory
 //=========================================================================

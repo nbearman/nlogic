@@ -2,7 +2,7 @@
 // kernel entry point
 //=========================================================================
 
-FILLB0
+FILL170 //PC before virtual addressing was enabled
 
 //set the MMU VA break point
 IADF WBASE
@@ -28,11 +28,10 @@ FILL200
 WBASE DMEM00
 WOFST DMEM04
 
-//TODO change this to save registers to kernel's stack
-//dump registers to VA 0100
+//dump registers to kernel's stack
 IADF WBASE
 SKIP PC
-00 00 01 00
+::KERNEL_STACK
 00 WOFST
 GPA WMEM
 04 WOFST
@@ -70,24 +69,54 @@ FPUM WMEM
 FPUA WMEM
 44 WOFST
 FPUB WMEM
+48 WOFST
+DMEM00 WMEM
+4C WOFST
+DMEM04 WMEM
+
+//=========================
+// interrupt handler stack layout / local variables
+//==========
+// 0x00 |   uint    |   FLAG
+// 0x04 |   uint    |   faulted PTE
+// 0x08 |   uint    |   faulted virtual address
+// 0x0C |   uint    |   faulted PTE disk block
+// 0x10 |   uint    |   virtual page number from faulted virtual address
+// 0x14 |   uint    |   active process ID
+// 0x18 |   uint    |   active process page directory physical page
+// 0x1C |   uint    |   physical page new page is moved into
+//=========================
+
+//add stack frame; registers are dumped to bottom of the stack, so we don't need to save a frame pointer
+//(just set WBASE to 00 when it's time to retrieve them)
+01 ALUM //add
+WBASE ALUA
+WOFST ALUB
+ALUR WBASE
+20 WOFST //20 == size of stack frame, described above
+
+//store FLAG in local variable
+    WBASE RBASE
+    00 ROFST //FLAG local variable address (from stack layout)
+    FLAG RMEM
 
 //determine the cause of the interrupt
-//mask flag to check if interrupt was raised on MMU channel
-FLAG ALUA
-IADF ALUB
-SKIP PC
-00 00 00 01 //mask for the first channel (MMU)
-08 ALUM //AND mode
-ALUR COMPA
-00 COMPB //if flag channel is 1, jump to mmu interrupt handler
-COMPR PC
-:non_mmu_interrupt
-:mmu_interrupt
+    //mask flag to check if interrupt was raised on MMU channel
+    FLAG ALUA
+    IADF ALUB
+    SKIP PC
+    00 00 00 01 //mask for the first channel (MMU)
+    08 ALUM //AND mode
+    ALUR COMPA
+    00 COMPB //if flag channel is 1, jump to mmu interrupt handler
+    COMPR PC
+    :non_mmu_interrupt
+    :mmu_interrupt
 
 @non_mmu_interrupt
 //if interrupt is not from MMU
-//do nothing if the interrupt is from anywhere besides the MMU
-7F FLAG
+    //do nothing if the interrupt is from anywhere besides the MMU
+    7F FLAG
 
 @mmu_interrupt
 //else interrupt is from MMU
@@ -102,6 +131,13 @@ COMPR PC
     10 ROFST
     RMEM GPB
 
+//store faulted PTE and faulted virtual address in local variables
+    WBASE RBASE
+    04 ROFST
+    GPA RMEM
+    08 ROFST
+    GPB RMEM
+
 //get the active process ID and page directory physical page from kernel memory
     00 ROFST
     IADF RBASE
@@ -113,17 +149,24 @@ COMPR PC
     ::ACTIVE_PROCESS_PAGE_DIRECTORY_PHYSICAL_PAGE
     RMEM GPD
 
+//store active process ID and page directory physical page in local variables
+    WBASE RBASE
+    14 ROFST
+    GPC RMEM
+    18 ROFST
+    GPD RMEM
+
 //check PTE protections
 //get them from PTE
-GPA ALUA //PTE to ALU
-IADF ALUB //mask to ALU
-SKIP PC
-C0 00 00 00 //mask for the RW bits of the PTE
-08 ALUM //AND mode
+    GPA ALUA //PTE to ALU
+    IADF ALUB //mask to ALU
+    SKIP PC
+    C0 00 00 00 //mask for the RW bits of the PTE
+    08 ALUM //AND mode
 
-ALUR ALUA //RW bits to ALU
-1E ALUB //shift 30 bits right
-06 ALUM //right shift mode
+    ALUR ALUA //RW bits to ALU
+    1E ALUB //shift 30 bits right
+    06 ALUM //right shift mode
 
 //see which of 00, 01, 10, 11 the RW bits are
 ALUR COMPA
@@ -158,25 +201,22 @@ COMPR PC
 //not readable and "writable" indicates the page is mapped but paged out
 //page not resident
 
-//set up the stack
-00 WOFST
-IADF WBASE
-SKIP PC
-::KERNEL_STACK
-
 //push function address onto stack
 IADF WMEM
 SKIP PC
 ::get_open_physical_page
-04 WOFST
+24 WOFST //size of stack frame + 4
 RTRN LINK
 IADN PC
 ::FUNC
 
 //result of function call is target physical page number
 //pop result from stack
-00 WOFST
-WMEM GPH
+    20 WOFST //20 == size of stack frame, top of stack
+    WMEM GPH
+//store in local variable
+
+
 
 //load page from disk
 //get disk block from PTE
@@ -192,6 +232,13 @@ WMEM GPH
     SKIP PC
     FF FF F0 00 //remove physical offset part of virtual address
     ALUR GPF
+
+//store disk block and virtual page number in local variables
+    WBASE RBASE
+    0C ROFST
+    GPE RMEM
+    10 ROFST
+    GPF RMEM
 
 //load from disk
     //point RMEM to virtual disk
@@ -260,8 +307,6 @@ WMEM GPH
         SKIP PC
         ::process_map
 
-    BREAK
-
     //calculate offset of target process entry ((process ID - 1) is index into map)
         // (16 * (PID - 1)) + 8
         03 ALUM //subtract
@@ -281,13 +326,44 @@ WMEM GPH
         01 ALUB
         ALUR RMEM
 
-
 //update page table
 //TODO how do we know if we loaded a page table or a leaf page?
 //  if we loaded a leaf page, we need to update the page table
 //  but if we loaded a page table, we need to update the page directory
 //  traverse the page table: the first PDE/PTE with matching protection bits
 //  was the one that failed
+
+//get PDE
+    05 ALUM //left shift
+    GPD ALUA //active process page directory physical page
+    0C ALUB //12 bits
+    ALUR GPA //GPA = page directory base address
+
+    //page table number = (virtual address & 0xFFC00000) >> 22
+    08 ALUM //AND
+    GPB ALUA //virtual address
+    IADF ALUB //mask for first 12 bits
+    SKIP PC
+    FF C0 00 00
+
+    ALUR ALUA
+    06 ALUM //right shift
+    14 ALUB //20 bits (page number is given by shifting 22 bits, but offset into page table is page number * 4, so shift left 2 bits)
+
+    ALUR ALUB
+    GPA ALUA
+    07 ALUM //OR
+
+    01 ALUM //add
+    ALUR ALUA //page directory entry physical address
+    IADF ALUB //add 0x00 3F 00 00 to get kernel virtual address of physical address
+    SKIP PC
+    00 3F 00 00
+
+    ALUR RBASE
+    00 ROFST
+
+//TODO keep following page table to find faulted PTE
 
 //return from interrupt
 
