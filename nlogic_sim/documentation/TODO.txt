@@ -1,4 +1,40 @@
-﻿change processor current instruction debugger display to show the instruction expansion ("src -> dst")
+﻿
+
+continue with loading page from disk:
+    make MMU store faulted virtual address (if it doesn't already)
+    in fault handler, retrieve faulted virtual address from MMU
+        currently we're only getting the faulted PTE
+        we need the virtual address to know what virtual page / page table we're fetching, and to store that info in the physical page map
+    update the physical page map
+        make process ID not hardcoded
+        make page directory physical block not hardcoded
+            accessible from the process map once we know the process ID
+    update the process map
+
+Fix virtual disk so that writing 4 bytes to the transfer register doesn't initiate 4 transfers
+    just make the nominal byte start the transfer
+
+Map physical memory to kernel's address space
+    could probably load these page tables from disk rather than building them during boot
+
+====================================================================================
+
+Change simulator to accept configuration file as command line argument to set up memory, MMIO devices, etc.
+
+Document current state of assembler and assembler pro functionality
+
+====================================================================================
+
+Determine how to handle reading / writing over page boundaries
+	Currently, environment gets translated base address from the MMU
+	Processor can only read and write 4 bytes at a time due to using 4 byte registers
+	The processor could issue a read where the base address is translated without fault (first byte is in bounds)
+		The fourth byte might be on a different page, but the MMU can't stop reading this byte because the environment
+		takes the MMU-translated address and just reads the next 4 addresses
+
+====================================================================================
+
+change processor current instruction debugger display to show the instruction expansion ("src -> dst")
 
 continue testing the test program
 
