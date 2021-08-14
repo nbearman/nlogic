@@ -1,7 +1,0 @@
-﻿System memory layout and structure as it is currently implemented
-
-0x 00 00 00 00
-Physical memory
-	Text segment
-0x 00 00 FF FF
-Memory-mapped input-output devices
