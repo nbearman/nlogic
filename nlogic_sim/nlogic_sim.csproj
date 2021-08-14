@@ -42,119 +42,116 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="Assembler.cs" />
-    <Compile Include="AssemblerPro.cs" />
-    <Compile Include="devices\display_test.cs" />
-    <Compile Include="devices\MemoryManagementUnit.cs" />
-    <Compile Include="devices\SimpleVirtualDisplay.cs" />
-    <Compile Include="devices\VirtualDisk.cs" />
-    <Compile Include="devices\VirtualKeyboard.cs" />
-    <Compile Include="entry_points\AssembleProgram.cs" />
-    <Compile Include="File.cs" />
-    <Compile Include="processor\newProcessor.cs" />
-    <None Include="os\boot.pro" />
-    <None Include="os_disk\64\2_func.pro" />
-    <None Include="os_disk\64\1_handler.pro" />
-    <None Include="os_disk\100\user.pro" />
-    <None Include="processor\oldProcessor.cs" />
-    <Compile Include="processor\Processor3.cs" />
-    <Compile Include="processor\ProcessorDefinitions.cs" />
-    <Compile Include="processor\ProcessorVisualizer.cs" />
-    <Compile Include="devices\VirtualDisplay.cs" />
-    <Compile Include="data_structures\IntervalTree.cs" />
-    <Compile Include="data_structures\IntervalTreeTest.cs" />
-    <Compile Include="processor\ProcessorVisualizer_New.cs" />
-    <Compile Include="processor\Register.cs" />
-    <Compile Include="processor\VisualizerDefinitions.cs" />
-    <Compile Include="Program.cs" />
+    <Compile Include="src\Assembler.cs" />
+    <Compile Include="src\AssemblerPro.cs" />
+    <Compile Include="src\devices\display_test.cs" />
+    <Compile Include="src\devices\MemoryManagementUnit.cs" />
+    <Compile Include="src\devices\SimpleVirtualDisplay.cs" />
+    <Compile Include="src\devices\VirtualDisk.cs" />
+    <Compile Include="src\devices\VirtualKeyboard.cs" />
+    <Compile Include="src\entry_points\AssembleProgram.cs" />
+    <Compile Include="src\File.cs" />
+    <None Include="tools\os\boot.pro" />
+    <None Include="tools\os_disk\64\2_func.pro" />
+    <None Include="tools\os_disk\64\1_handler.pro" />
+    <None Include="tools\os_disk\100\user.pro" />
+    <Compile Include="src\processor\Processor3.cs" />
+    <Compile Include="src\processor\ProcessorDefinitions.cs" />
+    <Compile Include="src\devices\VirtualDisplay.cs" />
+    <Compile Include="src\data_structures\IntervalTree.cs" />
+    <Compile Include="src\data_structures\IntervalTreeTest.cs" />
+    <Compile Include="src\processor\ProcessorVisualizer_New.cs" />
+    <Compile Include="src\processor\Register.cs" />
+    <Compile Include="src\processor\VisualizerDefinitions.cs" />
+    <Compile Include="src\Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
-    <Compile Include="simulation_environment\SimulationEnvironment.cs" />
-    <Compile Include="entry_points\TestMain.cs" />
-    <Compile Include="Utility.cs" />
-    <None Include="programs\const_label_loading\boot.pro" />
-    <None Include="programs\fill_test\2.pro" />
-    <None Include="programs\fill_test\1.pro" />
-    <None Include="programs\function_call\function.pro" />
-    <None Include="programs\loaded\loaded.pro" />
-    <None Include="programs\mmu_enable\boot.pro" />
+    <Compile Include="src\simulation_environment\SimulationEnvironment.cs" />
+    <Compile Include="src\entry_points\TestMain.cs" />
+    <Compile Include="src\Utility.cs" />
+    <None Include="testing\programs\const_label_loading\boot.pro" />
+    <None Include="testing\programs\fill_test\2.pro" />
+    <None Include="testing\programs\fill_test\1.pro" />
+    <None Include="testing\programs\function_call\function.pro" />
+    <None Include="testing\programs\loaded\loaded.pro" />
+    <None Include="testing\programs\mmu_enable\boot.pro" />
   </ItemGroup>
   <ItemGroup>
     <None Include="App.config" />
   </ItemGroup>
   <ItemGroup>
     <Content Include="AssembleDebug.py" />
-    <Content Include="builder.txt">
+    <Content Include="tools\builder.txt">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
-    <Content Include="builder_python.txt" />
-    <Content Include="disk_builder_python.txt" />
-    <Content Include="disk_builder.txt" />
-    <Content Include="documentation\memory_layout.txt" />
+    <Content Include="tools\builder_python.txt" />
+    <Content Include="tools\disk_builder_python.txt" />
+    <Content Include="tools\disk_builder.txt" />
     <Content Include="documentation\os_overview.txt" />
     <Content Include="documentation\Readme.txt" />
-    <Content Include="programs\alu_shift_delayed_test.txt">
+    <Content Include="tools\go.txt" />
+    <Content Include="testing\programs\alu_shift_delayed_test.txt">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
-    <Content Include="programs\alu_shift_test.txt">
+    <Content Include="testing\programs\alu_shift_test.txt">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
-    <Content Include="programs\comments.txt">
+    <Content Include="testing\programs\comments.txt">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
-    <Content Include="programs\dmem.txt">
+    <Content Include="testing\programs\dmem.txt">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
-    <Content Include="programs\dmem2.txt">
+    <Content Include="testing\programs\dmem2.txt">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
-    <Content Include="programs\loaded\loaded.txt" />
-    <Content Include="programs\locked_flag.txt">
+    <Content Include="testing\programs\loaded\loaded.txt" />
+    <Content Include="testing\programs\locked_flag.txt">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
-    <Content Include="programs\log_testing\add_test.txt">
+    <Content Include="testing\programs\log_testing\add_test.txt">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
-    <Content Include="programs\memory_test.txt">
+    <Content Include="testing\programs\memory_test.txt">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
-    <Content Include="programs\numbers.txt">
+    <Content Include="testing\programs\numbers.txt">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
-    <Content Include="programs\offset_reads.txt" />
-    <Content Include="programs\skip_test.txt">
+    <Content Include="testing\programs\offset_reads.txt" />
+    <Content Include="testing\programs\skip_test.txt">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
-    <Content Include="programs\sample_memory_read.txt">
+    <Content Include="testing\programs\sample_memory_read.txt">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
-    <Content Include="programs\external_labels2.txt">
+    <Content Include="testing\programs\external_labels2.txt">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
-    <Content Include="programs\external_labels1.txt">
+    <Content Include="testing\programs\external_labels1.txt">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
-    <Content Include="programs\label.txt">
+    <Content Include="testing\programs\label.txt">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
-    <Content Include="programs\jump3.txt">
+    <Content Include="testing\programs\jump3.txt">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
-    <Content Include="programs\jump2.txt">
+    <Content Include="testing\programs\jump2.txt">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
-    <Content Include="programs\jump.txt">
+    <Content Include="testing\programs\jump.txt">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
-    <Content Include="programs\subtraction.txt">
+    <Content Include="testing\programs\subtraction.txt">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
-    <Content Include="programs\reg_test.txt">
+    <Content Include="testing\programs\reg_test.txt">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
-    <Content Include="programs\fptest.txt">
+    <Content Include="testing\programs\fptest.txt">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
-    <Content Include="programs\program.txt">
+    <Content Include="testing\programs\program.txt">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
     <Content Include="documentation\TODO.txt" />
@@ -163,8 +160,8 @@
     </Content>
   </ItemGroup>
   <ItemGroup>
-    <Folder Include="programs\virtual_display_program\" />
-    <Folder Include="virtual_disk\" />
+    <Folder Include="testing\programs\virtual_display_program\" />
+    <Folder Include="tools\virtual_disk\" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
 </Project>
