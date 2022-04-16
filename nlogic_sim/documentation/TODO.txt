@@ -1,10 +1,28 @@
 ﻿
+Consider addding a bit to PTE that specifies if the PTE is a page directory entry or a page table entry
+	this could simplify the page fault handler
+		currently, we don't know if the page we have to bring in to memory is a page table or a leaf page
+		we need to know because we need to know if we need to udpate the parent page table or just the page directory
+			with the newly resident page's info
+
+Disk operation should be async
+	currently processor blocks while loading from virtual disk
+	change the interface (or implement an AsyncDisk instead of SimpleDisk) to start a transfer and
+		set a flag register (or interrupt?) when the transfer is complete
+		Maybe the kernel can request a non-interrupt transfer and users can use interrupt based transfer
+			kernel needs to load from disk during page eviction, but interrupts must be disabled during that time
+				it's ok for the kernel to wait and spin while waiting for a page transfer to finish, since nothing
+					else can happen until the transfer is complete
+						(in theory for large memory systems this isn't true, another process could be resumed)
+			busy waiting in a user program is not desirable, so using user defined disk load interrupt handlers would be ideal
+
+====================================================================================
 
 continue with loading page from disk:
-    make MMU store faulted virtual address (if it doesn't already)
-    in fault handler, retrieve faulted virtual address from MMU
-        currently we're only getting the faulted PTE
-        we need the virtual address to know what virtual page / page table we're fetching, and to store that info in the physical page map
+    [done] make MMU store faulted virtual address (if it doesn't already)
+		in fault handler, retrieve faulted virtual address from MMU
+			currently we're only getting the faulted PTE
+			we need the virtual address to know what virtual page / page table we're fetching, and to store that info in the physical page map
     update the physical page map
         make process ID not hardcoded
         make page directory physical block not hardcoded

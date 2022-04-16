@@ -73,6 +73,7 @@ FPUB WMEM
 DMEM00 WMEM
 4C WOFST
 DMEM04 WMEM
+50 WOFST
 
 //=========================
 // interrupt handler stack layout / local variables
@@ -215,7 +216,7 @@ IADN PC
     20 WOFST //20 == size of stack frame, top of stack
     WMEM GPH
 //store in local variable
-
+// ...TODO? ^
 
 
 //load page from disk
@@ -330,8 +331,40 @@ IADN PC
 //TODO how do we know if we loaded a page table or a leaf page?
 //  if we loaded a leaf page, we need to update the page table
 //  but if we loaded a page table, we need to update the page directory
+//      Use the page table to see which of the PDE/PTE was protected -> caused this fault
 //  traverse the page table: the first PDE/PTE with matching protection bits
 //  was the one that failed
+//      this is true because !R,W always means the page is mapped but not resident.
+//      if we are trying to load a leaf page, it is not possible that the parent table
+//      is !R,W (evicted), because we would have faulted on accessing that table before
+//      we ever knew we needed to bring this leaf page into memory.
+//      therefore, if the PDE is !R,W, we are definitely loading a page table
+//      ...if PDE caused fault: we are loading a page table into memory
+//      ...if PTE caused fault: we are loading a leaf page into memory
+
+//update page table
+// get the PDE (don't just use the faulted PTE; we still don't know if that is a PDE or PTE)
+//  if the PDE was the one that faulted, it should have been !R,W
+//      now the page table it points to is in memory, mark the PDE as R,!W
+//          the page table is write protected because it is clean compared to disk
+//      mark the PDE as !F,!D since the page table is clean and newly loaded
+//          handling this fault does not count as accessing/referencing the newly loaded page table
+//          a subsequent read, or handling a PTE fault, would mark the PDE as referenced, though
+//      update the PDE with the new physical page where the page table was put (local var at 0x1C)
+//      done
+//  if the PDE was not the one that faulted, it should have been R,W
+//      mark the PDE as F,D since we will be updating the page table with the newly loaded leaf page's information
+//          F bit should have been set before MMU faulted on the page anyway, since we read the page table
+//      the PTE should have been the one that faulted; the leaf page was just loaded into memory
+//          the PTE should be !R,W
+//          get the PTE by following the PDE to the page table
+//          set the PTE to R,!W
+//              R because the page is now resident in memory and safe to read
+//              !W because the page is clean compared to disk (it was just loaded)
+//          mark the PTE as !F,!D since the leaf page is clean and newly loaded
+//              F bit will be set when the instruction is retried, but loading the page right now doesn't count as reference
+//          update the PTE with the new physical page where the page table was put (local var at 0x1C)
+//      done
 
 //get PDE
     05 ALUM //left shift
@@ -360,11 +393,54 @@ IADN PC
     SKIP PC
     00 3F 00 00
 
+    BREAK
+
+    //set RBASE to point to the PDE for the faulted address (may or may not be the PDE/PTE that faulted)
     ALUR RBASE
     00 ROFST
 
-//TODO keep following page table to find faulted PTE
+//check if PDE or PTE faulted
+//  PDE faulted if the PDE is !R,W
+//  else PTE faulted (if PTE faulted, PDE is necessarily R,W, else it would have faulted first)
+    //extract RW bits from PDE
+        RMEM ALUA //PDE to ALU
+        IADF ALUB //protection mask to ALU
+        SKIP PC
+        C0 00 00 00 //mask for the RW bits of the PDE
+        08 ALUM //AND mode
 
+        ALUR ALUA //RW bits to ALU
+        1E ALUB //shift 30 bits right
+        06 ALUM //right shift mode
+
+    //compare PDE RW bits to !R,W (0x01)
+        ALUR COMPA //RW bits to comparator
+        01 COMPB //!R,W (0x01) to comparator
+        COMPR PC
+        :table_caused_r0w1 //the PDE faulted, so we just loaded a page table into memory
+        :leaf_caused_r0w1 //the PTE faulted, so we just loaded a leaf page into memory
+
+@table_caused_r0w1 //IF CLAUSE (PDE faulted)
+//if PDE faulted, we just loaded a page table in; update the PDE
+//  update the PDE to be R,!W,!F,!D
+
+// skip else clause
+IADN PC
+:conclude_r0w1
+
+@leaf_caused_r0w1 //ELSE CLAUSE (PTE faulted)
+//else if PTE faulted, we just loaded a leaf page in; update the PDE and PTE
+//  assert that the PTE is !R,W
+//      if these are not the protection bits, neither the PDE nor PDE faulted?
+//          we are in the !R,W branch, so one of PDE and PTE should have !R,W
+//          since neither meet that criteria, HALT; PANIC
+            7F FLAG
+
+//  update the PDE to be F,D
+//  fetch the PTE
+//  update the PTE to be R,!W,!F,!D
+
+@conclude_r0w1
 //return from interrupt
 
 
@@ -530,7 +606,7 @@ FILL940
 
 
 //=========================================================================
-// [function] get_open_physical_page | void
+// [function] get_open_physical_page | void TODO: this is not void
 //=========================================================================
 @@get_open_physical_page
 //returns physical page number that is available for incoming page
@@ -610,6 +686,17 @@ FILL940
 //no open pages
 BREAK
 
+//      TODO important insight:
+//      An evictable page is one where no other non-empty page mapping entry has a "directory physical page" that
+//      matches the evictable page's physical page (this is true of all leaf pages, all page tables with
+//      no child pages in memory, and all page directories with no child tables in memory -- except page
+//      directories point to themselves, so never count self reference)
+//      TODO the above is only true if leaf pages point to their page tables; right now, the "directory physical page"
+//      variable points to the owning process's page directory
+//          Why is it set up that way? To make it easy to see if a process has any non-directory tables or pages in memory?
+//          It should be possible to find the owning process of any page mapping entry by following the "directory physical page"
+//          pointer until it references itself (only true of directories), which is at most 2 steps (2 for leafs, 1 for tables)
+//          The process descriptor in the process map also has the number of resident pages
 
 //TODO implement this
 00 RBASE

@@ -52,6 +52,14 @@
     <Compile Include="src\devices\VirtualKeyboard.cs" />
     <Compile Include="src\entry_points\AssembleProgram.cs" />
     <Compile Include="src\File.cs" />
+    <None Include="tools\AssembleDebug.py" />
+    <None Include="tools\BUILD_DEBUG\os\boot.pro.debug" />
+    <None Include="tools\BUILD_DEBUG\programs\breakpoint_test\breakpoint.pro.debug" />
+    <None Include="tools\BUILD_DEBUG\programs\unconditional_jump\jump.pro.debug" />
+    <None Include="tools\DISK_DEBUG\100\user.pro.debug" />
+    <None Include="tools\DISK_DEBUG\64\1_handler.pro.debug" />
+    <None Include="tools\DISK_DEBUG\64\2_func.pro.debug" />
+    <None Include="tools\DISK_DEBUG\64\3_kernel_stack.pro.debug" />
     <None Include="tools\os\boot.pro" />
     <None Include="tools\os_disk\64\2_func.pro" />
     <None Include="tools\os_disk\64\1_handler.pro" />
@@ -85,6 +93,7 @@
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
     <Content Include="tools\builder_python.txt" />
+    <Content Include="tools\BUILD_DEBUG\program.asm" />
     <Content Include="tools\disk_builder_python.txt" />
     <Content Include="tools\disk_builder.txt" />
     <Content Include="documentation\os_overview.txt" />
