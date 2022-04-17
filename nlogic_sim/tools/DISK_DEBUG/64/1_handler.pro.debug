@@ -2,29 +2,36 @@
 -- -- -- -- |	// kernel entry point
 -- -- -- -- |	//=========================================================================
 -- -- -- -- |	
-00 00 00 00 |	FILL170 //PC before virtual addressing was enabled
+-- -- -- -- |	// PC is at 0x08 when MMU is enabled, so these won't be executed
+00 00 00 00 |	00 00
+00 00 00 02 |	00 00
+00 00 00 04 |	00 00
+-- -- -- -- |	
+-- -- -- -- |	//kernel entry point; MMU enabled, we're in VA now
 -- -- -- -- |	
 -- -- -- -- |	//set the MMU VA break point
-00 00 01 70 |	IADF WBASE
-00 00 01 72 |	SKIP PC
-00 00 01 74 |	00 00 10 00 //MMIO base address (in VA)
-00 00 01 78 |	08 WOFST //breakpoint register
-00 00 01 7A |	00 WMEM //breakpoint at 0
+00 00 00 06 |	IADF WBASE
+00 00 00 08 |	SKIP PC
+00 00 00 0A |	00 00 10 00 //MMIO base address (in VA)
+00 00 00 0E |	08 WOFST //breakpoint register
+00 00 00 10 |	00 WMEM //breakpoint at 0
 -- -- -- -- |	
 -- -- -- -- |	//enable the breakpoint
-00 00 01 7C |	14 WOFST //breakpoint enabled register
-00 00 01 7E |	01 WMEM //non-zero -> enabled
+00 00 00 12 |	14 WOFST //breakpoint enabled register
+00 00 00 14 |	01 WMEM //non-zero -> enabled
 -- -- -- -- |	
-00 00 01 80 |	00 RBASE
-00 00 01 82 |	00 ROFST
+00 00 00 16 |	00 RBASE
+00 00 00 18 |	00 ROFST
 -- -- -- -- |	
 -- -- -- -- |	//jump to 0 in user space
-00 00 01 84 |	00 PC
+00 00 00 1A |	00 PC
 -- -- -- -- |	
 -- -- -- -- |	//=========================================================================
 -- -- -- -- |	// interrupt handler
 -- -- -- -- |	//=========================================================================
-00 00 01 86 |	FILL200
+00 00 00 1C |	FILL110
+00 00 01 10 |	BREAK
+00 00 01 12 |	FILL200
 00 00 02 00 |	WBASE DMEM00
 00 00 02 02 |	WOFST DMEM04
 -- -- -- -- |	
@@ -394,40 +401,66 @@
 00 00 03 CC |	    00 3F 00 00
 -- -- -- -- |	
 00 00 03 D0 |	    BREAK
--- -- -- -- |	
 -- -- -- -- |	    //set RBASE to point to the PDE for the faulted address (may or may not be the PDE/PTE that faulted)
 00 00 03 D2 |	    ALUR RBASE
 00 00 03 D4 |	    00 ROFST
 -- -- -- -- |	
 -- -- -- -- |	//check if PDE or PTE faulted
 -- -- -- -- |	//  PDE faulted if the PDE is !R,W
--- -- -- -- |	//  else PTE faulted
+-- -- -- -- |	//  else PTE faulted (if PTE faulted, PDE is necessarily R,W, else it would have faulted first)
+-- -- -- -- |	    //extract RW bits from PDE
+00 00 03 D6 |	        RMEM ALUA //PDE to ALU
+00 00 03 D8 |	        IADF ALUB //protection mask to ALU
+00 00 03 DA |	        SKIP PC
+00 00 03 DC |	        C0 00 00 00 //mask for the RW bits of the PDE
+00 00 03 E0 |	        08 ALUM //AND mode
 -- -- -- -- |	
+00 00 03 E2 |	        ALUR ALUA //RW bits to ALU
+00 00 03 E4 |	        1E ALUB //shift 30 bits right
+00 00 03 E6 |	        06 ALUM //right shift mode
+-- -- -- -- |	
+-- -- -- -- |	    //compare PDE RW bits to !R,W (0x01)
+00 00 03 E8 |	        ALUR COMPA //RW bits to comparator
+00 00 03 EA |	        01 COMPB //!R,W (0x01) to comparator
+00 00 03 EC |	        COMPR PC
+00 00 03 EE |	        :table_caused_r0w1 //the PDE faulted, so we just loaded a page table into memory
+00 00 03 F2 |	        :leaf_caused_r0w1 //the PTE faulted, so we just loaded a leaf page into memory
+-- -- -- -- |	
+-- -- -- -- |	@table_caused_r0w1 //IF CLAUSE (PDE faulted)
 -- -- -- -- |	//if PDE faulted, we just loaded a page table in; update the PDE
 -- -- -- -- |	//  update the PDE to be R,!W,!F,!D
+00 00 03 F6 |	    7F FLAG // TODO implement this
 -- -- -- -- |	
+-- -- -- -- |	// skip else clause
+00 00 03 F8 |	IADN PC
+00 00 03 FA |	:conclude_r0w1
+-- -- -- -- |	
+-- -- -- -- |	@leaf_caused_r0w1 //ELSE CLAUSE (PTE faulted)
 -- -- -- -- |	//else if PTE faulted, we just loaded a leaf page in; update the PDE and PTE
+-- -- -- -- |	//  TODO //implement this
 -- -- -- -- |	//  assert that the PTE is !R,W
 -- -- -- -- |	//      if these are not the protection bits, neither the PDE nor PDE faulted?
 -- -- -- -- |	//          we are in the !R,W branch, so one of PDE and PTE should have !R,W
 -- -- -- -- |	//          since neither meet that criteria, HALT; PANIC
-00 00 03 D6 |	            7F FLAG
+00 00 03 FE |	            7F FLAG
 -- -- -- -- |	
 -- -- -- -- |	//  update the PDE to be F,D
 -- -- -- -- |	//  fetch the PTE
 -- -- -- -- |	//  update the PTE to be R,!W,!F,!D
 -- -- -- -- |	
+-- -- -- -- |	@conclude_r0w1
 -- -- -- -- |	//return from interrupt
+-- -- -- -- |	//TODO implement this
 -- -- -- -- |	
 -- -- -- -- |	
 -- -- -- -- |	//nothing left
-00 00 03 D8 |	02 FPUM
-00 00 03 DA |	11 FPUA
-00 00 03 DC |	22 FPUB
-00 00 03 DE |	FPUR GPC
-00 00 03 E0 |	7F FLAG
+00 00 04 00 |	02 FPUM
+00 00 04 02 |	11 FPUA
+00 00 04 04 |	22 FPUB
+00 00 04 06 |	FPUR GPC
+00 00 04 08 |	7F FLAG
 -- -- -- -- |	
-00 00 03 E2 |	FILL600
+00 00 04 0A |	FILL600
 -- -- -- -- |	@@physical_page_map
 -- -- -- -- |	//physical page map
 -- -- -- -- |	

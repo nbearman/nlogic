@@ -2,7 +2,12 @@
 // kernel entry point
 //=========================================================================
 
-FILL170 //PC before virtual addressing was enabled
+// PC is at 0x08 when MMU is enabled, so these won't be executed
+00 00
+00 00
+00 00
+
+//kernel entry point; MMU enabled, we're in VA now
 
 //set the MMU VA break point
 IADF WBASE
@@ -24,7 +29,11 @@ SKIP PC
 //=========================================================================
 // interrupt handler
 //=========================================================================
-FILL200
+
+//Fill to place the interrupt handler code at the correct location
+    //TODO the address of the interrupt handler is currently hardcoded in the simulation environment
+    //interrupt_handler_address in Processor class
+FILL20
 WBASE DMEM00
 WOFST DMEM04
 
@@ -394,7 +403,6 @@ IADN PC
     00 3F 00 00
 
     BREAK
-
     //set RBASE to point to the PDE for the faulted address (may or may not be the PDE/PTE that faulted)
     ALUR RBASE
     00 ROFST
@@ -423,6 +431,7 @@ IADN PC
 @table_caused_r0w1 //IF CLAUSE (PDE faulted)
 //if PDE faulted, we just loaded a page table in; update the PDE
 //  update the PDE to be R,!W,!F,!D
+    7F FLAG // TODO implement this
 
 // skip else clause
 IADN PC
@@ -430,6 +439,7 @@ IADN PC
 
 @leaf_caused_r0w1 //ELSE CLAUSE (PTE faulted)
 //else if PTE faulted, we just loaded a leaf page in; update the PDE and PTE
+//  TODO //implement this
 //  assert that the PTE is !R,W
 //      if these are not the protection bits, neither the PDE nor PDE faulted?
 //          we are in the !R,W branch, so one of PDE and PTE should have !R,W
@@ -442,6 +452,7 @@ IADN PC
 
 @conclude_r0w1
 //return from interrupt
+//TODO implement this
 
 
 //nothing left

@@ -1,31 +1,30 @@
--- -- -- -- |	//IADF WBASE
--- -- -- -- |	//SKIP PC
--- -- -- -- |	//FF 00 00 18
--- -- -- -- |	//
--- -- -- -- |	////physical page
--- -- -- -- |	//00 WOFST
--- -- -- -- |	//01 WMEM
--- -- -- -- |	//
--- -- -- -- |	////disk block
--- -- -- -- |	//04 WOFST
--- -- -- -- |	////22 WMEM
--- -- -- -- |	//IADF WMEM
--- -- -- -- |	//SKIP PC
--- -- -- -- |	//00 00 30 39
--- -- -- -- |	//
--- -- -- -- |	////read/write mode
--- -- -- -- |	//08 WOFST
--- -- -- -- |	//00 WMEM
--- -- -- -- |	//
--- -- -- -- |	////initiate
--- -- -- -- |	//0C WOFST
--- -- -- -- |	//01 WMEM
--- -- -- -- |	
--- -- -- -- |	////////////////////////////
--- -- -- -- |	// End test section
--- -- -- -- |	////////////////////////////
--- -- -- -- |	
 -- -- -- -- |	//kernel boot
+-- -- -- -- |	
+-- -- -- -- |	//=========================================================================
+-- -- -- -- |	// Entry point / MMU departure point
+-- -- -- -- |	//=========================================================================
+-- -- -- -- |	//This instruction, physical address 0, will be run twice before we enable virtual addressing
+-- -- -- -- |	//The first time is as the very first instruction; in this case, it will basically be a NOP
+-- -- -- -- |	//The second time, we want to write a value to the MMU in order to enable it
+-- -- -- -- |	//We want the PC to be as close to 0 as possible when the MMU is enabled so that the kernel
+-- -- -- -- |	//entry point in VA can be close to 0 (to avoid wasting space and confusing FILL macros)
+-- -- -- -- |	//Therefore, we put the final instruction we want to run before the MMU is enabled at 0x00
+-- -- -- -- |	//	We will jump back here after completing the rest of boot and preparing WMEM to point to the MMU
+-- -- -- -- |	//	That means these instructions will be run twice: once "on boot," and once "on jumpback"
+-- -- -- -- |	
+-- -- -- -- |	//The last instruction we need to run before starting the MMU is a write to WMEM
+-- -- -- -- |	//On jumpback, WMEM will be pointed to the MMU, but on boot, WMEM is pointed at 0x00
+-- -- -- -- |	//	Therefore, on boot, the WMEM write will overwrite the first 2 instructions
+-- -- -- -- |	//	They must be NOPs to avoid erasing any useful code
+00 00 00 00 |		00 00 00 00
+-- -- -- -- |	//This is the final instruction we need to execute to enable the MMU
+-- -- -- -- |	//On boot, this will overwrite the previous 4 bytes (noted above)
+-- -- -- -- |	//On jumpback, this will enable the MMU, and we will continue executing in VA
+00 00 00 04 |		01 WMEM
+-- -- -- -- |	
+-- -- -- -- |	//On jumpback, execution will not reach here; the MMU is enabled and we are no longer executing from PPage 0
+-- -- -- -- |	//On boot, continue with the real initialization process
+-- -- -- -- |	//	All instructions from here forward are therefore only executed on boot (no double execution from jumpback)
 -- -- -- -- |	
 -- -- -- -- |	//=========================
 -- -- -- -- |	// physcial memory layout
@@ -54,135 +53,135 @@
 -- -- -- -- |	//=========================================================================
 -- -- -- -- |	
 -- -- -- -- |	//create a PDE in the kernel's page directory
-00 00 00 00 |	IADF WBASE
-00 00 00 02 |	SKIP PC
-00 00 00 04 |	00 00 10 00
+00 00 00 06 |	IADF WBASE
+00 00 00 08 |	SKIP PC
+00 00 00 0A |	00 00 10 00
 -- -- -- -- |	
-00 00 00 08 |	IADF WMEM
-00 00 00 0A |	SKIP PC
+00 00 00 0E |	IADF WMEM
+00 00 00 10 |	SKIP PC
 -- -- -- -- |	// R !W physical page 2
-00 00 00 0C |	80 00 00 02
+00 00 00 12 |	80 00 00 02
 -- -- -- -- |	
 -- -- -- -- |	//create a PTE in the kernel's page table for virtual page 0
 -- -- -- -- |	//the page table is at physical address 00 00 20 00, so write the PTE there
-00 00 00 10 |	IADF WBASE
-00 00 00 12 |	SKIP PC
-00 00 00 14 |	00 00 20 00
+00 00 00 16 |	IADF WBASE
+00 00 00 18 |	SKIP PC
+00 00 00 1A |	00 00 20 00
 -- -- -- -- |	
-00 00 00 18 |	IADF WMEM
-00 00 00 1A |	SKIP PC
+00 00 00 1E |	IADF WMEM
+00 00 00 20 |	SKIP PC
 -- -- -- -- |	// R W physical page 3
-00 00 00 1C |	C0 00 00 03
+00 00 00 22 |	C0 00 00 03
 -- -- -- -- |	
 -- -- -- -- |	//add another PTE for virtual page 1
 -- -- -- -- |	//map it to the MMIO devices (physical address FF 00 00 00)
-00 00 00 20 |	04 WOFST //(each PTE is 4 bytes, so the next PTE is 00 00 20 04)
-00 00 00 22 |	IADF WMEM
-00 00 00 24 |	SKIP PC
-00 00 00 26 |	C0 0F F0 00
+00 00 00 26 |	04 WOFST //(each PTE is 4 bytes, so the next PTE is 00 00 20 04)
+00 00 00 28 |	IADF WMEM
+00 00 00 2A |	SKIP PC
+00 00 00 2C |	C0 0F F0 00
 -- -- -- -- |	
 -- -- -- -- |	//add PTEs for virtual pages 0x3F0-0x3FF
 -- -- -- -- |	//map them to physical physical memory in order (physical address 0x00 00 00 00 - 0x00 00 F0 00)
 -- -- -- -- |	//to access physical address from kernel virtual address space, add 0x00 3F 00 00
-00 00 00 2A |	IADF WOFST
-00 00 00 2C |	SKIP PC
-00 00 00 2E |	00 00 0F C0 //(0x3F0 * 4, 4 bytes per PTE, 3F0th entry)
-00 00 00 32 |	IADF WMEM
-00 00 00 34 |	SKIP PC
-00 00 00 36 |	C0 00 00 00
+00 00 00 30 |	IADF WOFST
+00 00 00 32 |	SKIP PC
+00 00 00 34 |	00 00 0F C0 //(0x3F0 * 4, 4 bytes per PTE, 3F0th entry)
+00 00 00 38 |	IADF WMEM
+00 00 00 3A |	SKIP PC
+00 00 00 3C |	C0 00 00 00
 -- -- -- -- |	
-00 00 00 3A |	01 ALUM //add
-00 00 00 3C |	WOFST ALUA
-00 00 00 3E |	04 ALUB
-00 00 00 40 |	ALUR WOFST
+00 00 00 40 |	01 ALUM //add
+00 00 00 42 |	WOFST ALUA
+00 00 00 44 |	04 ALUB
+00 00 00 46 |	ALUR WOFST
 -- -- -- -- |	
-00 00 00 42 |	IADF WMEM
-00 00 00 44 |	SKIP PC
-00 00 00 46 |	C0 00 00 01
+00 00 00 48 |	IADF WMEM
+00 00 00 4A |	SKIP PC
+00 00 00 4C |	C0 00 00 01
 -- -- -- -- |	
-00 00 00 4A |	WOFST ALUA
-00 00 00 4C |	ALUR WOFST
-00 00 00 4E |	IADF WMEM
-00 00 00 50 |	SKIP PC
-00 00 00 52 |	C0 00 00 02
+00 00 00 50 |	WOFST ALUA
+00 00 00 52 |	ALUR WOFST
+00 00 00 54 |	IADF WMEM
+00 00 00 56 |	SKIP PC
+00 00 00 58 |	C0 00 00 02
 -- -- -- -- |	
-00 00 00 56 |	WOFST ALUA
-00 00 00 58 |	ALUR WOFST
-00 00 00 5A |	IADF WMEM
-00 00 00 5C |	SKIP PC
-00 00 00 5E |	C0 00 00 03
+00 00 00 5C |	WOFST ALUA
+00 00 00 5E |	ALUR WOFST
+00 00 00 60 |	IADF WMEM
+00 00 00 62 |	SKIP PC
+00 00 00 64 |	C0 00 00 03
 -- -- -- -- |	
-00 00 00 62 |	WOFST ALUA
-00 00 00 64 |	ALUR WOFST
-00 00 00 66 |	IADF WMEM
-00 00 00 68 |	SKIP PC
-00 00 00 6A |	C0 00 00 04
+00 00 00 68 |	WOFST ALUA
+00 00 00 6A |	ALUR WOFST
+00 00 00 6C |	IADF WMEM
+00 00 00 6E |	SKIP PC
+00 00 00 70 |	C0 00 00 04
 -- -- -- -- |	
-00 00 00 6E |	WOFST ALUA
-00 00 00 70 |	ALUR WOFST
-00 00 00 72 |	IADF WMEM
-00 00 00 74 |	SKIP PC
-00 00 00 76 |	C0 00 00 05
+00 00 00 74 |	WOFST ALUA
+00 00 00 76 |	ALUR WOFST
+00 00 00 78 |	IADF WMEM
+00 00 00 7A |	SKIP PC
+00 00 00 7C |	C0 00 00 05
 -- -- -- -- |	
-00 00 00 7A |	WOFST ALUA
-00 00 00 7C |	ALUR WOFST
-00 00 00 7E |	IADF WMEM
-00 00 00 80 |	SKIP PC
-00 00 00 82 |	C0 00 00 06
+00 00 00 80 |	WOFST ALUA
+00 00 00 82 |	ALUR WOFST
+00 00 00 84 |	IADF WMEM
+00 00 00 86 |	SKIP PC
+00 00 00 88 |	C0 00 00 06
 -- -- -- -- |	
-00 00 00 86 |	WOFST ALUA
-00 00 00 88 |	ALUR WOFST
-00 00 00 8A |	IADF WMEM
-00 00 00 8C |	SKIP PC
-00 00 00 8E |	C0 00 00 07
+00 00 00 8C |	WOFST ALUA
+00 00 00 8E |	ALUR WOFST
+00 00 00 90 |	IADF WMEM
+00 00 00 92 |	SKIP PC
+00 00 00 94 |	C0 00 00 07
 -- -- -- -- |	
-00 00 00 92 |	WOFST ALUA
-00 00 00 94 |	ALUR WOFST
-00 00 00 96 |	IADF WMEM
-00 00 00 98 |	SKIP PC
-00 00 00 9A |	C0 00 00 08
+00 00 00 98 |	WOFST ALUA
+00 00 00 9A |	ALUR WOFST
+00 00 00 9C |	IADF WMEM
+00 00 00 9E |	SKIP PC
+00 00 00 A0 |	C0 00 00 08
 -- -- -- -- |	
-00 00 00 9E |	WOFST ALUA
-00 00 00 A0 |	ALUR WOFST
-00 00 00 A2 |	IADF WMEM
-00 00 00 A4 |	SKIP PC
-00 00 00 A6 |	C0 00 00 09
+00 00 00 A4 |	WOFST ALUA
+00 00 00 A6 |	ALUR WOFST
+00 00 00 A8 |	IADF WMEM
+00 00 00 AA |	SKIP PC
+00 00 00 AC |	C0 00 00 09
 -- -- -- -- |	
-00 00 00 AA |	WOFST ALUA
-00 00 00 AC |	ALUR WOFST
-00 00 00 AE |	IADF WMEM
-00 00 00 B0 |	SKIP PC
-00 00 00 B2 |	C0 00 00 0A
+00 00 00 B0 |	WOFST ALUA
+00 00 00 B2 |	ALUR WOFST
+00 00 00 B4 |	IADF WMEM
+00 00 00 B6 |	SKIP PC
+00 00 00 B8 |	C0 00 00 0A
 -- -- -- -- |	
-00 00 00 B6 |	WOFST ALUA
-00 00 00 B8 |	ALUR WOFST
-00 00 00 BA |	IADF WMEM
-00 00 00 BC |	SKIP PC
-00 00 00 BE |	C0 00 00 0B
+00 00 00 BC |	WOFST ALUA
+00 00 00 BE |	ALUR WOFST
+00 00 00 C0 |	IADF WMEM
+00 00 00 C2 |	SKIP PC
+00 00 00 C4 |	C0 00 00 0B
 -- -- -- -- |	
-00 00 00 C2 |	WOFST ALUA
-00 00 00 C4 |	ALUR WOFST
-00 00 00 C6 |	IADF WMEM
-00 00 00 C8 |	SKIP PC
-00 00 00 CA |	C0 00 00 0C
+00 00 00 C8 |	WOFST ALUA
+00 00 00 CA |	ALUR WOFST
+00 00 00 CC |	IADF WMEM
+00 00 00 CE |	SKIP PC
+00 00 00 D0 |	C0 00 00 0C
 -- -- -- -- |	
-00 00 00 CE |	WOFST ALUA
-00 00 00 D0 |	ALUR WOFST
-00 00 00 D2 |	IADF WMEM
-00 00 00 D4 |	SKIP PC
-00 00 00 D6 |	C0 00 00 0D
+00 00 00 D4 |	WOFST ALUA
+00 00 00 D6 |	ALUR WOFST
+00 00 00 D8 |	IADF WMEM
+00 00 00 DA |	SKIP PC
+00 00 00 DC |	C0 00 00 0D
 -- -- -- -- |	
-00 00 00 DA |	WOFST ALUA
-00 00 00 DC |	ALUR WOFST
-00 00 00 DE |	IADF WMEM
-00 00 00 E0 |	SKIP PC
-00 00 00 E2 |	C0 00 00 0E
+00 00 00 E0 |	WOFST ALUA
+00 00 00 E2 |	ALUR WOFST
+00 00 00 E4 |	IADF WMEM
+00 00 00 E6 |	SKIP PC
+00 00 00 E8 |	C0 00 00 0E
 -- -- -- -- |	
-00 00 00 E6 |	WOFST ALUA
-00 00 00 E8 |	ALUR WOFST
-00 00 00 EA |	IADF WMEM
-00 00 00 EC |	SKIP PC
-00 00 00 EE |	C0 00 00 0F
+00 00 00 EC |	WOFST ALUA
+00 00 00 EE |	ALUR WOFST
+00 00 00 F0 |	IADF WMEM
+00 00 00 F2 |	SKIP PC
+00 00 00 F4 |	C0 00 00 0F
 -- -- -- -- |	
 -- -- -- -- |	
 -- -- -- -- |	//=========================================================================
@@ -190,83 +189,83 @@
 -- -- -- -- |	//=========================================================================
 -- -- -- -- |	
 -- -- -- -- |	//create a PDE in the users's page directory (page 5)
-00 00 00 F2 |	00 WOFST
-00 00 00 F4 |	IADF WBASE
-00 00 00 F6 |	SKIP PC
-00 00 00 F8 |	00 00 50 00
+00 00 00 F8 |	00 WOFST
+00 00 00 FA |	IADF WBASE
+00 00 00 FC |	SKIP PC
+00 00 00 FE |	00 00 50 00
 -- -- -- -- |	
-00 00 00 FC |	IADF WMEM
-00 00 00 FE |	SKIP PC
+00 00 01 02 |	IADF WMEM
+00 00 01 04 |	SKIP PC
 -- -- -- -- |	// R !W physical page 6
-00 00 01 00 |	80 00 00 06
+00 00 01 06 |	80 00 00 06
 -- -- -- -- |	
 -- -- -- -- |	//create a PTE in the user page table for virtual page 0
 -- -- -- -- |	//the page table is at physical address 00 00 60 00, so write the PTE there
-00 00 01 04 |	IADF WBASE
-00 00 01 06 |	SKIP PC
-00 00 01 08 |	00 00 60 00
+00 00 01 0A |	IADF WBASE
+00 00 01 0C |	SKIP PC
+00 00 01 0E |	00 00 60 00
 -- -- -- -- |	
-00 00 01 0C |	IADF WMEM
-00 00 01 0E |	SKIP PC
+00 00 01 12 |	IADF WMEM
+00 00 01 14 |	SKIP PC
 -- -- -- -- |	// R !W (resident, clean) physical page 7
-00 00 01 10 |	80 00 00 07
+00 00 01 16 |	80 00 00 07
 -- -- -- -- |	
 -- -- -- -- |	//create a PTE in the user page table for virtual page 1, the second instruction page
-00 00 01 14 |	04 WOFST
-00 00 01 16 |	IADF WMEM
-00 00 01 18 |	SKIP PC
+00 00 01 1A |	04 WOFST
+00 00 01 1C |	IADF WMEM
+00 00 01 1E |	SKIP PC
 -- -- -- -- |	// !R W (mapped, evicted) disk block 101
-00 00 01 1A |	40 00 00 65
+00 00 01 20 |	40 00 00 65
 -- -- -- -- |	
 -- -- -- -- |	//=========================================================================
 -- -- -- -- |	// load kernel program into memory from disk
 -- -- -- -- |	//=========================================================================
 -- -- -- -- |	
 -- -- -- -- |	//virtual disk is MMIO device; MMIO devices start at 0xFF 00 00 00
-00 00 01 1E |	IADF WBASE
-00 00 01 20 |	SKIP PC
-00 00 01 22 |	FF 00 00 1C
+00 00 01 24 |	IADF WBASE
+00 00 01 26 |	SKIP PC
+00 00 01 28 |	FF 00 00 1C
 -- -- -- -- |	
 -- -- -- -- |	//load into physical page 3
-00 00 01 26 |	00 WOFST
-00 00 01 28 |	03 WMEM
+00 00 01 2C |	00 WOFST
+00 00 01 2E |	03 WMEM
 -- -- -- -- |	
 -- -- -- -- |	//read from disk block 64
-00 00 01 2A |	04 WOFST
-00 00 01 2C |	40 WMEM
+00 00 01 30 |	04 WOFST
+00 00 01 32 |	40 WMEM
 -- -- -- -- |	
 -- -- -- -- |	//set read mode by writing 0
-00 00 01 2E |	08 WOFST
-00 00 01 30 |	00 WMEM
+00 00 01 34 |	08 WOFST
+00 00 01 36 |	00 WMEM
 -- -- -- -- |	
 -- -- -- -- |	//initiate the transfer
-00 00 01 32 |	0C WOFST
-00 00 01 34 |	01 WMEM
+00 00 01 38 |	0C WOFST
+00 00 01 3A |	01 WMEM
 -- -- -- -- |	
 -- -- -- -- |	//=========================================================================
 -- -- -- -- |	// load user program into memory from disk
 -- -- -- -- |	//=========================================================================
 -- -- -- -- |	
 -- -- -- -- |	//virtual disk is MMIO device; MMIO devices start at 0xFF 00 00 00
-00 00 01 36 |	IADF WBASE
-00 00 01 38 |	SKIP PC
-00 00 01 3A |	FF 00 00 1C
+00 00 01 3C |	IADF WBASE
+00 00 01 3E |	SKIP PC
+00 00 01 40 |	FF 00 00 1C
 -- -- -- -- |	
 -- -- -- -- |	//load into physical page 7
-00 00 01 3E |	00 WOFST
-00 00 01 40 |	07 WMEM
+00 00 01 44 |	00 WOFST
+00 00 01 46 |	07 WMEM
 -- -- -- -- |	
 -- -- -- -- |	//read from disk block 100
-00 00 01 42 |	04 WOFST
-00 00 01 44 |	64 WMEM
+00 00 01 48 |	04 WOFST
+00 00 01 4A |	64 WMEM
 -- -- -- -- |	
 -- -- -- -- |	//set read mode by writing 0
-00 00 01 46 |	08 WOFST
-00 00 01 48 |	00 WMEM
+00 00 01 4C |	08 WOFST
+00 00 01 4E |	00 WMEM
 -- -- -- -- |	
 -- -- -- -- |	//initiate the transfer
-00 00 01 4A |	0C WOFST
-00 00 01 4C |	01 WMEM
+00 00 01 50 |	0C WOFST
+00 00 01 52 |	01 WMEM
 -- -- -- -- |	
 -- -- -- -- |	
 -- -- -- -- |	//=========================================================================
@@ -276,18 +275,18 @@
 -- -- -- -- |	//set the active page directory base register to physical page 1 (kernel page directory)
 -- -- -- -- |	
 -- -- -- -- |	//load address of MMU registers into WBASE
-00 00 01 4E |	IADF RBASE
-00 00 01 50 |	SKIP PC
-00 00 01 52 |	:MMU_registers
-00 00 01 56 |	RMEM WBASE
+00 00 01 54 |	IADF RBASE
+00 00 01 56 |	SKIP PC
+00 00 01 58 |	:MMU_registers
+00 00 01 5C |	RMEM WBASE
 -- -- -- -- |	//set offset to active page directory register
-00 00 01 58 |	00 WOFST
-00 00 01 5A |	01 WMEM
+00 00 01 5E |	00 WOFST
+00 00 01 60 |	01 WMEM
 -- -- -- -- |	
 -- -- -- -- |	//set offset to queued page directory register
-00 00 01 5C |	04 WOFST
+00 00 01 62 |	04 WOFST
 -- -- -- -- |	//set the queued page directory base register to physical page 5 (user page directory)
-00 00 01 5E |	05 WMEM
+00 00 01 64 |	05 WMEM
 -- -- -- -- |	
 -- -- -- -- |	//=========================================================================
 -- -- -- -- |	// enable MMU
@@ -296,15 +295,22 @@
 -- -- -- -- |	@@ENABLE_MMU
 -- -- -- -- |	
 -- -- -- -- |	//load address of MMU registers
-00 00 01 60 |	IADF RBASE
-00 00 01 62 |	SKIP PC
-00 00 01 64 |	:MMU_registers
+00 00 01 66 |	IADF RBASE
+00 00 01 68 |	SKIP PC
+00 00 01 6A |	:MMU_registers
 -- -- -- -- |	
-00 00 01 68 |	RMEM WBASE
+00 00 01 6E |	RMEM WBASE
 -- -- -- -- |	
 -- -- -- -- |	//enable the MMU and see what happens
-00 00 01 6A |	18 WOFST
-00 00 01 6C |	01 WMEM
+-- -- -- -- |	//point WMEM at the correct MMU register
+00 00 01 70 |		18 WOFST
+-- -- -- -- |	//this is the instruction that we want to run, but we want PC to be closer to 0
+-- -- -- -- |		//This instruction is at the beginning of physical memory, so jump there to execute it
+-- -- -- -- |		//(more explanation around that instruction at 0x00)
+-- -- -- -- |		//To start the MMU, we would execute: 01 WMEM
+-- -- -- -- |	
+-- -- -- -- |	//jump back to the start of memory, where we will actually enable the MMU
+00 00 01 72 |	00 PC
 -- -- -- -- |	
 -- -- -- -- |	//=========================================================================
 -- -- -- -- |	//=========================================================================
@@ -321,7 +327,7 @@
 -- -- -- -- |	//TODO figure out how to choose an address for the MMU and communicate it to the kernel during boot
 -- -- -- -- |	@MMIO_devices
 -- -- -- -- |	@MMU_registers
-00 00 01 6E |	FF 00 00 00
+00 00 01 74 |	FF 00 00 00
 -- -- -- -- |	//00 active page dir base addr
 -- -- -- -- |	//04 queued page dir base addr
 -- -- -- -- |	//08 virtual addr mmu breakpoint
@@ -335,7 +341,7 @@
 -- -- -- -- |	
 -- -- -- -- |	//end of boot
 -- -- -- -- |	//halt the processor
-00 00 01 72 |	7F FLAG
+00 00 01 78 |	7F FLAG
 -- -- -- -- |	
 -- -- -- -- |	//=========================================================================
 -- -- -- -- |	// Physical page 3

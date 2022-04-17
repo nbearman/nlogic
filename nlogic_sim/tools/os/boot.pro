@@ -1,31 +1,30 @@
-﻿//IADF WBASE
-//SKIP PC
-//FF 00 00 18
-//
-////physical page
-//00 WOFST
-//01 WMEM
-//
-////disk block
-//04 WOFST
-////22 WMEM
-//IADF WMEM
-//SKIP PC
-//00 00 30 39
-//
-////read/write mode
-//08 WOFST
-//00 WMEM
-//
-////initiate
-//0C WOFST
-//01 WMEM
+﻿//kernel boot
 
-////////////////////////////
-// End test section
-////////////////////////////
+//=========================================================================
+// Entry point / MMU departure point
+//=========================================================================
+//This instruction, physical address 0, will be run twice before we enable virtual addressing
+//The first time is as the very first instruction; in this case, it will basically be a NOP
+//The second time, we want to write a value to the MMU in order to enable it
+//We want the PC to be as close to 0 as possible when the MMU is enabled so that the kernel
+//entry point in VA can be close to 0 (to avoid wasting space and confusing FILL macros)
+//Therefore, we put the final instruction we want to run before the MMU is enabled at 0x00
+//	We will jump back here after completing the rest of boot and preparing WMEM to point to the MMU
+//	That means these instructions will be run twice: once "on boot," and once "on jumpback"
 
-//kernel boot
+//The last instruction we need to run before starting the MMU is a write to WMEM
+//On jumpback, WMEM will be pointed to the MMU, but on boot, WMEM is pointed at 0x00
+//	Therefore, on boot, the WMEM write will overwrite the first 2 instructions
+//	They must be NOPs to avoid erasing any useful code
+	00 00 00 00
+//This is the final instruction we need to execute to enable the MMU
+//On boot, this will overwrite the previous 4 bytes (noted above)
+//On jumpback, this will enable the MMU, and we will continue executing in VA
+	01 WMEM
+
+//On jumpback, execution will not reach here; the MMU is enabled and we are no longer executing from PPage 0
+//On boot, continue with the real initialization process
+//	All instructions from here forward are therefore only executed on boot (no double execution from jumpback)
 
 //=========================
 // physcial memory layout
@@ -303,8 +302,15 @@ SKIP PC
 RMEM WBASE
 
 //enable the MMU and see what happens
-18 WOFST
-01 WMEM
+//point WMEM at the correct MMU register
+	18 WOFST
+//this is the instruction that we want to run, but we want PC to be closer to 0
+	//This instruction is at the beginning of physical memory, so jump there to execute it
+	//(more explanation around that instruction at 0x00)
+	//To start the MMU, we would execute: 01 WMEM
+
+//jump back to the start of memory, where we will actually enable the MMU
+00 PC
 
 //=========================================================================
 //=========================================================================
