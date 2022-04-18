@@ -25,62 +25,63 @@
 -- -- -- -- |	
 -- -- -- -- |	//jump to 0 in user space
 00 00 00 1A |	00 PC
--- -- -- -- |	
 -- -- -- -- |	//=========================================================================
 -- -- -- -- |	// interrupt handler
 -- -- -- -- |	//=========================================================================
-00 00 00 1C |	FILL110
-00 00 01 10 |	BREAK
-00 00 01 12 |	FILL200
-00 00 02 00 |	WBASE DMEM00
-00 00 02 02 |	WOFST DMEM04
+-- -- -- -- |	
+-- -- -- -- |	//Fill to place the interrupt handler code at the correct location
+-- -- -- -- |	    //TODO the address of the interrupt handler is currently hardcoded in the simulation environment
+-- -- -- -- |	    //interrupt_handler_address in Processor class
+00 00 00 1C |	FILL20
+00 00 00 20 |	WBASE DMEM00
+00 00 00 22 |	WOFST DMEM04
 -- -- -- -- |	
 -- -- -- -- |	//dump registers to kernel's stack
-00 00 02 04 |	IADF WBASE
-00 00 02 06 |	SKIP PC
-00 00 02 08 |	::KERNEL_STACK
-00 00 02 0C |	00 WOFST
-00 00 02 0E |	GPA WMEM
-00 00 02 10 |	04 WOFST
-00 00 02 12 |	GPB WMEM
-00 00 02 14 |	08 WOFST
-00 00 02 16 |	GPC WMEM
-00 00 02 18 |	0C WOFST
-00 00 02 1A |	GPD WMEM
-00 00 02 1C |	10 WOFST
-00 00 02 1E |	GPE WMEM
-00 00 02 20 |	14 WOFST
-00 00 02 22 |	GPF WMEM
-00 00 02 24 |	18 WOFST
-00 00 02 26 |	GPG WMEM
-00 00 02 28 |	1C WOFST
-00 00 02 2A |	GPH WMEM
+00 00 00 24 |	IADF WBASE
+00 00 00 26 |	SKIP PC
+00 00 00 28 |	::KERNEL_STACK
+00 00 00 2C |	00 WOFST
+00 00 00 2E |	GPA WMEM
+00 00 00 30 |	04 WOFST
+00 00 00 32 |	GPB WMEM
+00 00 00 34 |	08 WOFST
+00 00 00 36 |	GPC WMEM
+00 00 00 38 |	0C WOFST
+00 00 00 3A |	GPD WMEM
+00 00 00 3C |	10 WOFST
+00 00 00 3E |	GPE WMEM
+00 00 00 40 |	14 WOFST
+00 00 00 42 |	GPF WMEM
+00 00 00 44 |	18 WOFST
+00 00 00 46 |	GPG WMEM
+00 00 00 48 |	1C WOFST
+00 00 00 4A |	GPH WMEM
 -- -- -- -- |	
-00 00 02 2C |	20 WOFST
-00 00 02 2E |	COMPA WMEM
-00 00 02 30 |	24 WOFST
-00 00 02 32 |	COMPB WMEM
-00 00 02 34 |	28 WOFST
-00 00 02 36 |	RBASE WMEM
-00 00 02 38 |	2C WOFST
-00 00 02 3A |	ROFST WMEM
-00 00 02 3C |	30 WOFST
-00 00 02 3E |	ALUM WMEM
-00 00 02 40 |	34 WOFST
-00 00 02 42 |	ALUA WMEM
-00 00 02 44 |	38 WOFST
-00 00 02 46 |	ALUB WMEM
-00 00 02 48 |	3C WOFST
-00 00 02 4A |	FPUM WMEM
-00 00 02 4C |	40 WOFST
-00 00 02 4E |	FPUA WMEM
-00 00 02 50 |	44 WOFST
-00 00 02 52 |	FPUB WMEM
-00 00 02 54 |	48 WOFST
-00 00 02 56 |	DMEM00 WMEM
-00 00 02 58 |	4C WOFST
-00 00 02 5A |	DMEM04 WMEM
-00 00 02 5C |	50 WOFST
+00 00 00 4C |	20 WOFST
+00 00 00 4E |	COMPA WMEM
+00 00 00 50 |	24 WOFST
+00 00 00 52 |	COMPB WMEM
+00 00 00 54 |	28 WOFST
+00 00 00 56 |	RBASE WMEM
+00 00 00 58 |	2C WOFST
+00 00 00 5A |	ROFST WMEM
+00 00 00 5C |	30 WOFST
+00 00 00 5E |	ALUM WMEM
+00 00 00 60 |	34 WOFST
+00 00 00 62 |	ALUA WMEM
+00 00 00 64 |	38 WOFST
+00 00 00 66 |	ALUB WMEM
+00 00 00 68 |	3C WOFST
+00 00 00 6A |	FPUM WMEM
+00 00 00 6C |	40 WOFST
+00 00 00 6E |	FPUA WMEM
+00 00 00 70 |	44 WOFST
+00 00 00 72 |	FPUB WMEM
+00 00 00 74 |	48 WOFST
+00 00 00 76 |	DMEM00 WMEM
+00 00 00 78 |	4C WOFST
+00 00 00 7A |	DMEM04 WMEM
+00 00 00 7C |	50 WOFST
 -- -- -- -- |	
 -- -- -- -- |	//=========================
 -- -- -- -- |	// interrupt handler stack layout / local variables
@@ -97,242 +98,242 @@
 -- -- -- -- |	
 -- -- -- -- |	//add stack frame; registers are dumped to bottom of the stack, so we don't need to save a frame pointer
 -- -- -- -- |	//(just set WBASE to 00 when it's time to retrieve them)
-00 00 02 5E |	01 ALUM //add
-00 00 02 60 |	WBASE ALUA
-00 00 02 62 |	WOFST ALUB
-00 00 02 64 |	ALUR WBASE
-00 00 02 66 |	20 WOFST //20 == size of stack frame, described above
+00 00 00 7E |	01 ALUM //add
+00 00 00 80 |	WBASE ALUA
+00 00 00 82 |	WOFST ALUB
+00 00 00 84 |	ALUR WBASE
+00 00 00 86 |	20 WOFST //20 == size of stack frame, described above
 -- -- -- -- |	
 -- -- -- -- |	//store FLAG in local variable
-00 00 02 68 |	    WBASE RBASE
-00 00 02 6A |	    00 ROFST //FLAG local variable address (from stack layout)
-00 00 02 6C |	    FLAG RMEM
+00 00 00 88 |	    WBASE RBASE
+00 00 00 8A |	    00 ROFST //FLAG local variable address (from stack layout)
+00 00 00 8C |	    FLAG RMEM
 -- -- -- -- |	
 -- -- -- -- |	//determine the cause of the interrupt
 -- -- -- -- |	    //mask flag to check if interrupt was raised on MMU channel
-00 00 02 6E |	    FLAG ALUA
-00 00 02 70 |	    IADF ALUB
-00 00 02 72 |	    SKIP PC
-00 00 02 74 |	    00 00 00 01 //mask for the first channel (MMU)
-00 00 02 78 |	    08 ALUM //AND mode
-00 00 02 7A |	    ALUR COMPA
-00 00 02 7C |	    00 COMPB //if flag channel is 1, jump to mmu interrupt handler
-00 00 02 7E |	    COMPR PC
-00 00 02 80 |	    :non_mmu_interrupt
-00 00 02 84 |	    :mmu_interrupt
+00 00 00 8E |	    FLAG ALUA
+00 00 00 90 |	    IADF ALUB
+00 00 00 92 |	    SKIP PC
+00 00 00 94 |	    00 00 00 01 //mask for the first channel (MMU)
+00 00 00 98 |	    08 ALUM //AND mode
+00 00 00 9A |	    ALUR COMPA
+00 00 00 9C |	    00 COMPB //if flag channel is 1, jump to mmu interrupt handler
+00 00 00 9E |	    COMPR PC
+00 00 00 A0 |	    :non_mmu_interrupt
+00 00 00 A4 |	    :mmu_interrupt
 -- -- -- -- |	
 -- -- -- -- |	@non_mmu_interrupt
 -- -- -- -- |	//if interrupt is not from MMU
 -- -- -- -- |	    //do nothing if the interrupt is from anywhere besides the MMU
-00 00 02 88 |	    7F FLAG
+00 00 00 A8 |	    7F FLAG
 -- -- -- -- |	
 -- -- -- -- |	@mmu_interrupt
 -- -- -- -- |	//else interrupt is from MMU
 -- -- -- -- |	//retrieve the faulted PTE from the MMU
-00 00 02 8A |	    IADF RBASE
-00 00 02 8C |	    SKIP PC
-00 00 02 8E |	    00 00 10 00
-00 00 02 92 |	    0C ROFST
-00 00 02 94 |	    RMEM GPA
+00 00 00 AA |	    IADF RBASE
+00 00 00 AC |	    SKIP PC
+00 00 00 AE |	    00 00 10 00
+00 00 00 B2 |	    0C ROFST
+00 00 00 B4 |	    RMEM GPA
 -- -- -- -- |	
 -- -- -- -- |	//retrieve the faulted address from the MMU
-00 00 02 96 |	    10 ROFST
-00 00 02 98 |	    RMEM GPB
+00 00 00 B6 |	    10 ROFST
+00 00 00 B8 |	    RMEM GPB
 -- -- -- -- |	
 -- -- -- -- |	//store faulted PTE and faulted virtual address in local variables
-00 00 02 9A |	    WBASE RBASE
-00 00 02 9C |	    04 ROFST
-00 00 02 9E |	    GPA RMEM
-00 00 02 A0 |	    08 ROFST
-00 00 02 A2 |	    GPB RMEM
+00 00 00 BA |	    WBASE RBASE
+00 00 00 BC |	    04 ROFST
+00 00 00 BE |	    GPA RMEM
+00 00 00 C0 |	    08 ROFST
+00 00 00 C2 |	    GPB RMEM
 -- -- -- -- |	
 -- -- -- -- |	//get the active process ID and page directory physical page from kernel memory
-00 00 02 A4 |	    00 ROFST
-00 00 02 A6 |	    IADF RBASE
-00 00 02 A8 |	    SKIP PC
-00 00 02 AA |	    ::ACTIVE_PROCESS_ID
-00 00 02 AE |	    RMEM GPC
-00 00 02 B0 |	    IADF RBASE
-00 00 02 B2 |	    SKIP PC
-00 00 02 B4 |	    ::ACTIVE_PROCESS_PAGE_DIRECTORY_PHYSICAL_PAGE
-00 00 02 B8 |	    RMEM GPD
+00 00 00 C4 |	    00 ROFST
+00 00 00 C6 |	    IADF RBASE
+00 00 00 C8 |	    SKIP PC
+00 00 00 CA |	    ::ACTIVE_PROCESS_ID
+00 00 00 CE |	    RMEM GPC
+00 00 00 D0 |	    IADF RBASE
+00 00 00 D2 |	    SKIP PC
+00 00 00 D4 |	    ::ACTIVE_PROCESS_PAGE_DIRECTORY_PHYSICAL_PAGE
+00 00 00 D8 |	    RMEM GPD
 -- -- -- -- |	
 -- -- -- -- |	//store active process ID and page directory physical page in local variables
-00 00 02 BA |	    WBASE RBASE
-00 00 02 BC |	    14 ROFST
-00 00 02 BE |	    GPC RMEM
-00 00 02 C0 |	    18 ROFST
-00 00 02 C2 |	    GPD RMEM
+00 00 00 DA |	    WBASE RBASE
+00 00 00 DC |	    14 ROFST
+00 00 00 DE |	    GPC RMEM
+00 00 00 E0 |	    18 ROFST
+00 00 00 E2 |	    GPD RMEM
 -- -- -- -- |	
 -- -- -- -- |	//check PTE protections
 -- -- -- -- |	//get them from PTE
-00 00 02 C4 |	    GPA ALUA //PTE to ALU
-00 00 02 C6 |	    IADF ALUB //mask to ALU
-00 00 02 C8 |	    SKIP PC
-00 00 02 CA |	    C0 00 00 00 //mask for the RW bits of the PTE
-00 00 02 CE |	    08 ALUM //AND mode
+00 00 00 E4 |	    GPA ALUA //PTE to ALU
+00 00 00 E6 |	    IADF ALUB //mask to ALU
+00 00 00 E8 |	    SKIP PC
+00 00 00 EA |	    C0 00 00 00 //mask for the RW bits of the PTE
+00 00 00 EE |	    08 ALUM //AND mode
 -- -- -- -- |	
-00 00 02 D0 |	    ALUR ALUA //RW bits to ALU
-00 00 02 D2 |	    1E ALUB //shift 30 bits right
-00 00 02 D4 |	    06 ALUM //right shift mode
+00 00 00 F0 |	    ALUR ALUA //RW bits to ALU
+00 00 00 F2 |	    1E ALUB //shift 30 bits right
+00 00 00 F4 |	    06 ALUM //right shift mode
 -- -- -- -- |	
 -- -- -- -- |	//see which of 00, 01, 10, 11 the RW bits are
-00 00 02 D6 |	ALUR COMPA
-00 00 02 D8 |	00 COMPB
-00 00 02 DA |	COMPR PC
-00 00 02 DC |	:r0w0
-00 00 02 E0 |	:_r0w0
+00 00 00 F6 |	ALUR COMPA
+00 00 00 F8 |	00 COMPB
+00 00 00 FA |	COMPR PC
+00 00 00 FC |	:r0w0
+00 00 01 00 |	:_r0w0
 -- -- -- -- |	@_r0w0
-00 00 02 E4 |	01 COMPB
-00 00 02 E6 |	COMPR PC
-00 00 02 E8 |	:r0w1
-00 00 02 EC |	:_r0w1
+00 00 01 04 |	01 COMPB
+00 00 01 06 |	COMPR PC
+00 00 01 08 |	:r0w1
+00 00 01 0C |	:_r0w1
 -- -- -- -- |	@_r0w1
-00 00 02 F0 |	02 COMPB
-00 00 02 F2 |	COMPR PC
-00 00 02 F4 |	:r1w0
-00 00 02 F8 |	:_r1w0
+00 00 01 10 |	02 COMPB
+00 00 01 12 |	COMPR PC
+00 00 01 14 |	:r1w0
+00 00 01 18 |	:_r1w0
 -- -- -- -- |	@_r1w0
-00 00 02 FC |	7F FLAG //halt; RW was 11, no page fault should have occurred
+00 00 01 1C |	7F FLAG //halt; RW was 11, no page fault should have occurred
 -- -- -- -- |	
 -- -- -- -- |	@r0w0
 -- -- -- -- |	//not mapped (possibly syscall)
-00 00 02 FE |	7F FLAG //TODO for now, just halt
+00 00 01 1E |	7F FLAG //TODO for now, just halt
 -- -- -- -- |	
 -- -- -- -- |	@r1w0
 -- -- -- -- |	//page is readable but not writable
 -- -- -- -- |	//either a shared page or a clean page
 -- -- -- -- |	//page needs to be split or marked as dirty
-00 00 03 00 |	7F FLAG //TODO for now, just halt
+00 00 01 20 |	7F FLAG //TODO for now, just halt
 -- -- -- -- |	
 -- -- -- -- |	@r0w1
 -- -- -- -- |	//not readable and "writable" indicates the page is mapped but paged out
 -- -- -- -- |	//page not resident
 -- -- -- -- |	
 -- -- -- -- |	//push function address onto stack
-00 00 03 02 |	IADF WMEM
-00 00 03 04 |	SKIP PC
-00 00 03 06 |	::get_open_physical_page
-00 00 03 0A |	24 WOFST //size of stack frame + 4
-00 00 03 0C |	RTRN LINK
-00 00 03 0E |	IADN PC
-00 00 03 10 |	::FUNC
+00 00 01 22 |	IADF WMEM
+00 00 01 24 |	SKIP PC
+00 00 01 26 |	::get_open_physical_page
+00 00 01 2A |	24 WOFST //size of stack frame + 4
+00 00 01 2C |	RTRN LINK
+00 00 01 2E |	IADN PC
+00 00 01 30 |	::FUNC
 -- -- -- -- |	
 -- -- -- -- |	//result of function call is target physical page number
 -- -- -- -- |	//pop result from stack
-00 00 03 14 |	    20 WOFST //20 == size of stack frame, top of stack
-00 00 03 16 |	    WMEM GPH
+00 00 01 34 |	    20 WOFST //20 == size of stack frame, top of stack
+00 00 01 36 |	    WMEM GPH
 -- -- -- -- |	//store in local variable
 -- -- -- -- |	// ...TODO? ^
 -- -- -- -- |	
 -- -- -- -- |	
 -- -- -- -- |	//load page from disk
 -- -- -- -- |	//get disk block from PTE
-00 00 03 18 |	    GPA ALUA //PTE to ALU
-00 00 03 1A |	    IADF ALUB //mask to ALU
-00 00 03 1C |	    SKIP PC
-00 00 03 1E |	    00 0F FF FF
-00 00 03 22 |	    08 ALUM //AND mode
-00 00 03 24 |	    ALUR GPE
+00 00 01 38 |	    GPA ALUA //PTE to ALU
+00 00 01 3A |	    IADF ALUB //mask to ALU
+00 00 01 3C |	    SKIP PC
+00 00 01 3E |	    00 0F FF FF
+00 00 01 42 |	    08 ALUM //AND mode
+00 00 01 44 |	    ALUR GPE
 -- -- -- -- |	//get virtual page / virtual directory number from virtual address
-00 00 03 26 |	    GPB ALUA //virtual address to ALU
-00 00 03 28 |	    IADF ALUB //mask to ALU
-00 00 03 2A |	    SKIP PC
-00 00 03 2C |	    FF FF F0 00 //remove physical offset part of virtual address
-00 00 03 30 |	    ALUR GPF
+00 00 01 46 |	    GPB ALUA //virtual address to ALU
+00 00 01 48 |	    IADF ALUB //mask to ALU
+00 00 01 4A |	    SKIP PC
+00 00 01 4C |	    FF FF F0 00 //remove physical offset part of virtual address
+00 00 01 50 |	    ALUR GPF
 -- -- -- -- |	
 -- -- -- -- |	//store disk block and virtual page number in local variables
-00 00 03 32 |	    WBASE RBASE
-00 00 03 34 |	    0C ROFST
-00 00 03 36 |	    GPE RMEM
-00 00 03 38 |	    10 ROFST
-00 00 03 3A |	    GPF RMEM
+00 00 01 52 |	    WBASE RBASE
+00 00 01 54 |	    0C ROFST
+00 00 01 56 |	    GPE RMEM
+00 00 01 58 |	    10 ROFST
+00 00 01 5A |	    GPF RMEM
 -- -- -- -- |	
 -- -- -- -- |	//load from disk
 -- -- -- -- |	    //point RMEM to virtual disk
-00 00 03 3C |	        IADF RBASE
-00 00 03 3E |	        SKIP PC
-00 00 03 40 |	        00 00 10 1C //MMIO starts at VA 1000
+00 00 01 5C |	        IADF RBASE
+00 00 01 5E |	        SKIP PC
+00 00 01 60 |	        00 00 10 1C //MMIO starts at VA 1000
 -- -- -- -- |	    //tell disk the target physical page (stored in GPH)
-00 00 03 44 |	        00 ROFST
-00 00 03 46 |	        GPH RMEM
+00 00 01 64 |	        00 ROFST
+00 00 01 66 |	        GPH RMEM
 -- -- -- -- |	    //tell disk target disk block (stored in GPE)
-00 00 03 48 |	        04 ROFST
-00 00 03 4A |	        GPE RMEM
+00 00 01 68 |	        04 ROFST
+00 00 01 6A |	        GPE RMEM
 -- -- -- -- |	    //use read mode
-00 00 03 4C |	        08 ROFST
-00 00 03 4E |	        00 RMEM
+00 00 01 6C |	        08 ROFST
+00 00 01 6E |	        00 RMEM
 -- -- -- -- |	    //initiate transfer from disk to memory
-00 00 03 50 |	        0C ROFST
-00 00 03 52 |	        01 RMEM
+00 00 01 70 |	        0C ROFST
+00 00 01 72 |	        01 RMEM
 -- -- -- -- |	
 -- -- -- -- |	
 -- -- -- -- |	
 -- -- -- -- |	//update physical page map
 -- -- -- -- |	    //point RMEM to physical page map array
-00 00 03 54 |	        IADF RBASE
-00 00 03 56 |	        SKIP PC
-00 00 03 58 |	        ::physical_page_map
+00 00 01 74 |	        IADF RBASE
+00 00 01 76 |	        SKIP PC
+00 00 01 78 |	        ::physical_page_map
 -- -- -- -- |	
 -- -- -- -- |	    //calculate offset of target physical page entry
-00 00 03 5C |	        02 ALUM //multiply
-00 00 03 5E |	        GPH ALUA //target physical page
-00 00 03 60 |	        14 ALUB //20 bytes per entry
-00 00 03 62 |	        ALUR ROFST //physical page map offset
+00 00 01 7C |	        02 ALUM //multiply
+00 00 01 7E |	        GPH ALUA //target physical page
+00 00 01 80 |	        14 ALUB //20 bytes per entry
+00 00 01 82 |	        ALUR ROFST //physical page map offset
 -- -- -- -- |	
-00 00 03 64 |	    GPC RMEM //set process ID to user process
+00 00 01 84 |	    GPC RMEM //set process ID to user process
 -- -- -- -- |	
 -- -- -- -- |	    //move to next field in entry
-00 00 03 66 |	        01 ALUM //add
-00 00 03 68 |	        ROFST ALUA
-00 00 03 6A |	        04 ALUB
-00 00 03 6C |	        ALUR ROFST
+00 00 01 86 |	        01 ALUM //add
+00 00 01 88 |	        ROFST ALUA
+00 00 01 8A |	        04 ALUB
+00 00 01 8C |	        ALUR ROFST
 -- -- -- -- |	
-00 00 03 6E |	    GPD RMEM //set directory physical page to user directory
+00 00 01 8E |	    GPD RMEM //set directory physical page to user directory
 -- -- -- -- |	
 -- -- -- -- |	    //move to next field
-00 00 03 70 |	        ALUR ALUA
-00 00 03 72 |	        ALUR ROFST
+00 00 01 90 |	        ALUR ALUA
+00 00 01 92 |	        ALUR ROFST
 -- -- -- -- |	        
-00 00 03 74 |	    GPF RMEM //set virtual page/directory number to that of the faulted address
+00 00 01 94 |	    GPF RMEM //set virtual page/directory number to that of the faulted address
 -- -- -- -- |	
 -- -- -- -- |	    //move to next field
-00 00 03 76 |	        ALUR ALUA
-00 00 03 78 |	        ALUR ROFST
+00 00 01 96 |	        ALUR ALUA
+00 00 01 98 |	        ALUR ROFST
 -- -- -- -- |	
-00 00 03 7A |	    01 RMEM //only one process references this page
+00 00 01 9A |	    01 RMEM //only one process references this page
 -- -- -- -- |	
 -- -- -- -- |	    //move to next field
-00 00 03 7C |	        ALUR ALUA
-00 00 03 7E |	        ALUR ROFST
+00 00 01 9C |	        ALUR ALUA
+00 00 01 9E |	        ALUR ROFST
 -- -- -- -- |	
-00 00 03 80 |	    GPE RMEM //store origin disk block as the disk block
+00 00 01 A0 |	    GPE RMEM //store origin disk block as the disk block
 -- -- -- -- |	
 -- -- -- -- |	
 -- -- -- -- |	//update process map
 -- -- -- -- |	    //point RMEM to process map
-00 00 03 82 |	        IADF RBASE
-00 00 03 84 |	        SKIP PC
-00 00 03 86 |	        ::process_map
+00 00 01 A2 |	        IADF RBASE
+00 00 01 A4 |	        SKIP PC
+00 00 01 A6 |	        ::process_map
 -- -- -- -- |	
 -- -- -- -- |	    //calculate offset of target process entry ((process ID - 1) is index into map)
 -- -- -- -- |	        // (16 * (PID - 1)) + 8
-00 00 03 8A |	        03 ALUM //subtract
-00 00 03 8C |	        GPC ALUA //process ID
-00 00 03 8E |	        01 ALUB //minus 1
-00 00 03 90 |	        ALUR ALUA //ALUA = PID - 1
+00 00 01 AA |	        03 ALUM //subtract
+00 00 01 AC |	        GPC ALUA //process ID
+00 00 01 AE |	        01 ALUB //minus 1
+00 00 01 B0 |	        ALUR ALUA //ALUA = PID - 1
 -- -- -- -- |	
-00 00 03 92 |	        10 ALUB //16 byte per entry
-00 00 03 94 |	        02 ALUM //multiply
-00 00 03 96 |	        ALUR ALUA //process entry map offset
-00 00 03 98 |	        08 ALUB //offset into entry for number of resident pages
-00 00 03 9A |	        01 ALUM //add
-00 00 03 9C |	        ALUR ROFST //total offset into process map
+00 00 01 B2 |	        10 ALUB //16 byte per entry
+00 00 01 B4 |	        02 ALUM //multiply
+00 00 01 B6 |	        ALUR ALUA //process entry map offset
+00 00 01 B8 |	        08 ALUB //offset into entry for number of resident pages
+00 00 01 BA |	        01 ALUM //add
+00 00 01 BC |	        ALUR ROFST //total offset into process map
 -- -- -- -- |	
 -- -- -- -- |	    //increment number of resident pages for this process
-00 00 03 9E |	        RMEM ALUA
-00 00 03 A0 |	        01 ALUB
-00 00 03 A2 |	        ALUR RMEM
+00 00 01 BE |	        RMEM ALUA
+00 00 01 C0 |	        01 ALUB
+00 00 01 C2 |	        ALUR RMEM
 -- -- -- -- |	
 -- -- -- -- |	//update page table
 -- -- -- -- |	//TODO how do we know if we loaded a page table or a leaf page?
@@ -374,66 +375,66 @@
 -- -- -- -- |	//      done
 -- -- -- -- |	
 -- -- -- -- |	//get PDE
-00 00 03 A4 |	    05 ALUM //left shift
-00 00 03 A6 |	    GPD ALUA //active process page directory physical page
-00 00 03 A8 |	    0C ALUB //12 bits
-00 00 03 AA |	    ALUR GPA //GPA = page directory base address
+00 00 01 C4 |	    05 ALUM //left shift
+00 00 01 C6 |	    GPD ALUA //active process page directory physical page
+00 00 01 C8 |	    0C ALUB //12 bits
+00 00 01 CA |	    ALUR GPA //GPA = page directory base address
 -- -- -- -- |	
 -- -- -- -- |	    //page table number = (virtual address & 0xFFC00000) >> 22
-00 00 03 AC |	    08 ALUM //AND
-00 00 03 AE |	    GPB ALUA //virtual address
-00 00 03 B0 |	    IADF ALUB //mask for first 12 bits
-00 00 03 B2 |	    SKIP PC
-00 00 03 B4 |	    FF C0 00 00
+00 00 01 CC |	    08 ALUM //AND
+00 00 01 CE |	    GPB ALUA //virtual address
+00 00 01 D0 |	    IADF ALUB //mask for first 12 bits
+00 00 01 D2 |	    SKIP PC
+00 00 01 D4 |	    FF C0 00 00
 -- -- -- -- |	
-00 00 03 B8 |	    ALUR ALUA
-00 00 03 BA |	    06 ALUM //right shift
-00 00 03 BC |	    14 ALUB //20 bits (page number is given by shifting 22 bits, but offset into page table is page number * 4, so shift left 2 bits)
+00 00 01 D8 |	    ALUR ALUA
+00 00 01 DA |	    06 ALUM //right shift
+00 00 01 DC |	    14 ALUB //20 bits (page number is given by shifting 22 bits, but offset into page table is page number * 4, so shift left 2 bits)
 -- -- -- -- |	
-00 00 03 BE |	    ALUR ALUB
-00 00 03 C0 |	    GPA ALUA
-00 00 03 C2 |	    07 ALUM //OR
+00 00 01 DE |	    ALUR ALUB
+00 00 01 E0 |	    GPA ALUA
+00 00 01 E2 |	    07 ALUM //OR
 -- -- -- -- |	
-00 00 03 C4 |	    01 ALUM //add
-00 00 03 C6 |	    ALUR ALUA //page directory entry physical address
-00 00 03 C8 |	    IADF ALUB //add 0x00 3F 00 00 to get kernel virtual address of physical address
-00 00 03 CA |	    SKIP PC
-00 00 03 CC |	    00 3F 00 00
+00 00 01 E4 |	    01 ALUM //add
+00 00 01 E6 |	    ALUR ALUA //page directory entry physical address
+00 00 01 E8 |	    IADF ALUB //add 0x00 3F 00 00 to get kernel virtual address of physical address
+00 00 01 EA |	    SKIP PC
+00 00 01 EC |	    00 3F 00 00
 -- -- -- -- |	
-00 00 03 D0 |	    BREAK
+00 00 01 F0 |	    BREAK
 -- -- -- -- |	    //set RBASE to point to the PDE for the faulted address (may or may not be the PDE/PTE that faulted)
-00 00 03 D2 |	    ALUR RBASE
-00 00 03 D4 |	    00 ROFST
+00 00 01 F2 |	    ALUR RBASE
+00 00 01 F4 |	    00 ROFST
 -- -- -- -- |	
 -- -- -- -- |	//check if PDE or PTE faulted
 -- -- -- -- |	//  PDE faulted if the PDE is !R,W
 -- -- -- -- |	//  else PTE faulted (if PTE faulted, PDE is necessarily R,W, else it would have faulted first)
 -- -- -- -- |	    //extract RW bits from PDE
-00 00 03 D6 |	        RMEM ALUA //PDE to ALU
-00 00 03 D8 |	        IADF ALUB //protection mask to ALU
-00 00 03 DA |	        SKIP PC
-00 00 03 DC |	        C0 00 00 00 //mask for the RW bits of the PDE
-00 00 03 E0 |	        08 ALUM //AND mode
+00 00 01 F6 |	        RMEM ALUA //PDE to ALU
+00 00 01 F8 |	        IADF ALUB //protection mask to ALU
+00 00 01 FA |	        SKIP PC
+00 00 01 FC |	        C0 00 00 00 //mask for the RW bits of the PDE
+00 00 02 00 |	        08 ALUM //AND mode
 -- -- -- -- |	
-00 00 03 E2 |	        ALUR ALUA //RW bits to ALU
-00 00 03 E4 |	        1E ALUB //shift 30 bits right
-00 00 03 E6 |	        06 ALUM //right shift mode
+00 00 02 02 |	        ALUR ALUA //RW bits to ALU
+00 00 02 04 |	        1E ALUB //shift 30 bits right
+00 00 02 06 |	        06 ALUM //right shift mode
 -- -- -- -- |	
 -- -- -- -- |	    //compare PDE RW bits to !R,W (0x01)
-00 00 03 E8 |	        ALUR COMPA //RW bits to comparator
-00 00 03 EA |	        01 COMPB //!R,W (0x01) to comparator
-00 00 03 EC |	        COMPR PC
-00 00 03 EE |	        :table_caused_r0w1 //the PDE faulted, so we just loaded a page table into memory
-00 00 03 F2 |	        :leaf_caused_r0w1 //the PTE faulted, so we just loaded a leaf page into memory
+00 00 02 08 |	        ALUR COMPA //RW bits to comparator
+00 00 02 0A |	        01 COMPB //!R,W (0x01) to comparator
+00 00 02 0C |	        COMPR PC
+00 00 02 0E |	        :table_caused_r0w1 //the PDE faulted, so we just loaded a page table into memory
+00 00 02 12 |	        :leaf_caused_r0w1 //the PTE faulted, so we just loaded a leaf page into memory
 -- -- -- -- |	
 -- -- -- -- |	@table_caused_r0w1 //IF CLAUSE (PDE faulted)
 -- -- -- -- |	//if PDE faulted, we just loaded a page table in; update the PDE
 -- -- -- -- |	//  update the PDE to be R,!W,!F,!D
-00 00 03 F6 |	    7F FLAG // TODO implement this
+00 00 02 16 |	    7F FLAG // TODO implement this
 -- -- -- -- |	
 -- -- -- -- |	// skip else clause
-00 00 03 F8 |	IADN PC
-00 00 03 FA |	:conclude_r0w1
+00 00 02 18 |	IADN PC
+00 00 02 1A |	:conclude_r0w1
 -- -- -- -- |	
 -- -- -- -- |	@leaf_caused_r0w1 //ELSE CLAUSE (PTE faulted)
 -- -- -- -- |	//else if PTE faulted, we just loaded a leaf page in; update the PDE and PTE
@@ -442,7 +443,7 @@
 -- -- -- -- |	//      if these are not the protection bits, neither the PDE nor PDE faulted?
 -- -- -- -- |	//          we are in the !R,W branch, so one of PDE and PTE should have !R,W
 -- -- -- -- |	//          since neither meet that criteria, HALT; PANIC
-00 00 03 FE |	            7F FLAG
+00 00 02 1E |	            7F FLAG
 -- -- -- -- |	
 -- -- -- -- |	//  update the PDE to be F,D
 -- -- -- -- |	//  fetch the PTE
@@ -454,13 +455,13 @@
 -- -- -- -- |	
 -- -- -- -- |	
 -- -- -- -- |	//nothing left
-00 00 04 00 |	02 FPUM
-00 00 04 02 |	11 FPUA
-00 00 04 04 |	22 FPUB
-00 00 04 06 |	FPUR GPC
-00 00 04 08 |	7F FLAG
+00 00 02 20 |	02 FPUM
+00 00 02 22 |	11 FPUA
+00 00 02 24 |	22 FPUB
+00 00 02 26 |	FPUR GPC
+00 00 02 28 |	7F FLAG
 -- -- -- -- |	
-00 00 04 0A |	FILL600
+00 00 02 2A |	FILL600
 -- -- -- -- |	@@physical_page_map
 -- -- -- -- |	//physical page map
 -- -- -- -- |	
