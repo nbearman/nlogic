@@ -4,14 +4,15 @@
             {
                 "scope": "nlogic.fill",
                 "settings": {
-                    "foreground": "#0000FF"
+                    "foreground": "#71fff8",
+                    "fontStyle": "italic underline"
                 }
             },
 
             {
                 "scope": "comment.nlogic",
                 "settings": {
-                    "foreground": "#5fa526",
+                    "foreground": "#a0c285",
                     "fontStyle": ""
                 }
             },
@@ -19,7 +20,7 @@
             {
                 "scope": "nlogic.number",
                 "settings": {
-                    "foreground": "#8eadcc"
+                    "foreground": "#b0efff"
                 }
             },
 
@@ -33,7 +34,7 @@
             {
                 "scope": "nlogic.label-def",
                 "settings": {
-                    "foreground": "#bb3487",
+                    "foreground": "#b96699",
                     "fontStyle": "bold underline"
                 }
             },
@@ -41,7 +42,7 @@
             {
                 "scope": "nlogic.label-ref",
                 "settings": {
-                    "foreground": "#bb34bb",
+                    "foreground": "#d877d8",
                     "fontStyle": "bold"
                 }
             },
@@ -65,7 +66,7 @@
             {
                 "scope": "nlogic.alum, nlogic.fpum",
                 "settings": {
-                    "foreground": "#960596",
+                    "foreground": "#a573a5",
                     "fontStyle": "bold"
                 }
             },
@@ -81,7 +82,7 @@
             {
                 "scope": "nlogic.alur",
                 "settings": {
-                    "foreground": "#3921c4",
+                    "foreground": "#7e72c4",
                     "fontStyle": "bold"
                 }
             },
@@ -97,7 +98,7 @@
             {
                 "scope": "nlogic.rbase, nlogic.wbase, nlogic.rofst, nlogic.wofst",
                 "settings": {
-                    "foreground": "#c0a50f",
+                    "foreground": "#e0cf6b",
                     "fontStyle": "bold"
                 }
             },
@@ -129,7 +130,7 @@
             {
                 "scope": "nlogic.skip",
                 "settings": {
-                    "foreground": "#666666",
+                    "foreground": "#a3a3a3",
                     "fontStyle": "bold"
                 }
             },
@@ -161,7 +162,7 @@
             {
                 "scope": "nlogic.compb",
                 "settings": {
-                    "foreground": "#7b478f",
+                    "foreground": "#966ba7",
                     "fontStyle": "bold"
                 }
             },
@@ -169,7 +170,7 @@
             {
                 "scope": "nlogic.compr",
                 "settings": {
-                    "foreground": "#277432",
+                    "foreground": "#599b63",
                     "fontStyle": "bold"
                 }
             },
@@ -193,7 +194,7 @@
             {
                 "scope": "nlogic.gpa",
                 "settings": {
-                    "foreground": "#000000",
+                    "foreground": "#ffffff",
                     "fontStyle": "bold"
                 }
             },
@@ -201,7 +202,7 @@
             {
                 "scope": "nlogic.gpb",
                 "settings": {
-                    "foreground": "#555555",
+                    "foreground": "#747474",
                     "fontStyle": "bold"
                 }
             },
