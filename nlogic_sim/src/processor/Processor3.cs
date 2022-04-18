@@ -9,7 +9,7 @@ namespace nlogic_sim
     {
         private I_Environment environment;
 
-        public const ushort interrupt_handler_address = 0x20; //TODO arbitrary address for now; must match location in 1_handler.pro
+        public const ushort interrupt_handler_address = 0x500; //TODO arbitrary address for now; must match location in 1_handler.pro
         public const ushort interrupt_register_dump_address = 0x0033; //TODO reevaluate if this is the best place for these; selected so that FLAG, GPA, and PC get stored at the end of the DMEM accessible region
 
         private ushort current_instruction;

@@ -2,6 +2,11 @@
 // kernel entry point
 //=========================================================================
 
+//========
+// DMEM region (0x00 - 0x3F)
+//========
+// IMPORTANT: instructions here will be overwritten when DMEM is written to (like dumping registers in interrupt handler)
+
 // PC is at 0x08 when MMU is enabled, so these won't be executed
 00 00
 00 00
@@ -25,15 +30,179 @@ SKIP PC
 
 //jump to 0 in user space
 00 PC
+// end kernel entry code
+
+
+FILL100 //data should start after DMEM accessible region (0x00 - 0x3F) so it can't be overwritten by DMEM instructions
+//=========================================================================
+// kernel data structures
+//=========================================================================
+@@physical_page_map
+//physical page map
+
+//=========================
+// physical page mapping entry
+//==========
+// 0x00 |   uint    |   process id
+// 0x04 |   uint    |   directory physical page
+// 0x08 |   uint    |   virtual page number
+// 0x0C |   uint    |   number of references
+// 0x10 |   uint    |   disk block number
+//=========================
+
+//boot sequence (no owner)
+00 00 00 00
+00 00 00 00
+00 00 00 00
+00 00 00 00
+00 00 00 00
+
+//kernel page directory
+00 00 00 01 //kernel process ID == 1
+00 00 00 01 //owning page directory is this directory, kernel's page directory
+00 00 00 00 //this is a directory
+00 00 00 01 //kernel process references this physical page
+00 00 00 00 //no disk block number, can never be evicted
+
+//kernel page table 0
+00 00 00 01 //kernel process ID == 1
+00 00 00 01 //owning page directory is kernel directory
+00 00 00 00 //virtual table 0
+00 00 00 01 //kernel process references this physical page
+00 00 00 00 //no disk block number, can never be evicted
+
+//kernel virtual page 0
+00 00 00 01 //kernel process ID == 1
+00 00 00 01 //owning page directory is kernel directory
+00 00 00 00 //virtual page 0
+00 00 00 01 //kernel process references this physical page
+00 00 00 00 //no disk block number, can never be evicted
+
+//empty (no owner)
+00 00 00 00
+00 00 00 00
+00 00 00 00
+00 00 00 00
+00 00 00 00
+
+//user page directory
+00 00 00 02 //user process ID == 2
+00 00 00 05 //owning page directory is this directory, user's page directory
+00 00 00 00 //this is a directory
+00 00 00 01 //user process references this physical page
+00 00 00 00 //no disk block number yet
+
+//user page table 0
+00 00 00 02 //user process ID == 2
+00 00 00 05 //owning page directory is user page directory
+00 00 00 00 //virtual table 0
+00 00 00 01 //user process references this physical page
+00 00 00 00 //no disk block number yet
+
+//user virtual page 0
+00 00 00 02 //user process ID == 2
+00 00 00 05 //owning page directory is user page directory
+00 00 00 00 //virtual page 0
+00 00 00 01 //user process references this physical page
+00 00 00 64 //loaded from disk block 100
+
+
+
+//empty (no owner)
+00 00 00 00
+00 00 00 00
+00 00 00 00
+00 00 00 00
+00 00 00 00
+//empty (no owner)
+00 00 00 00
+00 00 00 00
+00 00 00 00
+00 00 00 00
+00 00 00 00
+//empty (no owner)
+00 00 00 00
+00 00 00 00
+00 00 00 00
+00 00 00 00
+00 00 00 00
+//empty (no owner)
+00 00 00 00
+00 00 00 00
+00 00 00 00
+00 00 00 00
+00 00 00 00
+//empty (no owner)
+00 00 00 00
+00 00 00 00
+00 00 00 00
+00 00 00 00
+00 00 00 00
+//empty (no owner)
+00 00 00 00
+00 00 00 00
+00 00 00 00
+00 00 00 00
+00 00 00 00
+//empty (no owner)
+00 00 00 00
+00 00 00 00
+00 00 00 00
+00 00 00 00
+00 00 00 00
+//empty (no owner)
+00 00 00 00
+00 00 00 00
+00 00 00 00
+00 00 00 00
+00 00 00 00
+
+//end physical page map (32 page mappings)(TODO only 16 shown; space reserved for the rest with FILL)
+FILL380
+
+@@process_map
+//process map
+
+//=========================
+// process map entry
+//==========
+// 0x00 |   uint    |   process id
+// 0x04 |   uint    |   number of mapped virtual pages
+// 0x08 |   uint    |   number of pages resident in memory
+// 0x0C |   uint    |   disk block of process page directory
+//=========================
+
+//kernel process descriptor
+00 00 00 01 //kernel process ID == 1
+00 00 00 03 //3 pages are mapped: 2 pages of memory and 1 mapped to the MMU
+00 00 00 03 //page directory, page table, 1 page of memory
+00 00 00 00 //no disk block number, kernel page directory can never be evicted
+
+//user process descriptor
+00 00 00 01 //user process ID == 2
+00 00 00 03 //2 pages are mapped: 2 pages of memory
+00 00 00 03 //page directory, page table, 1 page of memory
+00 00 00 00 //TODO figure out if we're supposed to load process page directory from disk...
+            //(it should probably be built dynamically from some kind of description file
+            // that the kernel can read to determine how many pages of the program are
+            // mapped out of the box [length of program data])
+
+//end process map (16 process descriptors)
+FILL480
+
+
+//TODO unused space between 0x480 and 0x500
+//  interrupt handler could be moved to 0x480
+
 
 //=========================================================================
 // interrupt handler
 //=========================================================================
-
+FILL500
 //Fill to place the interrupt handler code at the correct location
     //TODO the address of the interrupt handler is currently hardcoded in the simulation environment
     //interrupt_handler_address in Processor class
-FILL20
+
 WBASE DMEM00
 WOFST DMEM04
 
@@ -103,7 +272,7 @@ DMEM04 WMEM
 WBASE ALUA
 WOFST ALUB
 ALUR WBASE
-20 WOFST //20 == size of stack frame, described above
+20 WOFST //20 == size of stack frame, described above //TODO replace with STACK macro once implemented
 
 //store FLAG in local variable
     WBASE RBASE
@@ -215,14 +384,14 @@ COMPR PC
 IADF WMEM
 SKIP PC
 ::get_open_physical_page
-24 WOFST //size of stack frame + 4
+24 WOFST //size of stack frame + 4 //TODO replace with STACK macro once implemented
 RTRN LINK
 IADN PC
 ::FUNC
 
 //result of function call is target physical page number
 //pop result from stack
-    20 WOFST //20 == size of stack frame, top of stack
+    20 WOFST //20 == size of stack frame, top of stack //TODO replace with STACK macro once implemented
     WMEM GPH
 //store in local variable
 // ...TODO? ^
@@ -441,7 +610,7 @@ IADN PC
 //else if PTE faulted, we just loaded a leaf page in; update the PDE and PTE
 //  TODO //implement this
 //  assert that the PTE is !R,W
-//      if these are not the protection bits, neither the PDE nor PDE faulted?
+//      if these are not the protection bits, neither the PDE nor PTE faulted?
 //          we are in the !R,W branch, so one of PDE and PTE should have !R,W
 //          since neither meet that criteria, HALT; PANIC
             7F FLAG
@@ -461,159 +630,7 @@ IADN PC
 22 FPUB
 FPUR GPC
 7F FLAG
-
-FILL600
-@@physical_page_map
-//physical page map
-
-//=========================
-// physical page mapping entry
-//==========
-// 0x00 |   uint    |   process id
-// 0x04 |   uint    |   directory physical page
-// 0x08 |   uint    |   virtual page number
-// 0x0C |   uint    |   number of references
-// 0x10 |   uint    |   disk block number
-//=========================
-
-//boot sequence (no owner)
-00 00 00 00
-00 00 00 00
-00 00 00 00
-00 00 00 00
-00 00 00 00
-
-//kernel page directory
-00 00 00 01 //kernel process ID == 1
-00 00 00 01 //owning page directory is this directory, kernel's page directory
-00 00 00 00 //this is a directory
-00 00 00 01 //kernel process references this physical page
-00 00 00 00 //no disk block number, can never be evicted
-
-//kernel page table 0
-00 00 00 01 //kernel process ID == 1
-00 00 00 01 //owning page directory is kernel directory
-00 00 00 00 //virtual table 0
-00 00 00 01 //kernel process references this physical page
-00 00 00 00 //no disk block number, can never be evicted
-
-//kernel virtual page 0
-00 00 00 01 //kernel process ID == 1
-00 00 00 01 //owning page directory is kernel directory
-00 00 00 00 //virtual page 0
-00 00 00 01 //kernel process references this physical page
-00 00 00 00 //no disk block number, can never be evicted
-
-//empty (no owner)
-00 00 00 00
-00 00 00 00
-00 00 00 00
-00 00 00 00
-00 00 00 00
-
-//user page directory
-00 00 00 02 //user process ID == 2
-00 00 00 05 //owning page directory is this directory, user's page directory
-00 00 00 00 //this is a directory
-00 00 00 01 //user process references this physical page
-00 00 00 00 //no disk block number yet
-
-//user page table 0
-00 00 00 02 //user process ID == 2
-00 00 00 05 //owning page directory is user page directory
-00 00 00 00 //virtual table 0
-00 00 00 01 //user process references this physical page
-00 00 00 00 //no disk block number yet
-
-//user virtual page 0
-00 00 00 02 //user process ID == 2
-00 00 00 05 //owning page directory is user page directory
-00 00 00 00 //virtual page 0
-00 00 00 01 //user process references this physical page
-00 00 00 64 //loaded from disk block 100
-
-
-
-//empty (no owner)
-00 00 00 00
-00 00 00 00
-00 00 00 00
-00 00 00 00
-00 00 00 00
-//empty (no owner)
-00 00 00 00
-00 00 00 00
-00 00 00 00
-00 00 00 00
-00 00 00 00
-//empty (no owner)
-00 00 00 00
-00 00 00 00
-00 00 00 00
-00 00 00 00
-00 00 00 00
-//empty (no owner)
-00 00 00 00
-00 00 00 00
-00 00 00 00
-00 00 00 00
-00 00 00 00
-//empty (no owner)
-00 00 00 00
-00 00 00 00
-00 00 00 00
-00 00 00 00
-00 00 00 00
-//empty (no owner)
-00 00 00 00
-00 00 00 00
-00 00 00 00
-00 00 00 00
-00 00 00 00
-//empty (no owner)
-00 00 00 00
-00 00 00 00
-00 00 00 00
-00 00 00 00
-00 00 00 00
-//empty (no owner)
-00 00 00 00
-00 00 00 00
-00 00 00 00
-00 00 00 00
-00 00 00 00
-
-//end physical page map (16 page mappings)
-FILL840
-@@process_map
-//process map
-
-//=========================
-// process map entry
-//==========
-// 0x00 |   uint    |   process id
-// 0x04 |   uint    |   number of mapped virtual pages
-// 0x08 |   uint    |   number of pages resident in memory
-// 0x0C |   uint    |   disk block of process page directory
-//=========================
-
-//kernel process descriptor
-00 00 00 01 //kernel process ID == 1
-00 00 00 03 //3 pages are mapped: 2 pages of memory and 1 mapped to the MMU
-00 00 00 03 //page directory, page table, 1 page of memory
-00 00 00 00 //no disk block number, kernel page directory can never be evicted
-
-//user process descriptor
-00 00 00 01 //user process ID == 2
-00 00 00 03 //2 pages are mapped: 2 pages of memory
-00 00 00 03 //page directory, page table, 1 page of memory
-00 00 00 00 //TODO figure out if we're supposed to load process page directory from disk...
-            //(it should probably be built dynamically from some kind of description file
-            // that the kernel can read to determine how many pages of the program are
-            // mapped out of the box [length of program data])
-
-//end process map (16 process descriptors)
-FILL940
+// end interrupt handler
 
 
 //=========================================================================

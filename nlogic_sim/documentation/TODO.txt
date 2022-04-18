@@ -1,4 +1,22 @@
-﻿
+﻿Add stack macros to pro assembler
+	Stack frame size is needed in a few places
+		Increasing the size of the stack frame requires manually updating those places
+	Add a macro that is replaced by the stack size, since this can be determined statically
+		Add some way to mark the start and end of a stack frame's scope
+			FRAME_START / FRAME_END?
+			Otherwise it could be inferred from function definitions, but this is more complex to implement and less flexible
+		Might also need an annotation to mark when a new variable is pushed to the stack
+			Stack variable annotation should include variable size
+		Assembler just needs to count annotations within the scope to determine how to replace STACK_SIZE
+	Add macro for referencing stack variables that is replaced with their offset into stack frame
+		Might need two macros
+			One for byte-sized offset (e.g. for use as "ISTACK_X RBASE")
+			One for uint-sized offset (e.g. for "IADF RBASE SKIP PC *STACK_X")
+				If stack frame size is larger than 0x7F, offset into stack frame needs to be loaded with IADF, not literal
+			Assembler should give an error if "ISTACK_X" is used instead of "*STACK_X" if X's offset is > 0x7F
+		Assembler should give na error if "ISTACK_X" is used before STACK_VARIABLE macro is used to annotate that a new variable exists in the stack
+
+
 Consider addding a bit to PTE that specifies if the PTE is a page directory entry or a page table entry
 	this could simplify the page fault handler
 		currently, we don't know if the page we have to bring in to memory is a page table or a leaf page
