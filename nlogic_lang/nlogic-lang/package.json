@@ -1,0 +1,31 @@
+{
+    "name": "nlogic-lang",
+    "displayName": "Nlogic Lang",
+    "description": "Syntax highlighting for nlogic assembly",
+    "version": "0.0.4",
+    "engines": {
+        "vscode": "^1.66.0"
+    },
+    "categories": [
+        "Programming Languages"
+    ],
+    "contributes": {
+        "languages": [{
+            "id": "nlogic",
+            "aliases": ["Nlogic", "nlogic"],
+            "extensions": [".pro",".pro.debug",".nlog",".nlogic"],
+            "configuration": "./language-configuration.json"
+        }],
+        "grammars": [{
+            "language": "nlogic",
+            "scopeName": "source.nlogic",
+            "path": "./syntaxes/nlogic.tmLanguage.json"
+        }],
+        "themes": [
+            {
+                "label": "Nlogic Syntax",
+                "path": "./themes/nlogic.tmTheme"
+            }
+        ]
+    }
+}

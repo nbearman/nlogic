@@ -1,0 +1,180 @@
+{
+	"$schema": "https://raw.githubusercontent.com/martinring/tmlanguage/master/tmlanguage.json",
+	"name": "Nlogic",
+	"patterns": [
+		{
+			"name": "comment.nlogic",
+			"match": "\/\/(.*)$"
+		},
+
+		{
+			"match": "(?i)fill",
+			"name": "nlogic.fill"
+		},
+
+		{
+			"match": "(?i)break",
+			"name": "nlogic.break"
+		},
+
+		{
+			"match": "(?i)7f flag",
+			"name": "nlogic.halt"
+		},
+
+        {
+			"match": "^([\\sa-fA-F0-9]+)(?=\\|)",
+			"name": "nlogic.line-number"
+		},
+
+		{
+			"match": "\\b((0x)?[0-9a-fA-F]+)\\b",
+			"name": "nlogic.number"
+		},
+
+		{
+			"match": "@+([^\\W]*)",
+			"name": "nlogic.label-def"
+		},
+
+		{
+			"match": ":+([^\\W]*)",
+			"name": "nlogic.label-ref"
+		},
+
+		{
+			"match": "(?i)flag",
+			"name": "nlogic.flag"
+		},
+		{
+				"match": "(?i)exe",
+				"name": "nlogic.exe"
+		},
+		{
+				"match": "(?i)pc",
+				"name": "nlogic.pc"
+		},
+		{
+				"match": "(?i)skip",
+				"name": "nlogic.skip"
+		},
+		{
+				"match": "(?i)rtrn",
+				"name": "nlogic.rtrn"
+		},
+		{
+				"match": "(?i)link",
+				"name": "nlogic.link"
+		},
+		{
+				"match": "(?i)compa",
+				"name": "nlogic.compa"
+		},
+		{
+				"match": "(?i)compb",
+				"name": "nlogic.compb"
+		},
+		{
+				"match": "(?i)compr",
+				"name": "nlogic.compr"
+		},
+		{
+				"match": "(?i)iadn",
+				"name": "nlogic.iadn"
+		},
+		{
+				"match": "(?i)iadf",
+				"name": "nlogic.iadf"
+		},
+		{
+				"match": "(?i)rbase",
+				"name": "nlogic.rbase"
+		},
+		{
+				"match": "(?i)rofst",
+				"name": "nlogic.rofst"
+		},
+		{
+				"match": "(?i)rmem",
+				"name": "nlogic.rmem"
+		},
+		{
+				"match": "(?i)wbase",
+				"name": "nlogic.wbase"
+		},
+		{
+				"match": "(?i)wofst",
+				"name": "nlogic.wofst"
+		},
+		{
+				"match": "(?i)wmem",
+				"name": "nlogic.wmem"
+		},
+		{
+				"match": "(?i)gpa",
+				"name": "nlogic.gpa"
+		},
+		{
+				"match": "(?i)gpb",
+				"name": "nlogic.gpb"
+		},
+		{
+				"match": "(?i)gpc",
+				"name": "nlogic.gpc"
+		},
+		{
+				"match": "(?i)gpd",
+				"name": "nlogic.gpd"
+		},
+		{
+				"match": "(?i)gpe",
+				"name": "nlogic.gpe"
+		},
+		{
+				"match": "(?i)gpf",
+				"name": "nlogic.gpf"
+		},
+		{
+				"match": "(?i)gpg",
+				"name": "nlogic.gpg"
+		},
+		{
+				"match": "(?i)gph",
+				"name": "nlogic.gph"
+		},
+		{
+				"match": "(?i)alum",
+				"name": "nlogic.alum"
+		},
+		{
+				"match": "(?i)alua",
+				"name": "nlogic.alua"
+		},
+		{
+				"match": "(?i)alub",
+				"name": "nlogic.alub"
+		},
+		{
+				"match": "(?i)alur",
+				"name": "nlogic.alur"
+		},
+		{
+				"match": "(?i)fpum",
+				"name": "nlogic.fpum"
+		},
+		{
+				"match": "(?i)fpua",
+				"name": "nlogic.fpua"
+		},
+		{
+				"match": "(?i)fpub",
+				"name": "nlogic.fpub"
+		},
+		{
+				"match": "(?i)fpur",
+				"name": "nlogic.fpur"
+		}
+	],
+	"repository": {},
+	"scopeName": "source.nlogic"
+}
