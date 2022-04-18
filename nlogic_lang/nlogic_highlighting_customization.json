@@ -1,0 +1,266 @@
+{
+    "editor.tokenColorCustomizations": {
+        "textMateRules": [
+            {
+                "scope": "nlogic.fill",
+                "settings": {
+                    "foreground": "#0000FF"
+                }
+            },
+
+            {
+                "scope": "comment.nlogic",
+                "settings": {
+                    "foreground": "#5fa526",
+                    "fontStyle": ""
+                }
+            },
+
+            {
+                "scope": "nlogic.number",
+                "settings": {
+                    "foreground": "#8eadcc"
+                }
+            },
+
+            {
+                "scope": "nlogic.line-number",
+                "settings": {
+                    "foreground": "#afafaf"
+                }
+            },
+
+            {
+                "scope": "nlogic.label-def",
+                "settings": {
+                    "foreground": "#bb3487",
+                    "fontStyle": "bold underline"
+                }
+            },
+
+            {
+                "scope": "nlogic.label-ref",
+                "settings": {
+                    "foreground": "#bb34bb",
+                    "fontStyle": "bold"
+                }
+            },
+
+            {
+                "scope": "nlogic.break",
+                "settings": {
+                    "foreground": "#ca3535",
+                    "fontStyle": "bold underline"
+                }
+            },
+
+            {
+                "scope": "nlogic.halt",
+                "settings": {
+                    "foreground": "#ca3535",
+                    "fontStyle": "bold underline"
+                }
+            },
+
+            {
+                "scope": "nlogic.alum, nlogic.fpum",
+                "settings": {
+                    "foreground": "#960596",
+                    "fontStyle": "bold"
+                }
+            },
+
+            {
+                "scope": "nlogic.alua, nlogic.alub, nlogic.fpua, nlogic.fpub",
+                "settings": {
+                    "foreground": "#3e9ae6",
+                    "fontStyle": "bold"
+                }
+            },
+
+            {
+                "scope": "nlogic.alur",
+                "settings": {
+                    "foreground": "#3921c4",
+                    "fontStyle": "bold"
+                }
+            },
+
+            {
+                "scope": "nlogic.fpur",
+                "settings": {
+                    "foreground": "#c421b6",
+                    "fontStyle": "bold"
+                }
+            },
+
+            {
+                "scope": "nlogic.rbase, nlogic.wbase, nlogic.rofst, nlogic.wofst",
+                "settings": {
+                    "foreground": "#c0a50f",
+                    "fontStyle": "bold"
+                }
+            },
+
+            {
+                "scope": "nlogic.rmem, nlogic.wmem",
+                "settings": {
+                    "foreground": "#32c00f",
+                    "fontStyle": "bold"
+                }
+            },
+
+            {
+                "scope": "nlogic.exe",
+                "settings": {
+                    "foreground": "#c0a50f",
+                    "fontStyle": "bold"
+                }
+            },
+
+            {
+                "scope": "nlogic.pc",
+                "settings": {
+                    "foreground": "#ffffff",
+                    "fontStyle": "bold"
+                }
+            },
+
+            {
+                "scope": "nlogic.skip",
+                "settings": {
+                    "foreground": "#666666",
+                    "fontStyle": "bold"
+                }
+            },
+
+            {
+                "scope": "nlogic.rtrn",
+                "settings": {
+                    "foreground": "#ffffff",
+                    "fontStyle": "bold"
+                }
+            },
+
+            {
+                "scope": "nlogic.link",
+                "settings": {
+                    "foreground": "#47d1d6",
+                    "fontStyle": "bold"
+                }
+            },
+
+            {
+                "scope": "nlogic.compa",
+                "settings": {
+                    "foreground": "#6271c5",
+                    "fontStyle": "bold"
+                }
+            },
+
+            {
+                "scope": "nlogic.compb",
+                "settings": {
+                    "foreground": "#7b478f",
+                    "fontStyle": "bold"
+                }
+            },
+
+            {
+                "scope": "nlogic.compr",
+                "settings": {
+                    "foreground": "#277432",
+                    "fontStyle": "bold"
+                }
+            },
+
+            {
+                "scope": "nlogic.iadn",
+                "settings": {
+                    "foreground": "#d35b5b",
+                    "fontStyle": "bold"
+                }
+            },
+
+            {
+                "scope": "nlogic.iadf",
+                "settings": {
+                    "foreground": "#43b949",
+                    "fontStyle": "bold"
+                }
+            },
+
+            {
+                "scope": "nlogic.gpa",
+                "settings": {
+                    "foreground": "#000000",
+                    "fontStyle": "bold"
+                }
+            },
+
+            {
+                "scope": "nlogic.gpb",
+                "settings": {
+                    "foreground": "#555555",
+                    "fontStyle": "bold"
+                }
+            },
+
+            {
+                "scope": "nlogic.gpc",
+                "settings": {
+                    "foreground": "#949494",
+                    "fontStyle": "bold"
+                }
+            },
+
+            {
+                "scope": "nlogic.gpd",
+                "settings": {
+                    "foreground": "#306cec",
+                    "fontStyle": "bold"
+                }
+            },
+
+            {
+                "scope": "nlogic.gpe",
+                "settings": {
+                    "foreground": "#01a8c5",
+                    "fontStyle": "bold"
+                }
+            },
+
+            {
+                "scope": "nlogic.gpf",
+                "settings": {
+                    "foreground": "#03c23d",
+                    "fontStyle": "bold"
+                }
+            },
+
+            {
+                "scope": "nlogic.gpg",
+                "settings": {
+                    "foreground": "#c7a900",
+                    "fontStyle": "bold"
+                }
+            },
+
+            {
+                "scope": "nlogic.gph",
+                "settings": {
+                    "foreground": "#d45151",
+                    "fontStyle": "bold"
+                }
+            },
+
+            {
+                "scope": "nlogic.flag",
+                "settings": {
+                    "foreground": "#097000",
+                    "fontStyle": "bold"
+                }
+            }
+        ]
+    }
+}
