@@ -48,6 +48,54 @@
             },
 
             {
+                "scope": "nlogic.frame_marker",
+                "settings": {
+                    "foreground": "#e3e641",
+                    "fontStyle": "underline"
+                }
+            },
+
+            {
+                "scope": "nlogic.frame_size_immediate, nlogic.frame_size_full",
+                "settings": {
+                    "foreground": "#41e6af",
+                    "fontStyle": "italic"
+                }
+            },
+
+            {
+                "scope": "nlogic.stack_variable_immediate, nlogic.stack_variable_full",
+                "settings": {
+                    "foreground": "#e6b241",
+                    "fontStyle": "italic"
+                }
+            },
+
+            {
+                "scope": "nlogic.stack_variable_decl_start",
+                "settings": {
+                    "foreground": "#ffba25",
+                    "fontStyle": "bold"
+                }
+            },
+
+            {
+                "scope": "nlogic.stack_variable_decl_identifier",
+                "settings": {
+                    "foreground": "#FFFFFF",
+                    "fontStyle": "italic"
+                }
+            },
+
+            {
+                "scope": "nlogic.stack_variable_decl_size",
+                "settings": {
+                    "foreground": "#b0efff",
+                    "fontStyle": ""
+                }
+            },
+
+            {
                 "scope": "nlogic.break",
                 "settings": {
                     "foreground": "#ca3535",

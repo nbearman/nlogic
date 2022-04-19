@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>fileTypes</key>
+	<array>
+        <string>pro</string>
+        <string>pro.debug</string>
+        <string>debug</string>
+	</array>
+	<key>name</key>
+	<string>Nlogic</string>
+	<key>patterns</key>
+	<array>
+        <dict>
+			<key>match</key>
+			<string>\/\/(.*)$</string>
+			<key>name</key>
+			<string>comment.nlogic</string>
+		</dict>
+        <dict>
+			<key>match</key>
+			<string>FILL</string>
+			<key>name</key>
+			<string>nlogic.fill</string>
+		</dict>
+        <dict>
+			<key>match</key>
+			<string>^([\sa-fA-F0-9]*)(?=\|)</string>
+			<key>name</key>
+			<string>nlogic.line-number</string>
+		</dict>
+        <dict>
+			<key>match</key>
+			<string>\b((0x)?[0-9a-fA-F]*)\b</string>
+			<key>name</key>
+			<string>nlogic.number</string>
+		</dict>
+	</array>
+	<key>scopeName</key>
+	<string>source.nlogic</string>
+	<key>uuid</key>
+    <string>adadbc08-222b-47ae-a63d-f10ae116819b</string>
+</dict>
+</plist>

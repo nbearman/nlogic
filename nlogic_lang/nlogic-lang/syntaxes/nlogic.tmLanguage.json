@@ -13,6 +13,40 @@
 		},
 
 		{
+			"match": "(?i)(frame_start|frame_end)",
+			"name": "nlogic.frame_marker"
+		},
+
+		{
+			"match": "(?i)isize_frame",
+			"name": "nlogic.frame_size_immediate"
+		},
+
+		{
+			"match": "(?i)size_frame",
+			"name": "nlogic.frame_size_full"
+		},
+
+		{
+			"match": "(?i)istack_([^\\W]*)",
+			"name": "nlogic.stack_variable_immediate"
+		},
+
+		{
+			"match": "(?i)stack_([^\\W]*)",
+			"name": "nlogic.stack_variable_full"
+		},
+
+		{
+			"match": "(?i)stack\\s(\\w+)\\s([a-fA-F0-9]+)",
+			"captures": {
+				"0": { "name": "nlogic.stack_variable_decl_start" },
+				"1": { "name": "nlogic.stack_variable_decl_identifier" },
+				"2": { "name": "nlogic.stack_variable_decl_size" }
+			}
+		},
+
+		{
 			"match": "(?i)break",
 			"name": "nlogic.break"
 		},
