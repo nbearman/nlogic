@@ -1,0 +1,28 @@
+-- -- -- -- |	// debug assembler should replace SIZE_FRAME with 00 00 00 00 in the first instance, 00 00 00 10 in the second, and 00 00 01 11 in the third
+-- -- -- -- |	FRAME_START
+00 00 00 00 |	10 RBASE
+00 00 00 02 |	IADF ROFST
+00 00 00 04 |	SKIP PC
+00 00 00 06 |	SIZE_FRAME
+-- -- -- -- |	FRAME_END
+00 00 00 0A |	01 GPA
+00 00 00 0C |	02 GPE
+-- -- -- -- |	
+-- -- -- -- |	// non-zero size
+-- -- -- -- |	FRAME_START
+-- -- -- -- |	STACK x 08
+-- -- -- -- |	STACK y 08
+00 00 00 0E |	IADF WOFST
+00 00 00 10 |	SKIP PC
+00 00 00 12 |	SIZE_FRAME
+-- -- -- -- |	FRAME_END
+-- -- -- -- |	
+-- -- -- -- |	// multiple definitions on one line; odd numbered sizes
+-- -- -- -- |	FRAME_START STACK x 109 STACK y 07
+-- -- -- -- |	STACK z 01
+00 00 00 16 |	IADF ALUA
+00 00 00 18 |	SKIP PC
+00 00 00 1A |	SIZE_FRAME
+-- -- -- -- |	FRAME_END
+-- -- -- -- |	
+00 00 00 1E |	7F FLAG

@@ -1,0 +1,17 @@
+// the debug assembler should give an exception for using ISTACK_ when STACK_ must be used
+
+// 01 83 02 84 03 85 9D 8C 9F 82 00 00 00 00 9D 8F 9F 82 00 00 00 08 9D 91 9F 82 00 00 FF 18 91 95 7F 80
+
+FRAME_START
+01 ALUM
+02 ALUA
+03 ALUB
+STACK var1 FF08
+STACK var2 04
+
+ISTACK_var2 GPD
+
+FRAME_END
+
+GPA GPE
+7F FLAG

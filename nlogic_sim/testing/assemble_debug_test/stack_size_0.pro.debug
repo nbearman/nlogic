@@ -1,0 +1,20 @@
+-- -- -- -- |	// debug assembler should replace ISIZE_FRAME with 00 in the first instance, 10 in the second, and 11 in the third
+00 00 00 00 |	FRAME_START
+00 00 00 00 |	10 RBASE
+00 00 00 02 |	ISIZE_FRAME ROFST
+00 00 00 04 |	FRAME_END
+00 00 00 04 |	01 GPA
+00 00 00 06 |	02 GPE
+-- -- -- -- |	
+00 00 00 08 |	FRAME_START
+00 00 00 08 |	STACK x 08
+00 00 00 08 |	STACK y 08
+00 00 00 08 |	ISIZE_FRAME WOFST
+00 00 00 0A |	FRAME_END
+-- -- -- -- |	
+00 00 00 0A |	FRAME_START STACK x 09 STACK y 07
+00 00 00 0A |	STACK z 01
+00 00 00 0A |	ISIZE_FRAME ALUA
+00 00 00 0C |	FRAME_END
+-- -- -- -- |	
+00 00 00 0C |	7F FLAG

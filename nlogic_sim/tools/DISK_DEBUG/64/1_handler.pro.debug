@@ -272,7 +272,7 @@
 00 00 05 60 |	WBASE ALUA
 00 00 05 62 |	WOFST ALUB
 00 00 05 64 |	ALUR WBASE
-00 00 05 66 |	20 WOFST //20 == size of stack frame, described above
+00 00 05 66 |	20 WOFST //20 == size of stack frame, described above //TODO replace with STACK macro once implemented
 -- -- -- -- |	
 -- -- -- -- |	//store FLAG in local variable
 00 00 05 68 |	    WBASE RBASE
@@ -384,14 +384,14 @@
 00 00 06 02 |	IADF WMEM
 00 00 06 04 |	SKIP PC
 00 00 06 06 |	::get_open_physical_page
-00 00 06 0A |	24 WOFST //size of stack frame + 4
+00 00 06 0A |	24 WOFST //size of stack frame + 4 //TODO replace with STACK macro once implemented
 00 00 06 0C |	RTRN LINK
 00 00 06 0E |	IADN PC
 00 00 06 10 |	::FUNC
 -- -- -- -- |	
 -- -- -- -- |	//result of function call is target physical page number
 -- -- -- -- |	//pop result from stack
-00 00 06 14 |	    20 WOFST //20 == size of stack frame, top of stack
+00 00 06 14 |	    20 WOFST //20 == size of stack frame, top of stack //TODO replace with STACK macro once implemented
 00 00 06 16 |	    WMEM GPH
 -- -- -- -- |	//store in local variable
 -- -- -- -- |	// ...TODO? ^
@@ -610,7 +610,7 @@
 -- -- -- -- |	//else if PTE faulted, we just loaded a leaf page in; update the PDE and PTE
 -- -- -- -- |	//  TODO //implement this
 -- -- -- -- |	//  assert that the PTE is !R,W
--- -- -- -- |	//      if these are not the protection bits, neither the PDE nor PDE faulted?
+-- -- -- -- |	//      if these are not the protection bits, neither the PDE nor PTE faulted?
 -- -- -- -- |	//          we are in the !R,W branch, so one of PDE and PTE should have !R,W
 -- -- -- -- |	//          since neither meet that criteria, HALT; PANIC
 00 00 06 FE |	            7F FLAG

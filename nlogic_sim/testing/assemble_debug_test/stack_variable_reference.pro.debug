@@ -1,0 +1,22 @@
+-- -- -- -- |	// the debug assembler should replace ISTACK_var1 with 00, ISTACK_var2 with 08, and ISTACK_var3 with 18
+-- -- -- -- |	FRAME_START
+00 00 00 00 |	01 ALUM
+00 00 00 02 |	02 ALUA
+00 00 00 04 |	03 ALUB
+-- -- -- -- |	STACK var1 08
+-- -- -- -- |	
+00 00 00 06 |	00 RBASE
+00 00 00 08 |	ISTACK_var1 ROFST
+00 00 00 0A |	00 WBASE
+-- -- -- -- |	// stack variable reference before declaration is ok
+00 00 00 0C |	ISTACK_var2 WOFST
+-- -- -- -- |	
+-- -- -- -- |	STACK var2 10
+-- -- -- -- |	STACK var3 04
+-- -- -- -- |	
+00 00 00 0E |	ISTACK_var3 GPA
+-- -- -- -- |	
+-- -- -- -- |	FRAME_END
+-- -- -- -- |	
+00 00 00 10 |	GPA GPE
+00 00 00 12 |	7F FLAG

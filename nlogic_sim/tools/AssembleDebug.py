@@ -53,6 +53,16 @@ def address_to_bytes(addr:int) -> str:
         raise Exception("address longer than 32 bits")
     return f"{num[0:2]} {num[2:4]} {num[4:6]} {num[6:8]}"
 
+def number_to_byte(num:int) -> str:
+    """
+    Return a string of 1 byte (exactly 2 characters)
+    "AA"
+    """
+    s = f"{num:0>2X}"
+    if len(s) > 2:
+        raise Exception("number is longer than 8 bits")
+    return s
+
 def replace_dmem(dmem:str) -> str:
     """
     Return the single-byte instruction string corresponding to
@@ -76,6 +86,61 @@ class FileInfo:
 
     def get_local_label_prefix(self):
         return f"__file_{self.filename}__"
+
+class StackVariableDeclaration:
+    def __init__(self, stack_variable_identifier, stack_variable_size):
+        if type(stack_variable_identifier) is not StackVariableIdentifier:
+            raise Exception(f"cannot create StackVariableDeclaration: {type(stack_variable_identifier)} is not StackVariableIdentifier")
+        if type(stack_variable_size) is not StackVariableSize:
+            raise Exception(f"cannot create StackVariableDeclaration: {type(stack_variable_size)} is not StackVariableSize")
+        self.size = stack_variable_size.num_bytes
+        self.name = stack_variable_identifier.name
+
+class StackVariableIdentifier:
+    def __init__(self, name):
+        stack_var_id_match = re.match("[a-zA-Z]+\w*$", name)
+        if not stack_var_id_match:
+            raise Exception(f"illegal stack variable identifier: {name} must start with a letter and contain only numbers, letters, and underscores")
+        self.name = name
+
+class StackVariableSize:
+    def __init__(self, num_bytes):
+        # if the size is not a valid number, this will cause an exception
+        self.num_bytes = int(num_bytes.lower(), base=16)
+
+class StackVariableReferenceImmediate:
+    def __init__(self, name):
+        reference_prefix = "(?i)^istack_"
+        if not re.match(reference_prefix, name):
+            raise Exception(f"StackVariableReferenceImmediate created for identifier without ISTACK_ prefix: {name}")
+        # remove the ISTACK_ prefix from the reference macro to get just the variable name
+        identifier = re.sub(reference_prefix, "", name)
+        self.name = identifier
+
+class StackVariableReferenceFull:
+    def __init__(self, name):
+        reference_prefix = "(?i)^stack_"
+        if not re.match(reference_prefix, name):
+            raise Exception(f"StackVariableReferenceFull created for identifier without STACK_ prefix: {name}")
+        # remove the STACK_ prefix from the reference macro to get just the variable name
+        identifier = re.sub(reference_prefix, "", name)
+        self.name = identifier
+
+class StackFrameStart:
+    def __init__(self):
+        pass
+
+class StackFrameEnd:
+    def __init__(self):
+        pass
+
+class StackFrameSizeImmediate:
+    def __init__(self):
+        pass
+
+class StackFrameSizeFull:
+    def __init__(self):
+        pass
 
 class LabelReference:
     def __init__(self, label, linked=False, file_info:FileInfo=None):
@@ -150,9 +215,46 @@ class Line:
         # list of intermediate code item objects
         result = []
 
+        # stack variable declarations are multi-word macros; some statefulness is needed to mark the part of the macro that we expect next
+        next_stack_var_word = None
+
         for word in line.split():
             # for each word on the line, construct the matching code item
             # the order of pattern detection here determines code generation precedence
+
+            # try to complete in-progress stack variable declaration
+            if next_stack_var_word == "IDENTIFIER":
+                result.append(StackVariableIdentifier(word))
+                # the next word on the line must be a valid stack variable size
+                next_stack_var_word = "SIZE"
+                continue
+
+            if next_stack_var_word == "SIZE":
+                result.append(StackVariableSize(word.lower()))
+
+                # pop the parts of the declaration off the code item list to combine them into one item
+                # this is possible because all parts of the declaration must be consecutive and in order
+                variable_size = result.pop()
+                variable_identifier = result.pop()
+
+                # push the combined declaration onto the result
+                result.append(StackVariableDeclaration(variable_identifier, variable_size))
+
+                # stack variable declaration macro now complete; no expectation for next word
+                next_stack_var_word = ""
+                continue
+
+            # we are in the middle of a stack variable declaration, but the next word was not caught by the above cases
+            # it's probably an error with the code above
+            if next_stack_var_word:
+                raise Exception(f"invalid stack variable declaration; expected '{next_stack_var_word.lower()}' but no parsing for that part exists")
+
+            # find stack variable declarations
+            stack_var_def_match = re.match("stack$", word.lower())
+            if stack_var_def_match:
+                # do not create the StackVariableDeclaration; that will be created after the full macro is parsed
+                next_stack_var_word = "IDENTIFIER"
+                continue
 
             # identify label definitions and references
             global_label_def_match = re.match("^@@.+", word)
@@ -194,6 +296,39 @@ class Line:
                 result.append(Literal("7b"))
                 continue
 
+            # find stack frame markers
+            stack_frame_start_match = re.match("^frame_start$", word.lower())
+            if stack_frame_start_match:
+                result.append(StackFrameStart())
+                continue
+
+            stack_frame_end_match = re.match("^frame_end$", word.lower())
+            if stack_frame_end_match:
+                result.append(StackFrameEnd())
+                continue
+
+            # find stack variable references
+            stack_variable_imm_match = re.match("^(ISTACK|istack)_([a-zA-Z]+\w*$)", word)
+            if stack_variable_imm_match:
+                result.append(StackVariableReferenceImmediate(word))
+                continue
+
+            stack_variable_full_match = re.match("^(STACK|stack)_([a-zA-Z]+\w*$)", word)
+            if stack_variable_full_match:
+                result.append(StackVariableReferenceFull(word))
+                continue
+
+            # find stack size references
+            stack_size_imm_match = re.match("^isize_frame$", word.lower())
+            if stack_size_imm_match:
+                result.append(StackFrameSizeImmediate())
+                continue
+
+            stack_size_imm_match = re.match("^size_frame$", word.lower())
+            if stack_size_imm_match:
+                result.append(StackFrameSizeFull())
+                continue
+            
             # identify byte literals
             literal_match = re.match("^[0-9a-f][0-9a-f]$", word.lower())
             if literal_match:
@@ -204,6 +339,12 @@ class Line:
             # try to parse the word as an instruction, this will raise exception if
             # unrecognizable token
             result.append(Instruction(word))
+
+        # stack variable declarations must be contained to one line
+        # we've reached the end of the line, so if we are looking for the next
+        # part of a stack variable declaration, this is an error
+        if next_stack_var_word:
+            raise Exception(f"line ended in the middle of a stack variable declaration; expected {next_stack_var_word.lower()}")
         return result
 
     def __init__(self, filename, line_num, line):
@@ -239,6 +380,11 @@ class Program:
                 all_lines.append(Line(name, line_num, line))
             file.close()
 
+        # identifier -> offset to use when replacing StackVariableReference code items
+        stack_variables_to_offsets = {}
+        within_stack_frame = False # true if currently in a stack frame context
+        current_stack_frame_size = 0
+
         # labels -> VAs to use when resolving labels after first assembly pass
         label_mapping = {}
 
@@ -253,16 +399,23 @@ class Program:
         # first pass generates all code except label references, which are left in place since
         # we don't know their final target VA until after the first pass
         # (label target VAs are calculated during first pass, in order, from line 0 to line N)
-        for l in all_lines:
+        for line_index in range(len(all_lines)):
+            l = all_lines[line_index]
             # Line's intermediate holds a list of code generating items
-            for item in l.intermediate:
+            for item_index in range(len(l.intermediate)):
+                item = l.intermediate[item_index]
                 t = type(item)
 
                 # record the VA of the first piece of data on this line
                 # after the first piece of data, the line will have a VA, so don't overwrite it
-                # ignore label definitions; they are the only instructions which do not correspond
-                # to any data in the output assembly (and so have no VA)
-                if t is not LabelDefinition:
+                # ignore label definitions and some stack macros; they are the only instructions
+                # which do not correspond to any data in the output assembly (and so have no VA)
+                if t not in [
+                    LabelDefinition,
+                    StackVariableDeclaration,
+                    StackFrameStart,
+                    StackFrameEnd
+                ]:
                     if l.va is None:
                         l.va = pc
 
@@ -300,6 +453,103 @@ class Program:
                     # no code is generated for label definitions, so don't increment PC
                     # resolve the target of this label as the current VA
                     label_mapping[item.lookup] = pc
+
+                elif t is StackFrameStart:
+                    # check that we are not already in a stack frame
+                    if within_stack_frame:
+                        raise Exception("FRAME_START cannot be used inside stack frame context; use FRAME_END first")
+                    within_stack_frame = True
+                    # calculate the size of the stack frame by finding all the variable declarations before FRAME_END
+                    size_accumulator = 0
+                    frame_terminated = False
+                    # look forward through the next code items to find the end of the frame
+                    # accumulate the frame size and calculate variable offsets on the way
+                    # start by looking through the rest of the code on this line
+                    for frame_item in l.intermediate[item_index + 1:]:
+                        item_type = type(frame_item)
+                        if item_type is StackVariableDeclaration:
+                            offset = size_accumulator
+                            stack_variables_to_offsets[frame_item.name] = offset
+                            size_accumulator += frame_item.size
+                        elif item_type is StackFrameEnd:
+                            current_stack_frame_size = size_accumulator
+                            frame_terminated = True
+                            break
+                    # if the frame context is still open, go through upcoming lines
+                    if not frame_terminated:
+                        for future_line in all_lines[line_index + 1:]:
+                            for future_item in future_line.intermediate:
+                                item_type = type(future_item)
+                                if item_type is StackVariableDeclaration:
+                                    offset = size_accumulator
+                                    stack_variables_to_offsets[future_item.name] = offset
+                                    size_accumulator += future_item.size
+                                elif item_type is StackFrameEnd:
+                                    current_stack_frame_size = size_accumulator
+                                    frame_terminated = True
+                                    break
+                            if frame_terminated:
+                                break
+                    if not frame_terminated:
+                        raise Exception("stack frame never terminated: FRAME_END must be used after each FRAME_START")
+
+                elif t is StackFrameEnd:
+                    if not within_stack_frame:
+                        raise Exception("FRAME_END cannot be used outside stack frame context; use FRAME_START first")
+                    within_stack_frame = False
+                    # stack frame concluded; clear all local variables mappings to avoid accidental use by assembler
+                    stack_variables_to_offsets = {}
+                    current_stack_frame_size = 0
+
+                elif t is StackVariableDeclaration:
+                    if not within_stack_frame:
+                        raise Exception("stack variable declarations cannot be used outside of stack frame context; use FRAME_START first")
+                    # do nothing; variable declarations do not emit code, and these were already
+                    # counted when we encountered the StackFrameStart
+
+                elif t is StackVariableIdentifier or t is StackVariableSize:
+                    # there should be none of these in the code items
+                    raise Exception(f"{t}s should have been consumed during Line.parse")
+
+                elif t is StackFrameSizeImmediate:
+                    if not within_stack_frame:
+                        raise Exception("IFRAME_SIZE cannot be used outside stack frame context; use FRAME_START first")
+                    if current_stack_frame_size > 0x7F:
+                        raise Exception("IFRAME_SIZE cannot be used when stack frame size exceeds 0x7F bytes; use FRAME_SIZE instead")
+                    code.append(number_to_byte(current_stack_frame_size))
+                    # immediate will take one byte
+                    pc += 1
+
+                elif t is StackFrameSizeFull:
+                    if not within_stack_frame:
+                        raise Exception("FRAME_SIZE cannot be used outside stack frame context; use FRAME_START first")
+                    if current_stack_frame_size > 0xFFFFFFFF:
+                        raise Exception("FRAME_SIZE cannot be used; frame size exceeds 0xFFFFFFFF bytes")
+                    # full frame size reference uses 4 bytes so it can be loaded with IAD instructions
+                    code.append(address_to_bytes(current_stack_frame_size))
+                    pc += 4
+
+                elif t is StackVariableReferenceImmediate:
+                    if not within_stack_frame:
+                        raise Exception("stack variable cannot be used outside stack frame context; use FRAME_START first")
+                    # if there's an exception here, the variable referenced has not been declared
+                    offset = stack_variables_to_offsets[item.name]
+                    if offset > 0x7F:
+                        raise Exception("stack variable cannot be used; offset exceeds 0x7F bytes; use STACK_ instead")
+                    code.append(number_to_byte(offset))
+                    # immediate will take one byte
+                    pc += 1
+
+                elif t is StackVariableReferenceFull:
+                    if not within_stack_frame:
+                        raise Exception("stack variable cannot be used outside stack frame context; use FRAME_START first")
+                    # if there's an exception here, the variable referenced has not been declared
+                    offset = stack_variables_to_offsets[item.name]
+                    if offset > 0xFFFFFFFF:
+                        raise Exception("stack variable cannot be used; offset exceeds 0xFFFFFFFF bytes")
+                    # full stack variable reference uses 4 bytes so it can be loaded with IAD instructions
+                    code.append(address_to_bytes(offset))
+                    pc += 4
 
         # final output assembly, with all label references replaced
         # list of byte literals only, (e.g.: "7F", "A0")
