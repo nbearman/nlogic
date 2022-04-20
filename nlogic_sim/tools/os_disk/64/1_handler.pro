@@ -32,6 +32,7 @@ SKIP PC
 00 PC
 // end kernel entry code
 
+//TODO unused space 0x40 - 0x100
 
 FILL100 //data should start after DMEM accessible region (0x00 - 0x3F) so it can't be overwritten by DMEM instructions
 //=========================================================================
@@ -253,6 +254,7 @@ DMEM00 WMEM
 DMEM04 WMEM
 50 WOFST
 
+FRAME_START
 //=========================
 // interrupt handler stack layout / local variables
 //==========
@@ -266,17 +268,28 @@ DMEM04 WMEM
 // 0x1C |   uint    |   physical page new page is moved into
 //=========================
 
+    STACK flag_val 04
+    STACK faulted_pte 04
+    STACK faulted_va 04
+    STACK faulted_pte_block 04
+    STACK faulted_va_vpage_num 04
+    STACK active_process_id 04
+    STACK active_process_page_directory_ppage 04
+    STACK target_ppage 04
+
 //add stack frame; registers are dumped to bottom of the stack, so we don't need to save a frame pointer
+//  (specifically because handler runs at the very bottom of the kernel's stack)
 //(just set WBASE to 00 when it's time to retrieve them)
 01 ALUM //add
 WBASE ALUA
 WOFST ALUB
-ALUR WBASE
-20 WOFST //20 == size of stack frame, described above //TODO replace with STACK macro once implemented
+ALUR WBASE //WBASE = FP == start of first frame on the stack
+    //before this is the dumped contents of the processor before the interrupt
+ISIZE_FRAME WOFST //WOFST = SP == frame size
 
 //store FLAG in local variable
     WBASE RBASE
-    00 ROFST //FLAG local variable address (from stack layout)
+    ISTACK_flag_val ROFST
     FLAG RMEM
 
 //determine the cause of the interrupt
@@ -302,19 +315,19 @@ ALUR WBASE
 //retrieve the faulted PTE from the MMU
     IADF RBASE
     SKIP PC
-    00 00 10 00
-    0C ROFST
+    00 00 10 00 //MMU VA
+    0C ROFST //0x0C == faulted PTE register offset in MMU address range
     RMEM GPA
 
 //retrieve the faulted address from the MMU
-    10 ROFST
+    10 ROFST //0x10 == faulted VA register offset in MMU address range
     RMEM GPB
 
 //store faulted PTE and faulted virtual address in local variables
     WBASE RBASE
-    04 ROFST
+    ISTACK_faulted_pte ROFST
     GPA RMEM
-    08 ROFST
+    ISTACK_faulted_va ROFST
     GPB RMEM
 
 //get the active process ID and page directory physical page from kernel memory
@@ -330,9 +343,9 @@ ALUR WBASE
 
 //store active process ID and page directory physical page in local variables
     WBASE RBASE
-    14 ROFST
+    ISTACK_active_process_id ROFST
     GPC RMEM
-    18 ROFST
+    ISTACK_active_process_page_directory_ppage ROFST
     GPD RMEM
 
 //check PTE protections
@@ -349,17 +362,17 @@ ALUR WBASE
 
 //see which of 00, 01, 10, 11 the RW bits are
 ALUR COMPA
-00 COMPB
+00 COMPB //0b00
 COMPR PC
 :r0w0
 :_r0w0
 @_r0w0
-01 COMPB
+01 COMPB //0b01
 COMPR PC
 :r0w1
 :_r0w1
 @_r0w1
-02 COMPB
+02 COMPB //0b10
 COMPR PC
 :r1w0
 :_r1w0
@@ -384,25 +397,33 @@ COMPR PC
 IADF WMEM
 SKIP PC
 ::get_open_physical_page
-24 WOFST //size of stack frame + 4 //TODO replace with STACK macro once implemented
+
+01 ALUM //add mode
+ISIZE_FRAME ALUA //stack frame size
+04 ALUB //add 4 for room for the target address, which we just pushed to the stack
+//TODO theoretically this is known at compile time; add macro for ISIZE_FRAME+X ?
+ALUR WOFST //SP = size of stack frame + 4
+
+//jump to function
 RTRN LINK
 IADN PC
 ::FUNC
 
 //result of function call is target physical page number
 //pop result from stack
-    20 WOFST //20 == size of stack frame, top of stack //TODO replace with STACK macro once implemented
+    ISIZE_FRAME WOFST //size of stack frame, top of stack
     WMEM GPH
 //store in local variable
-// ...TODO? ^
-
+    WBASE RBASE
+    ISTACK_target_ppage ROFST
+    GPH RMEM
 
 //load page from disk
 //get disk block from PTE
     GPA ALUA //PTE to ALU
     IADF ALUB //mask to ALU
     SKIP PC
-    00 0F FF FF
+    00 0F FF FF //disk block mask
     08 ALUM //AND mode
     ALUR GPE
 //get virtual page / virtual directory number from virtual address
@@ -414,9 +435,9 @@ IADN PC
 
 //store disk block and virtual page number in local variables
     WBASE RBASE
-    0C ROFST
+    ISTACK_faulted_pte_block ROFST
     GPE RMEM
-    10 ROFST
+    ISTACK_faulted_va_vpage_num ROFST
     GPF RMEM
 
 //load from disk
@@ -632,6 +653,7 @@ FPUR GPC
 7F FLAG
 // end interrupt handler
 
+FRAME_END
 
 //=========================================================================
 // [function] get_open_physical_page | void TODO: this is not void
@@ -691,7 +713,7 @@ FPUR GPC
         WBASE ALUA //store FP somewhere
         GPH WBASE //point WMEM to the result address
         00 WOFST
-        GPA WMEM //result = index
+        GPA WMEM //result = index into physical page map
         ALUA WBASE //restore FP
         LINK PC //return
 
