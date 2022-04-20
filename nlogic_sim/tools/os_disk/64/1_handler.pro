@@ -276,6 +276,11 @@ FRAME_START
     STACK active_process_id 04
     STACK active_process_page_directory_ppage 04
     STACK target_ppage 04
+    STACK fetched_pde 04 // possibly different than faulted PTE if the leaf page faulted
+    STACK fetched_pte 04 // retrieved by following the PDE if leaf page faulted
+                            //should be the same as faulted PTE in that case
+    STACK fetched_pde_kpa 04
+    STACK fetched_pte_kpa 04
 
 //add stack frame; registers are dumped to bottom of the stack, so we don't need to save a frame pointer
 //  (specifically because handler runs at the very bottom of the kernel's stack)
@@ -585,14 +590,19 @@ IADN PC
     ALUR ALUB
     GPA ALUA
     07 ALUM //OR
-
+        //TODO setting OR then AND? probably do the same thing in this case
+        // probably need to swap the next two instructions: use OR, retrieve result, then set AND
     01 ALUM //add
     ALUR ALUA //page directory entry physical address
     IADF ALUB //add 0x00 3F 00 00 to get kernel virtual address of physical address
     SKIP PC
     00 3F 00 00
 
-    BREAK
+    //save kernel's VA of the PDE in local variable; we'll need to write the updated PDE back later
+    WBASE RBASE
+    ISTACK_fetched_pde_kpa ROFST
+    ALUR RMEM
+
     //set RBASE to point to the PDE for the faulted address (may or may not be the PDE/PTE that faulted)
     ALUR RBASE
     00 ROFST
@@ -602,6 +612,12 @@ IADN PC
 //  else PTE faulted (if PTE faulted, PDE is necessarily R,W, else it would have faulted first)
     //extract RW bits from PDE
         RMEM ALUA //PDE to ALU
+
+            //store PDE in local variable for later
+            WBASE RBASE
+            ISTACK_fetched_pde ROFST
+            ALUA RMEM
+
         IADF ALUB //protection mask to ALU
         SKIP PC
         C0 00 00 00 //mask for the RW bits of the PDE
@@ -629,16 +645,89 @@ IADN PC
 
 @leaf_caused_r0w1 //ELSE CLAUSE (PTE faulted)
 //else if PTE faulted, we just loaded a leaf page in; update the PDE and PTE
-//  TODO //implement this
-//  assert that the PTE is !R,W
-//      if these are not the protection bits, neither the PDE nor PTE faulted?
-//          we are in the !R,W branch, so one of PDE and PTE should have !R,W
-//          since neither meet that criteria, HALT; PANIC
+    //fetch the PTE through the PDE
+        //we know the page table is resident, since the PDE didn't fault
+        //therefore PDE holds the physical page of the PTE
+
+        //page table base address == (PDE & 0x000FFFFF) << 12
+        WBASE RBASE
+        ISTACK_fetched_pde ROFST
+        RMEM ALUA //PDE to ALU
+        IADF ALUB //mask to ALU
+        SKIP PC
+        00 0F FF FF //physical page mask
+        08 ALUM //AND mode
+
+        ALUR ALUA //physical page number of page table
+        0C ALUB //12 bits
+        05 ALUM //left shift
+        ALUR GPA //GPA = page table base address
+
+        //page number = (virtual address & 0x003FF000) >> 12
+            // PTEs are 4 bytes, so address is (table addr + (page number * 4))
+            // skip the *4 by shifting only 10 bits instead of 12
+        //(virtual address & 0x003FF000) >> 10
+        ISTACK_faulted_va ROFST
+        RMEM ALUA //VA to ALU
+        IADF ALUB //mask to ALU
+        SKIP PC
+        00 3F F0 00 //page number mask
+        08 ALUM //AND
+        
+        ALUR ALUA // page number of PTE (from PDE, unshifted)
+        06 ALUM //right shift
+        0A ALUB //10 bits
+
+        ALUR ALUB //page number * 4
+        GPA ALUA //page table base address
+        07 ALUM //OR
+
+        ALUR ALUA //page table entry physical address to ALU
+        IADF ALUB //add 0x00 3F 00 00 to get kernel virtual address of any physical address
+        SKIP PC
+        00 3F 00 00 //PA->kernel VA offset
+        01 ALUM //ADD
+        ALUR RBASE //PTE address in kernel VA
+        00 ROFST //RMEM points to PTE
+
+        RMEM GPB //save the PTE somewhere
+        WBASE RBASE
+        ISTACK_fetched_pte ROFST
+        GPB RMEM //store the fetched PTE in local variable
+
+        ISTACK_fetched_pte_kpa ROFST
+        ALUR RMEM //store kernel's VA of PTE in local variable; we'll need to write the updated PTE back
+
+    //assert that the PTE is !R,W
+        //get the protection bits
+            GPB ALUA //PTE to ALU
+            IADF ALUB //mask to ALU
+            SKIP PC
+            C0 00 00 00 //mask for the RW bits of the PTE
+            08 ALUM //AND
+
+            ALUR ALUA //RW bits to ALU
+            1E ALUB //shift 30 bits right
+            06 ALUM //right shift mode
+
+        //compare PTE RW bits to !R,W (0x01)
+            ALUR COMPA //RW bits to comparator
+            01 COMPB //!R,W (0x01)
+            COMPR PC
+            :assertion_passed_faulted_pte_not_0rw1
+            :assertion_failed_faulted_pte_not_0rw1
+
+        @assertion_failed_faulted_pte_not_0rw1
+        //if these are not the protection bits, neither the PDE nor PTE faulted?
+        //we are in the !R,W branch, so one of PDE and PTE should have !R,W
+        //since neither meet that criteria, HALT; PANIC
             7F FLAG
 
-//  update the PDE to be F,D
-//  fetch the PTE
-//  update the PTE to be R,!W,!F,!D
+    @assertion_passed_faulted_pte_not_0rw1
+    //TODO implement this
+    BREAK
+    //  update the PDE to be F,D
+    //  update the PTE to be R,!W,!F,!D
 
 @conclude_r0w1
 //return from interrupt

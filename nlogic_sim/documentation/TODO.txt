@@ -42,6 +42,7 @@ Map physical memory to kernel's address space
 Change simulator to accept configuration file as command line argument to set up memory, MMIO devices, etc.
 
 Document current state of assembler and assembler pro functionality
+	FILL, STACK macros
 
 ====================================================================================
 
