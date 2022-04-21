@@ -83,6 +83,9 @@
 -- -- -- -- |	//add PTEs for virtual pages 0x3F0-0x3FF
 -- -- -- -- |	//map them to physical physical memory in order (physical address 0x00 00 00 00 - 0x00 00 F0 00)
 -- -- -- -- |	//to access physical address from kernel virtual address space, add 0x00 3F 00 00
+-- -- -- -- |	// TODO we shouldn't map all of physical memory to kernel's VA
+-- -- -- -- |	//	As physical memory increases, there becomes less usable space in the kernel's VA
+-- -- -- -- |	//	Add another way for kernel to access physical addresses directly; special registers in MMU?
 00 00 00 30 |	IADF WOFST
 00 00 00 32 |	SKIP PC
 00 00 00 34 |	00 00 0F C0 //(0x3F0 * 4, 4 bytes per PTE, 3F0th entry)

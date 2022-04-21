@@ -724,10 +724,54 @@
 00 00 07 82 |	            7F FLAG
 -- -- -- -- |	
 -- -- -- -- |	    @assertion_passed_faulted_pte_not_0rw1
--- -- -- -- |	    //TODO implement this
-00 00 07 84 |	    BREAK
--- -- -- -- |	    //  update the PDE to be F,D
--- -- -- -- |	    //  update the PTE to be R,!W,!F,!D
+-- -- -- -- |	    //update the PDE to be F,D
+00 00 07 84 |	        ISTACK_fetched_pde ROFST
+00 00 07 86 |	        RMEM GPC //GPC = PDE we need to update
+-- -- -- -- |	        //GPB already holds PTE we need to update
+-- -- -- -- |	
+00 00 07 88 |	        GPC ALUA //PDE to ALU
+00 00 07 8A |	        IADF ALUB //mask to ALU
+00 00 07 8C |	        SKIP PC
+00 00 07 8E |	        30 00 00 00 //F,D mask
+00 00 07 92 |	        07 ALUM //OR mode
+-- -- -- -- |	
+-- -- -- -- |	    //write updated PDE back to page directory
+00 00 07 94 |	        ISTACK_fetched_pde_kpa ROFST
+00 00 07 96 |	        RMEM RBASE
+00 00 07 98 |	        00 ROFST
+00 00 07 9A |	        ALUR RMEM
+-- -- -- -- |	
+-- -- -- -- |	    //update the PTE to be R,!W,!F,!D
+00 00 07 9C |	        GPB ALUA //PTE to ALU
+00 00 07 9E |	        IADF ALUB //mask to ALU
+00 00 07 A0 |	        SKIP PC
+00 00 07 A2 |	        80 00 00 00 //R,!W,!F,!D mask
+-- -- -- -- |	
+00 00 07 A6 |	    BREAK
+-- -- -- -- |	
+-- -- -- -- |	    //update the PTE with the physical page where the page now lives
+-- -- -- -- |	    //  we're replacing the disk block in the PTE, but we already saved it
+-- -- -- -- |	    //  in the kernel's physical page map
+-- -- -- -- |	
+-- -- -- -- |	        // erase the disk block part of the PTE
+00 00 07 A8 |	            ALUR ALUA //updated PTE to ALU
+00 00 07 AA |	            IADF ALUB //mask to ALU
+00 00 07 AC |	            SKIP PC
+00 00 07 AE |	            FF F0 00 00 //disk block mask
+00 00 07 B2 |	            08 ALUM //AND mode
+-- -- -- -- |	
+00 00 07 B4 |	            ALUR ALUA //PTE with disk block removed to ALU
+00 00 07 B6 |	            WBASE RBASE
+00 00 07 B8 |	            ISTACK_target_ppage ROFST
+00 00 07 BA |	            RMEM ALUB //physical page where page now resides to ALU
+00 00 07 BC |	            07 ALUM //OR mode
+-- -- -- -- |	
+-- -- -- -- |	        //write updated PTE back to page table
+00 00 07 BE |	            WBASE RBASE
+00 00 07 C0 |	            ISTACK_fetched_pte_kpa ROFST
+00 00 07 C2 |	            RMEM RBASE
+00 00 07 C4 |	            00 ROFST
+00 00 07 C6 |	            ALUR RMEM
 -- -- -- -- |	
 -- -- -- -- |	@conclude_r0w1
 -- -- -- -- |	//return from interrupt
@@ -735,11 +779,11 @@
 -- -- -- -- |	
 -- -- -- -- |	
 -- -- -- -- |	//nothing left
-00 00 07 86 |	02 FPUM
-00 00 07 88 |	11 FPUA
-00 00 07 8A |	22 FPUB
-00 00 07 8C |	FPUR GPC
-00 00 07 8E |	7F FLAG
+00 00 07 C8 |	02 FPUM
+00 00 07 CA |	11 FPUA
+00 00 07 CC |	22 FPUB
+00 00 07 CE |	FPUR GPC
+00 00 07 D0 |	7F FLAG
 -- -- -- -- |	// end interrupt handler
 -- -- -- -- |	
 -- -- -- -- |	FRAME_END
@@ -753,77 +797,77 @@
 -- -- -- -- |	
 -- -- -- -- |	
 -- -- -- -- |	//calculate address where return value should be stored
-00 00 07 90 |	    03 ALUM //subtract
-00 00 07 92 |	    WBASE ALUA //original FP
-00 00 07 94 |	    54 ALUB // -84
-00 00 07 96 |	    ALUR GPH //GPH = result address = FP - 84
+00 00 07 D2 |	    03 ALUM //subtract
+00 00 07 D4 |	    WBASE ALUA //original FP
+00 00 07 D6 |	    54 ALUB // -84
+00 00 07 D8 |	    ALUR GPH //GPH = result address = FP - 84
 -- -- -- -- |	
 -- -- -- -- |	//look for open pages, which we can use without evicting anything
 -- -- -- -- |	//open pages have a process ID of 0
 -- -- -- -- |	
 -- -- -- -- |	//iterate over physical page map
 -- -- -- -- |	    //point RMEM to physical page map array
-00 00 07 98 |	        IADF RBASE
-00 00 07 9A |	        SKIP PC
-00 00 07 9C |	        ::physical_page_map
-00 00 07 A0 |	        00 ROFST
+00 00 07 DA |	        IADF RBASE
+00 00 07 DC |	        SKIP PC
+00 00 07 DE |	        ::physical_page_map
+00 00 07 E2 |	        00 ROFST
 -- -- -- -- |	
-00 00 07 A2 |	    00 GPA //GPA = index
-00 00 07 A4 |	    10 GPB //GPB = max_index
+00 00 07 E4 |	    00 GPA //GPA = index
+00 00 07 E6 |	    10 GPB //GPB = max_index
 -- -- -- -- |	
 -- -- -- -- |	    @open_page_loop
 -- -- -- -- |	    //check if we're at the end of the loop (index == 16?)
-00 00 07 A6 |	        GPA COMPA
-00 00 07 A8 |	        GPB COMPB
-00 00 07 AA |	        COMPR PC
-00 00 07 AC |	        :open_page_loop_end
-00 00 07 B0 |	        :open_page_loop_go
+00 00 07 E8 |	        GPA COMPA
+00 00 07 EA |	        GPB COMPB
+00 00 07 EC |	        COMPR PC
+00 00 07 EE |	        :open_page_loop_end
+00 00 07 F2 |	        :open_page_loop_go
 -- -- -- -- |	
 -- -- -- -- |	    @open_page_loop_go
 -- -- -- -- |	    //calculate offset from index
-00 00 07 B4 |	        02 ALUM //multiply mode
-00 00 07 B6 |	        GPA ALUA // ALUA = index
-00 00 07 B8 |	        14 ALUB //20 bytes per entry
-00 00 07 BA |	        ALUR ROFST
+00 00 07 F6 |	        02 ALUM //multiply mode
+00 00 07 F8 |	        GPA ALUA // ALUA = index
+00 00 07 FA |	        14 ALUB //20 bytes per entry
+00 00 07 FC |	        ALUR ROFST
 -- -- -- -- |	
 -- -- -- -- |	    //read process ID (offset 0)
-00 00 07 BC |	    RMEM GPC //GPC = process id
+00 00 07 FE |	    RMEM GPC //GPC = process id
 -- -- -- -- |	
 -- -- -- -- |	    //process id == 0?
-00 00 07 BE |	        GPC COMPA
-00 00 07 C0 |	        00 COMPB
-00 00 07 C2 |	        COMPR PC
-00 00 07 C4 |	        :open_page_proc_id_0
-00 00 07 C8 |	        :open_page_loop_next
+00 00 08 00 |	        GPC COMPA
+00 00 08 02 |	        00 COMPB
+00 00 08 04 |	        COMPR PC
+00 00 08 06 |	        :open_page_proc_id_0
+00 00 08 0A |	        :open_page_loop_next
 -- -- -- -- |	    
 -- -- -- -- |	    @open_page_proc_id_0
 -- -- -- -- |	    // found an open page
 -- -- -- -- |	    // return the index as the open physical page
-00 00 07 CC |	        WBASE ALUA //store FP somewhere
-00 00 07 CE |	        GPH WBASE //point WMEM to the result address
-00 00 07 D0 |	        00 WOFST
-00 00 07 D2 |	        GPA WMEM //result = index into physical page map
-00 00 07 D4 |	        ALUA WBASE //restore FP
-00 00 07 D6 |	        LINK PC //return
+00 00 08 0E |	        WBASE ALUA //store FP somewhere
+00 00 08 10 |	        GPH WBASE //point WMEM to the result address
+00 00 08 12 |	        00 WOFST
+00 00 08 14 |	        GPA WMEM //result = index into physical page map
+00 00 08 16 |	        ALUA WBASE //restore FP
+00 00 08 18 |	        LINK PC //return
 -- -- -- -- |	
 -- -- -- -- |	    
 -- -- -- -- |	
 -- -- -- -- |	    @open_page_loop_next
 -- -- -- -- |	    //increment index
-00 00 07 D8 |	        01 ALUM //add mode
-00 00 07 DA |	        GPA ALUA
-00 00 07 DC |	        01 ALUB
-00 00 07 DE |	        ALUR GPA //index += 1
+00 00 08 1A |	        01 ALUM //add mode
+00 00 08 1C |	        GPA ALUA
+00 00 08 1E |	        01 ALUB
+00 00 08 20 |	        ALUR GPA //index += 1
 -- -- -- -- |	    //go to start of loop
-00 00 07 E0 |	    IADN PC
-00 00 07 E2 |	    :open_page_loop
+00 00 08 22 |	    IADN PC
+00 00 08 24 |	    :open_page_loop
 -- -- -- -- |	
 -- -- -- -- |	    //TODO implement this
 -- -- -- -- |	
 -- -- -- -- |	
 -- -- -- -- |	@open_page_loop_end
 -- -- -- -- |	//no open pages
-00 00 07 E6 |	BREAK
+00 00 08 28 |	BREAK
 -- -- -- -- |	
 -- -- -- -- |	//      TODO important insight:
 -- -- -- -- |	//      An evictable page is one where no other non-empty page mapping entry has a "directory physical page" that
@@ -838,9 +882,9 @@
 -- -- -- -- |	//          The process descriptor in the process map also has the number of resident pages
 -- -- -- -- |	
 -- -- -- -- |	//TODO implement this
-00 00 07 E8 |	00 RBASE
-00 00 07 EA |	00 ROFST
-00 00 07 EC |	7F RMEM
+00 00 08 2A |	00 RBASE
+00 00 08 2C |	00 ROFST
+00 00 08 2E |	7F RMEM
 -- -- -- -- |	
 -- -- -- -- |	//return
-00 00 07 EE |	LINK PC
+00 00 08 30 |	LINK PC

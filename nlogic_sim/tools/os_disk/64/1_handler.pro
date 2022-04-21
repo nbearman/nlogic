@@ -724,10 +724,52 @@ IADN PC
             7F FLAG
 
     @assertion_passed_faulted_pte_not_0rw1
-    //TODO implement this
-    BREAK
-    //  update the PDE to be F,D
-    //  update the PTE to be R,!W,!F,!D
+    //update the PDE to be F,D
+        ISTACK_fetched_pde ROFST
+        RMEM GPC //GPC = PDE we need to update
+        //GPB already holds PTE we need to update
+
+        GPC ALUA //PDE to ALU
+        IADF ALUB //mask to ALU
+        SKIP PC
+        30 00 00 00 //F,D mask
+        07 ALUM //OR mode
+
+    //write updated PDE back to page directory
+        ISTACK_fetched_pde_kpa ROFST
+        RMEM RBASE
+        00 ROFST
+        ALUR RMEM
+
+    //update the PTE to be R,!W,!F,!D
+        GPB ALUA //PTE to ALU
+        IADF ALUB //mask to ALU
+        SKIP PC
+        80 00 00 00 //R,!W,!F,!D mask
+
+    //update the PTE with the physical page where the page now lives
+    //  we're replacing the disk block in the PTE, but we already saved it
+    //  in the kernel's physical page map
+
+        // erase the disk block part of the PTE
+            ALUR ALUA //updated PTE to ALU
+            IADF ALUB //mask to ALU
+            SKIP PC
+            FF F0 00 00 //disk block mask
+            08 ALUM //AND mode
+
+            ALUR ALUA //PTE with disk block removed to ALU
+            WBASE RBASE
+            ISTACK_target_ppage ROFST
+            RMEM ALUB //physical page where page now resides to ALU
+            07 ALUM //OR mode
+
+        //write updated PTE back to page table
+            ISTACK_fetched_pte_kpa ROFST
+            RMEM RBASE
+            00 ROFST
+            ALUR RMEM
+        //done; return from interrupt handler
 
 @conclude_r0w1
 //return from interrupt

@@ -1,4 +1,18 @@
-﻿Move MMU mapping in kernel VA to much higher address
+﻿Add macros for ALU and FPU modes
+
+Add some static analysis to debug assembler to catch bugs
+	Ex.: Check for multiple writes to ALUA before reading alur
+		Do not count multiple writes to ALUA if there is a write to PC in between
+		Also reset if there is a label definition (implies entry might come between writes)
+
+Kernel should not map all of physical memory in its VA space
+	If the size of physical memory matches the size of the virtual address space, every kernel VA will be mapped to a physical address
+	Instead of mapping all of physical memory in kernel VA space, add direct memory access to MMU
+		MMU could have special physical target address register and physical memory access register
+			Kernel can specify an address in the target register and then read or write to the access register to access that physical address
+		For larger amounts of memory, the MMU could possibly implement range-based DMA transfer (either PA -> PA or kernel VA -> PA)
+	
+Move MMU mapping in kernel VA to much higher address
 	MMU is mapped to 0x1000 in kernel VA; interrupt handler is going to overrun this
 
 Consider addding a bit to PTE that specifies if the PTE is a page directory entry or a page table entry
