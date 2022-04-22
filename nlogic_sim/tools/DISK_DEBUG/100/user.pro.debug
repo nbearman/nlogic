@@ -8,9 +8,10 @@
 00 00 00 08 |	ALUR GPB
 -- -- -- -- |	
 00 00 00 0A |	IADN PC
-00 00 00 0C |	00 00 0F FE
+00 00 00 0C |	00 00 0F FC
 -- -- -- -- |	
-00 00 00 10 |	FILLFFE
+00 00 00 10 |	FILLFFC
+00 00 0F FC |	00 00 //BREAK can go to inspect before page fault
 00 00 0F FE |	11 GPG
 -- -- -- -- |	
 -- -- -- -- |	//page boundary, trigger page fault on instruction fetch

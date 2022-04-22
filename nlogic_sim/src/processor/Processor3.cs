@@ -10,7 +10,7 @@ namespace nlogic_sim
         private I_Environment environment;
 
         public const ushort interrupt_handler_address = 0x500; //TODO arbitrary address for now; must match location in 1_handler.pro
-        public const ushort interrupt_register_dump_address = 0x0033; //TODO reevaluate if this is the best place for these; selected so that FLAG, GPA, and PC get stored at the end of the DMEM accessible region
+        public const ushort interrupt_register_dump_address = 0x0028; //TODO reevaluate if this is the best place for these; selected so that FLAG, GPA, and PC get stored at the end of the DMEM accessible region
 
         private ushort current_instruction;
 
@@ -463,6 +463,7 @@ namespace nlogic_sim
 
             //dump FLAG, GPA, and processor state
             //TODO determine if any other registers need to be dumped
+            //  GPA might not need to be dumped if the interrupt handler can succesfully dump without using GPA
 
             //create a list (to convert to array) of all the data that will be dumped to memory
             //in order to consolidate the dump to a single call to write_memory()
@@ -479,7 +480,14 @@ namespace nlogic_sim
                 dumped_data.AddRange(Utility.byte_array_from_uint32(4, last_instruction_cache.PC));
                 dumped_data.AddRange(Utility.byte_array_from_uint32(4, last_instruction_cache.EXE));
                 dumped_data.AddRange(Utility.byte_array_from_uint32(4, last_instruction_cache.stored_register_contents));
-                dumped_data.Add(last_instruction_cache.stored_register);
+                //instead of storing the location itself, store the stack offset where that location's contents are dumped by the handler
+                //this is for the convenience of the interrupt handler
+                byte register_stack_offset_byte = 0;
+                bool valid_offset_mapping = interrupt_dump_register_locations.TryGetValue(last_instruction_cache.stored_register, out register_stack_offset_byte);
+                //if a fault occurred during instruction fetch, the stored destination will be invalid (0)
+                //the interrupt handler doesn't need to restore the destination's old contents, so set a sentinel value (0xFFFFFFFF) that the handler will check for
+                uint register_stack_offset = valid_offset_mapping ? register_stack_offset_byte : 0xFFFFFFFF;
+                dumped_data.AddRange(Utility.byte_array_from_uint32(4, register_stack_offset));
             }
 
             //otherwise, dump the current instruction
@@ -642,77 +650,6 @@ namespace nlogic_sim
                 };
         }
 
-        //public enum ALU_MODE
-        //{
-        //    NoOp = 0,
-        //    Add = 1,
-        //    Multiply = 2,
-        //    Subtract = 3,
-        //    Divide = 4,
-        //    ShiftLeft = 5,
-        //    ShiftRight = 6,
-        //    OR = 7,
-        //    AND = 8,
-        //    XOR = 9,
-        //    NAND = 10,
-        //    NOR = 11,
-        //}
-
-        //public enum FPU_MODE
-        //{
-        //    NoOp = 0,
-        //    Add = 1,
-        //    Multiply = 2,
-        //    Subtract = 3,
-        //    Divide = 4,
-        //}
-
-        //public const byte IMM = 0x00;
-        //public const byte FLAG = 0x80;
-        //public const byte EXE = 0x81;
-        //public const byte PC = 0x82;
-        //public const byte ALUM = 0x83;
-        //public const byte ALUA = 0x84;
-        //public const byte ALUB = 0x85;
-        //public const byte ALUR = 0x86;
-        //public const byte FPUM = 0x87;
-        //public const byte FPUA = 0x88;
-        //public const byte FPUB = 0x89;
-        //public const byte FPUR = 0x8A;
-        //public const byte RBASE = 0x8B;
-        //public const byte ROFST = 0x8C;
-        //public const byte RMEM = 0x8D;
-        //public const byte WBASE = 0x8E;
-        //public const byte WOFST = 0x8F;
-        //public const byte WMEM = 0x90;
-        //public const byte GPA = 0x91;
-        //public const byte GPB = 0x92;
-        //public const byte GPC = 0x93;
-        //public const byte GPD = 0x94;
-        //public const byte GPE = 0x95;
-        //public const byte GPF = 0x96;
-        //public const byte GPG = 0x97;
-        //public const byte GPH = 0x98;
-        //public const byte COMPA = 0x99;
-        //public const byte COMPB = 0x9A;
-        //public const byte COMPR = 0x9B;
-        //public const byte IADN = 0x9C;
-        //public const byte IADF = 0x9D;
-        //public const byte LINK = 0x9E;
-        //public const byte SKIP = 0x9F;
-        //public const byte RTRN = 0xA0;
-        //public const byte DMEM = 0xC0;
-
-        //public struct LastStateCache
-        //{
-        //    public uint PC;
-        //    public uint EXE;
-        //    //the contents of the cached register
-        //    public uint stored_register_contents;
-        //    //the register that was cached before the last instruction
-        //    public byte stored_register;
-        //}
-
         /// <summary>
         /// The list of registers which must be restored when if an instruction that
         /// writes to them is retried.
@@ -748,6 +685,54 @@ namespace nlogic_sim
             FPUR,
             RTRN,
             SKIP,
+        };
+
+        /// <summary>
+        /// Mapping of processor locations to offsets into the kernel stack.
+        /// The contents of each location is written to the kernel stack at the given
+        /// offset when the processor is dumped during the start of the interrupt
+        /// handler. These offsets are determined by the interrupt handler code (1_handler.pro right now)
+        /// If that code changes the order the registers are stored, this needs to be updated.
+        /// 
+        /// TODO this is a convenient way to tell the interrupt handler where to write the store_register_contents
+        /// from the last intstruction cache if we need to restore that register's contents during a retry interrupt.
+        /// This offset will be stored with the last instruction cache, so to replace the destination register's dumped
+        /// contents with its previous contents, the interrupt handler can use the offset provided from this map
+        /// to know where in the stacked register dump to write.
+        /// 
+        /// We could just save the processor location, but then the interrupt handler would need to use a huge conditional
+        /// to calculate the offset where it should overwrite. We make this easier for the interrupt handler by just providing
+        /// the offset directly from this mapping.
+        /// 
+        /// Another possible alternative would be have the trap (in the simulator) directly replace the contents of the register
+        /// that needs to be restored instead of forcing the interrupt handler to do it.
+        /// 
+        /// This should probably be changed because it doesn't seem true to how the hardware might work (would this mapping be stored in hardware somehow?)
+        /// </summary>
+        public static Dictionary<byte, byte> interrupt_dump_register_locations = new Dictionary<byte, byte>()
+        {
+            { GPA, 0x00 },
+            { GPB, 0x04 },
+            { GPC, 0x08 },
+            { GPD, 0x0C },
+            { GPE, 0x10 },
+            { GPF, 0x14 },
+            { GPG, 0x18 },
+            { GPH, 0x1C },
+
+            { COMPA, 0x20 },
+            { COMPB, 0x24 },
+            { RBASE, 0x28 },
+            { ROFST, 0x2C },
+            { ALUM, 0x30 },
+            { ALUA, 0x34 },
+            { ALUB, 0x38 },
+            { FPUM, 0x3C },
+            { FPUA, 0x40 },
+            { FPUB, 0x44 },
+
+            { WBASE, 0x48 },
+            { WOFST, 0x4C },
         };
     }
 }

@@ -41,6 +41,8 @@ FILL100 //data should start after DMEM accessible region (0x00 - 0x3F) so it can
 @@physical_page_map
 //physical page map
 
+//TODO this struct can be made smaller by packing some variables into a single uint
+//  process id, phsyical page, and number of references will never be close to 4 bytes in size
 //=========================
 // physical page mapping entry
 //==========
@@ -204,10 +206,29 @@ FILL500
     //TODO the address of the interrupt handler is currently hardcoded in the simulation environment
     //interrupt_handler_address in Processor class
 
-WBASE DMEM00
+//==============================
+// DMEM region layout
+// Data dumped automatically from last instruction cache
+//=====================
+// 0x00 |   uint    |   WBASE temporary dump
+// 0x04 |   uint    |   WOFST temporary dump
+
+// 0x08 - 0x24      |   (unused)
+
+// 0x28 |   uint    |   FLAG
+// 0x2C |   uint    |   GPA
+// 0x30 |   uint    |   PC to return to
+// 0x34 |   uint    |   EXE to return to
+// 0x38 |   uint    |   destination register contents after last cycle (if RETRY)
+// 0x3C |   uint    |   destination register location on stack (if RETRY)
+//                          i.e., where to write contents (DMEM10) to
+//==============================
+
+WBASE DMEM00 //we have FLAG, safe to overwrite //TODO remove 
 WOFST DMEM04
 
 //dump registers to kernel's stack
+//TODO need to dump LINK as well (and update mapping in Processor3.cs)
 IADF WBASE
 SKIP PC
 ::KERNEL_STACK
@@ -296,6 +317,54 @@ ISIZE_FRAME WOFST //WOFST = SP == frame size
     WBASE RBASE
     ISTACK_flag_val ROFST
     FLAG RMEM
+
+//if RETRY interrupt, we need to restore the destination's contents from the last instruction cache
+//since a faulted read may have wrongfully clobbered that register
+    //determine if this is a RETRY interrupt
+        FLAG ALUA //FLAG to ALU
+        IADF ALUB //RETRY bit mask to ALU
+        SKIP PC
+        10 00 00 00 //RETRY bit mask
+        08 ALUM //AND mode
+        ALUR ALUA //RETRY bit from FLAG (unshifted) to ALU
+        1C ALUB //shift 28 bits right (RETRY bit to LSB position)
+        06 ALUM //right shift mode
+        ALUR COMPA //RETRY bit is 1? to comparator
+        01 COMPB //0b1 to comparator
+        COMPR PC
+        :retry_interrupt
+        :non_retry_interrupt
+
+    @retry_interrupt
+    //this is a RETRY interrupt, we need to restore the clobbered register
+    //the last instruction cache contains the offset (from kernel stack base) where we stored the destination's contents
+    //  (the location we need to repair depends on the instruction that faulted)
+
+    //in some RETRY interrupts, we still don't need to restore the clobbered register
+    //  (ex.: if a page fault occurred during instruction fetch, no register was written)
+    //first, check for that case
+        DMEM3C COMPA //dump location of clobbered register to comparator
+        IADF COMPB
+        SKIP PC
+        FF FF FF FF //sentinel value set by trap to indicate we shouldn't restore
+        //if the sentinel value is set, skip the restoring
+        COMPR PC
+        :retry_interrupt_skip_restore
+        :retry_interrupt_do_restore
+
+    @retry_interrupt_do_restore
+    //we do need to restore the destination's old contents
+    //overwrite our dump of that register with the last instruction cache's dump
+        //TODO this needs to be tested manually
+        IADF RBASE //base of kernel stack
+        SKIP PC
+        ::KERNEL_STACK
+        DMEM3C ROFST //dump location of clobbered register is at DMEM3C
+        DMEM38 RMEM //last instruction cache's dump of the register is DMEM38
+
+@non_retry_interrupt
+@retry_interrupt_skip_restore
+//don't need to restore any register, continue executing
 
 //determine the cause of the interrupt
     //mask flag to check if interrupt was raised on MMU channel
@@ -773,7 +842,9 @@ IADN PC
 
 @conclude_r0w1
 //return from interrupt
-//TODO implement this
+//TODO restore processor state and return from interrupt handler
+//TODO to ensure the MMU breakpoint isn't triggered by any reads from DMEM,
+//  need to add delay to MMU breakpoint
 
 
 //nothing left

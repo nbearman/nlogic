@@ -8,9 +8,10 @@ GPC ALUA
 ALUR GPB
 
 IADN PC
-00 00 0F FE
+00 00 0F FC
 
-FILLFFE
+FILLFFC
+00 00 //BREAK can go to inspect before page fault
 11 GPG
 
 //page boundary, trigger page fault on instruction fetch
