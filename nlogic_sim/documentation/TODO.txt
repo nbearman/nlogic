@@ -1,4 +1,13 @@
-﻿Add macros for ALU and FPU modes
+﻿Add cycle delay to MMU breakpoint to avoid returning early
+	Can also be implemented in software by the interrupt handler by introspecting return addressing
+	Manually check for collisions with kernel handler memory accesses
+		High complexity, easier to add cycle delay to MMU
+
+Figure out what the interrupt handler should do with the interrupt channel bits
+	Should they all be cleared? Should handlers only clear bits that they resolved?
+	Should kernel handled interrupts leave the user interrupt bits untouched?
+
+Add macros for ALU and FPU modes
 
 Add some static analysis to debug assembler to catch bugs
 	Ex.: Check for multiple writes to ALUA before reading alur

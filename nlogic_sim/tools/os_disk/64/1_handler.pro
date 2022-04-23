@@ -224,7 +224,7 @@ FILL500
 //                          i.e., where to write contents (DMEM10) to
 //==============================
 
-WBASE DMEM00 //we have FLAG, safe to overwrite //TODO remove 
+WBASE DMEM00
 WOFST DMEM04
 
 //dump registers to kernel's stack
@@ -845,6 +845,95 @@ IADN PC
 //TODO restore processor state and return from interrupt handler
 //TODO to ensure the MMU breakpoint isn't triggered by any reads from DMEM,
 //  need to add delay to MMU breakpoint
+
+
+//set the queued page directory to the active process
+    WBASE RBASE
+    ISTACK_active_process_page_directory_ppage ROFST
+    RMEM GPA
+
+    IADF RBASE
+    SKIP PC
+    00 00 10 00 //MMU base address in kernel VA
+    04 ROFST //MMU queued page directory base address register
+    GPA RMEM
+
+//set the MMU breakpoint
+    //TODO change this to include setting the number of cycles before the breakpoint
+    //activates
+    08 ROFST //MMU breakpoint address register
+    DMEM30 RMEM //PC from last instruction cache
+
+    //enable the breakpoint
+    14 ROFST //break point enabled register
+    01 RMEM //non-zero -> enabled
+
+//restore processor state
+    //prepare the new FLAG
+    IADF DMEM08 //store the FLAG in DMEM so it can be set without using other registers immediately before returning
+    SKIP PC
+    //TODO for now, just set: !unlocked, !disabled, delay, !retry, !kernel, !user disabled, !user delay, no signal bits
+    //  need to decide which other bits of the existing value need to be 
+    20 00 00 00
+
+    //TODO need to restore LINK as well
+    IADF WBASE
+    SKIP PC
+    ::KERNEL_STACK
+
+    //we need to restore WMEM registers from DMEM, since we need WMEM to restore all other registers first
+    48 WOFST
+    WMEM DMEM00 //DMEM00 = dumped WBASE
+    4C WOFST
+    WMEM DMEM04 //DMEM04 = dumped WOFST
+
+    //restore the rest of the registers
+    00 WOFST
+    WMEM GPA
+    04 WOFST
+    WMEM GPB
+    08 WOFST
+    WMEM GPC
+    0C WOFST
+    WMEM GPD
+    10 WOFST
+    WMEM GPE
+    14 WOFST
+    WMEM GPF
+    18 WOFST
+    WMEM GPG
+    1C WOFST
+    WMEM GPH
+    20 WOFST
+    WMEM COMPA
+    24 WOFST
+    WMEM COMPB
+    28 WOFST
+    WMEM RBASE
+    2C WOFST
+    WMEM ROFST
+    30 WOFST
+    WMEM ALUM
+    34 WOFST
+    WMEM ALUA
+    38 WOFST
+    WMEM ALUB
+    3C WOFST
+    WMEM FPUM
+    40 WOFST
+    WMEM FPUA
+    44 WOFST
+    WMEM FPUB
+
+    //restore the dumped WMEM registers from DMEM
+    DMEM00 WBASE
+    DMEM04 WOFST
+    //re-enable interrupts with a delay, lock the FLAG register
+    DMEM08 FLAG
+
+//jump to user space PC to resume execution
+//MMU breakpoint will trigger, and the MMU will swap in the queued page directory (interrupted process)
+    DMEM30 PC
 
 
 //nothing left

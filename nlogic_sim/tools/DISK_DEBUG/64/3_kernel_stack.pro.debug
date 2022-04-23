@@ -2,9 +2,9 @@
 -- -- -- -- |	// kernel global variables
 -- -- -- -- |	//=========================================================================
 -- -- -- -- |	@@ACTIVE_PROCESS_ID
-00 00 09 9E |	00 00 00 02
+00 00 0A 1A |	00 00 00 02
 -- -- -- -- |	@@ACTIVE_PROCESS_PAGE_DIRECTORY_PHYSICAL_PAGE
-00 00 09 A2 |	00 00 00 05
+00 00 0A 1E |	00 00 00 05
 -- -- -- -- |	//=========================================================================
 -- -- -- -- |	// kernel stack begins after all kernel code
 -- -- -- -- |	//=========================================================================
@@ -14,5 +14,5 @@
 -- -- -- -- |	//  kernel code files
 -- -- -- -- |	//  In real systems, the stack would start at the end of VA space and grow down
 -- -- -- -- |	//      to do this, we would need to change kernel to use an upside-down stack
-00 00 09 A6 |	FILL0C00
+00 00 0A 22 |	FILL0C00
 -- -- -- -- |	@@KERNEL_STACK

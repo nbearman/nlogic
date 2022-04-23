@@ -13,6 +13,7 @@ namespace nlogic_sim
 
         /// <summary>
         /// The base address in physical memory of the active process's page directory
+        /// TODO the way this is used, it's actually expected to be the physical page number of the page directory
         /// </summary>
         private uint active_page_directory_base_address;
 

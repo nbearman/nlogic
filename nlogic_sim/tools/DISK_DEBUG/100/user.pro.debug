@@ -11,9 +11,11 @@
 00 00 00 0C |	00 00 0F FC
 -- -- -- -- |	
 00 00 00 10 |	FILLFFC
-00 00 0F FC |	00 00 //BREAK can go to inspect before page fault
+00 00 0F FC |	00 00 //BREAK can go here to inspect before page fault
 00 00 0F FE |	11 GPG
 -- -- -- -- |	
 -- -- -- -- |	//page boundary, trigger page fault on instruction fetch
 00 00 10 00 |	12 GPF
 00 00 10 02 |	13 GPE
+00 00 10 04 |	BREAK
+00 00 10 06 |	7F FLAG

@@ -224,7 +224,7 @@
 -- -- -- -- |	//                          i.e., where to write contents (DMEM10) to
 -- -- -- -- |	//==============================
 -- -- -- -- |	
-00 00 05 00 |	WBASE DMEM00 //we have FLAG, safe to overwrite //TODO remove 
+00 00 05 00 |	WBASE DMEM00
 00 00 05 02 |	WOFST DMEM04
 -- -- -- -- |	
 -- -- -- -- |	//dump registers to kernel's stack
@@ -842,31 +842,107 @@
 -- -- -- -- |	
 -- -- -- -- |	@conclude_r0w1
 -- -- -- -- |	//return from interrupt
--- -- -- -- |	//TODO implement this
-00 00 08 04 |	BREAK
-00 00 08 06 |	00 RBASE
-00 00 08 08 |	33 ROFST
+-- -- -- -- |	//TODO restore processor state and return from interrupt handler
+-- -- -- -- |	//TODO to ensure the MMU breakpoint isn't triggered by any reads from DMEM,
+-- -- -- -- |	//  need to add delay to MMU breakpoint
+-- -- -- -- |	
+-- -- -- -- |	
+-- -- -- -- |	//set the queued page directory to the active process
+00 00 08 04 |	    WBASE RBASE
+00 00 08 06 |	    ISTACK_active_process_page_directory_ppage ROFST
+00 00 08 08 |	    RMEM GPA
+-- -- -- -- |	
+00 00 08 0A |	    IADF RBASE
+00 00 08 0C |	    SKIP PC
+00 00 08 0E |	    00 00 10 00 //MMU base address in kernel VA
+00 00 08 12 |	    04 ROFST //MMU queued page directory base address register
+00 00 08 14 |	    GPA RMEM
+-- -- -- -- |	
+-- -- -- -- |	//set the MMU breakpoint
+-- -- -- -- |	    //TODO change this to include setting the number of cycles before the breakpoint
+-- -- -- -- |	    //activates
+00 00 08 16 |	    08 ROFST //MMU breakpoint address register
+00 00 08 18 |	    DMEM30 RMEM //PC from last instruction cache
+-- -- -- -- |	
+-- -- -- -- |	    //enable the breakpoint
+00 00 08 1A |	    14 ROFST //break point enabled register
+00 00 08 1C |	    01 RMEM //non-zero -> enabled
+-- -- -- -- |	
+-- -- -- -- |	//restore processor state
+-- -- -- -- |	    //prepare the new FLAG
+00 00 08 1E |	    IADF DMEM08 //store the FLAG in DMEM so it can be set without using other registers immediately before returning
+00 00 08 20 |	    SKIP PC
+-- -- -- -- |	    //TODO for now, just set: !unlocked, !disabled, delay, !retry, !kernel, !user disabled, !user delay, no signal bits
+-- -- -- -- |	    //  need to decide which other bits of the existing value need to be 
+00 00 08 22 |	    20 00 00 00
+-- -- -- -- |	
+-- -- -- -- |	    //TODO need to restore LINK as well
+00 00 08 26 |	    IADF WBASE
+00 00 08 28 |	    SKIP PC
+00 00 08 2A |	    ::KERNEL_STACK
+-- -- -- -- |	
+-- -- -- -- |	    //we need to restore WMEM registers from DMEM, since we need WMEM to restore all other registers first
+00 00 08 2E |	    48 WOFST
+00 00 08 30 |	    WMEM DMEM00 //DMEM00 = dumped WBASE
+00 00 08 32 |	    4C WOFST
+00 00 08 34 |	    WMEM DMEM04 //DMEM04 = dumped WOFST
+-- -- -- -- |	
+-- -- -- -- |	    //restore the rest of the registers
+00 00 08 36 |	    00 WOFST
+00 00 08 38 |	    WMEM GPA
+00 00 08 3A |	    04 WOFST
+00 00 08 3C |	    WMEM GPB
+00 00 08 3E |	    08 WOFST
+00 00 08 40 |	    WMEM GPC
+00 00 08 42 |	    0C WOFST
+00 00 08 44 |	    WMEM GPD
+00 00 08 46 |	    10 WOFST
+00 00 08 48 |	    WMEM GPE
+00 00 08 4A |	    14 WOFST
+00 00 08 4C |	    WMEM GPF
+00 00 08 4E |	    18 WOFST
+00 00 08 50 |	    WMEM GPG
+00 00 08 52 |	    1C WOFST
+00 00 08 54 |	    WMEM GPH
+00 00 08 56 |	    20 WOFST
+00 00 08 58 |	    WMEM COMPA
+00 00 08 5A |	    24 WOFST
+00 00 08 5C |	    WMEM COMPB
+00 00 08 5E |	    28 WOFST
+00 00 08 60 |	    WMEM RBASE
+00 00 08 62 |	    2C WOFST
+00 00 08 64 |	    WMEM ROFST
+00 00 08 66 |	    30 WOFST
+00 00 08 68 |	    WMEM ALUM
+00 00 08 6A |	    34 WOFST
+00 00 08 6C |	    WMEM ALUA
+00 00 08 6E |	    38 WOFST
+00 00 08 70 |	    WMEM ALUB
+00 00 08 72 |	    3C WOFST
+00 00 08 74 |	    WMEM FPUM
+00 00 08 76 |	    40 WOFST
+00 00 08 78 |	    WMEM FPUA
+00 00 08 7A |	    44 WOFST
+00 00 08 7C |	    WMEM FPUB
+-- -- -- -- |	
+-- -- -- -- |	    //restore the dumped WMEM registers from DMEM
+00 00 08 7E |	    DMEM00 WBASE
+00 00 08 80 |	    DMEM04 WOFST
+-- -- -- -- |	    //re-enable interrupts with a delay, lock the FLAG register
+00 00 08 82 |	    DMEM08 FLAG
+-- -- -- -- |	
+-- -- -- -- |	//jump to user space PC to resume execution
+-- -- -- -- |	//MMU breakpoint will trigger, and the MMU will swap in the queued page directory (interrupted process)
+00 00 08 84 |	    DMEM30 PC
 -- -- -- -- |	
 -- -- -- -- |	
 -- -- -- -- |	//nothing left
-00 00 08 0A |	02 FPUM
-00 00 08 0C |	11 FPUA
-00 00 08 0E |	22 FPUB
-00 00 08 10 |	FPUR GPC
-00 00 08 12 |	7F FLAG
+00 00 08 86 |	02 FPUM
+00 00 08 88 |	11 FPUA
+00 00 08 8A |	22 FPUB
+00 00 08 8C |	FPUR GPC
+00 00 08 8E |	7F FLAG
 -- -- -- -- |	// end interrupt handler
--- -- -- -- |	
--- -- -- -- |	
--- -- -- -- |	//TODO move this to where we determine this is a RETRY interrupt; it can happen at any time
--- -- -- -- |	// 00 WBASE
--- -- -- -- |	// dmem_dest_offset WOFST
--- -- -- -- |	// dmem_contents WMEM
--- -- -- -- |	
--- -- -- -- |	// DMEM00 WBASE
--- -- -- -- |	// DMEM04 WOFST
--- -- -- -- |	// DMEM08 PC
--- -- -- -- |	//TODO to ensure the MMU breakpoint isn't triggered by any reads from DMEM,
--- -- -- -- |	//  need to add delay to MMU breakpoint
 -- -- -- -- |	
 -- -- -- -- |	FRAME_END
 -- -- -- -- |	
@@ -879,77 +955,77 @@
 -- -- -- -- |	
 -- -- -- -- |	
 -- -- -- -- |	//calculate address where return value should be stored
-00 00 08 14 |	    03 ALUM //subtract
-00 00 08 16 |	    WBASE ALUA //original FP
-00 00 08 18 |	    54 ALUB // -84
-00 00 08 1A |	    ALUR GPH //GPH = result address = FP - 84
+00 00 08 90 |	    03 ALUM //subtract
+00 00 08 92 |	    WBASE ALUA //original FP
+00 00 08 94 |	    54 ALUB // -84
+00 00 08 96 |	    ALUR GPH //GPH = result address = FP - 84
 -- -- -- -- |	
 -- -- -- -- |	//look for open pages, which we can use without evicting anything
 -- -- -- -- |	//open pages have a process ID of 0
 -- -- -- -- |	
 -- -- -- -- |	//iterate over physical page map
 -- -- -- -- |	    //point RMEM to physical page map array
-00 00 08 1C |	        IADF RBASE
-00 00 08 1E |	        SKIP PC
-00 00 08 20 |	        ::physical_page_map
-00 00 08 24 |	        00 ROFST
+00 00 08 98 |	        IADF RBASE
+00 00 08 9A |	        SKIP PC
+00 00 08 9C |	        ::physical_page_map
+00 00 08 A0 |	        00 ROFST
 -- -- -- -- |	
-00 00 08 26 |	    00 GPA //GPA = index
-00 00 08 28 |	    10 GPB //GPB = max_index
+00 00 08 A2 |	    00 GPA //GPA = index
+00 00 08 A4 |	    10 GPB //GPB = max_index
 -- -- -- -- |	
 -- -- -- -- |	    @open_page_loop
 -- -- -- -- |	    //check if we're at the end of the loop (index == 16?)
-00 00 08 2A |	        GPA COMPA
-00 00 08 2C |	        GPB COMPB
-00 00 08 2E |	        COMPR PC
-00 00 08 30 |	        :open_page_loop_end
-00 00 08 34 |	        :open_page_loop_go
+00 00 08 A6 |	        GPA COMPA
+00 00 08 A8 |	        GPB COMPB
+00 00 08 AA |	        COMPR PC
+00 00 08 AC |	        :open_page_loop_end
+00 00 08 B0 |	        :open_page_loop_go
 -- -- -- -- |	
 -- -- -- -- |	    @open_page_loop_go
 -- -- -- -- |	    //calculate offset from index
-00 00 08 38 |	        02 ALUM //multiply mode
-00 00 08 3A |	        GPA ALUA // ALUA = index
-00 00 08 3C |	        14 ALUB //20 bytes per entry
-00 00 08 3E |	        ALUR ROFST
+00 00 08 B4 |	        02 ALUM //multiply mode
+00 00 08 B6 |	        GPA ALUA // ALUA = index
+00 00 08 B8 |	        14 ALUB //20 bytes per entry
+00 00 08 BA |	        ALUR ROFST
 -- -- -- -- |	
 -- -- -- -- |	    //read process ID (offset 0)
-00 00 08 40 |	    RMEM GPC //GPC = process id
+00 00 08 BC |	    RMEM GPC //GPC = process id
 -- -- -- -- |	
 -- -- -- -- |	    //process id == 0?
-00 00 08 42 |	        GPC COMPA
-00 00 08 44 |	        00 COMPB
-00 00 08 46 |	        COMPR PC
-00 00 08 48 |	        :open_page_proc_id_0
-00 00 08 4C |	        :open_page_loop_next
+00 00 08 BE |	        GPC COMPA
+00 00 08 C0 |	        00 COMPB
+00 00 08 C2 |	        COMPR PC
+00 00 08 C4 |	        :open_page_proc_id_0
+00 00 08 C8 |	        :open_page_loop_next
 -- -- -- -- |	    
 -- -- -- -- |	    @open_page_proc_id_0
 -- -- -- -- |	    // found an open page
 -- -- -- -- |	    // return the index as the open physical page
-00 00 08 50 |	        WBASE ALUA //store FP somewhere
-00 00 08 52 |	        GPH WBASE //point WMEM to the result address
-00 00 08 54 |	        00 WOFST
-00 00 08 56 |	        GPA WMEM //result = index into physical page map
-00 00 08 58 |	        ALUA WBASE //restore FP
-00 00 08 5A |	        LINK PC //return
+00 00 08 CC |	        WBASE ALUA //store FP somewhere
+00 00 08 CE |	        GPH WBASE //point WMEM to the result address
+00 00 08 D0 |	        00 WOFST
+00 00 08 D2 |	        GPA WMEM //result = index into physical page map
+00 00 08 D4 |	        ALUA WBASE //restore FP
+00 00 08 D6 |	        LINK PC //return
 -- -- -- -- |	
 -- -- -- -- |	    
 -- -- -- -- |	
 -- -- -- -- |	    @open_page_loop_next
 -- -- -- -- |	    //increment index
-00 00 08 5C |	        01 ALUM //add mode
-00 00 08 5E |	        GPA ALUA
-00 00 08 60 |	        01 ALUB
-00 00 08 62 |	        ALUR GPA //index += 1
+00 00 08 D8 |	        01 ALUM //add mode
+00 00 08 DA |	        GPA ALUA
+00 00 08 DC |	        01 ALUB
+00 00 08 DE |	        ALUR GPA //index += 1
 -- -- -- -- |	    //go to start of loop
-00 00 08 64 |	    IADN PC
-00 00 08 66 |	    :open_page_loop
+00 00 08 E0 |	    IADN PC
+00 00 08 E2 |	    :open_page_loop
 -- -- -- -- |	
 -- -- -- -- |	    //TODO implement this
 -- -- -- -- |	
 -- -- -- -- |	
 -- -- -- -- |	@open_page_loop_end
 -- -- -- -- |	//no open pages
-00 00 08 6A |	BREAK
+00 00 08 E6 |	BREAK
 -- -- -- -- |	
 -- -- -- -- |	//      TODO important insight:
 -- -- -- -- |	//      An evictable page is one where no other non-empty page mapping entry has a "directory physical page" that
@@ -964,9 +1040,9 @@
 -- -- -- -- |	//          The process descriptor in the process map also has the number of resident pages
 -- -- -- -- |	
 -- -- -- -- |	//TODO implement this
-00 00 08 6C |	00 RBASE
-00 00 08 6E |	00 ROFST
-00 00 08 70 |	7F RMEM
+00 00 08 E8 |	00 RBASE
+00 00 08 EA |	00 ROFST
+00 00 08 EC |	7F RMEM
 -- -- -- -- |	
 -- -- -- -- |	//return
-00 00 08 72 |	LINK PC
+00 00 08 EE |	LINK PC
