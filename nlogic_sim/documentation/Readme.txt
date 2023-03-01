@@ -9,6 +9,30 @@ Use the bash script "go.txt" to run programs using the python debug assembler
 
 
 =====================================
+Test
+=====================================
+
+Use the bash script "run_test_case.sh" to create or run an end-to-end test
+    Requires exporting 2 environment variables:
+        SIM_EXE: file location of nlogic_sim.exe (simulator)
+        PY_ASSEMBLER: file location of AssembleDebug.py (debug assembler)
+    Hint: use `realpath` command to get full windows paths to files to avoid errors
+
+    create a test case, which is a folder containing an "input" folder
+        the "input" folder should have a "program" folder and a "disk" folder
+            the "program" folder contains any number of .pro files to be compiled into the boot program
+            the "disk" folder contains files to be built into a virtual disk
+                these will be built with disk_builder_python, so follow the instructions for that script's input
+    run "./run_test_case.sh [test case folder] --generate" to generate the expected output
+        the program and disk will be built and run in the simulator
+        the debug builds of all files, the assembled programs, and the CPU state logs will be saved
+        these files and logs will be the "expected" output of future runs of this test case
+    run "./run_test_case.sh [test case folder]" to run the test case
+        the program and disk will be built and run in the simulator
+        the debug builds, assembled programs, and state logs will be compared with those saved in the "expected" folder
+        if there are any differences, the test fails
+
+=====================================
 Original build scripts
 =====================================
 

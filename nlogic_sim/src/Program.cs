@@ -13,7 +13,9 @@ namespace nlogic_sim
 {
     class Program
     {
-        static readonly string[] flag_values = { "debug", "-d", };
+        static readonly string[] flag_values = { "debug", "-d", "-t"};
+
+        static bool silent_test_mode = false;
 
         static void Main(string[] args)
         {
@@ -53,6 +55,14 @@ namespace nlogic_sim
             {
                 Console.WriteLine(Process.GetCurrentProcess().Id);
                 Debugger.Launch();
+            }
+
+            // test running mode
+            // disable all console output and input
+            if (flags.Contains("-t"))
+            {
+                silent_test_mode = true;
+                Console.SetOut(TextWriter.Null);
             }
 
 
@@ -179,7 +189,10 @@ namespace nlogic_sim
                 Console.ForegroundColor = ConsoleColor.Red;
                 Console.WriteLine("Assembler failed; press any key to end...");
                 Console.ForegroundColor = original_color;
-                Console.ReadKey();
+                if (!silent_test_mode)
+                {
+                    Console.ReadKey();
+                }
                 return;
             }
 
@@ -209,7 +222,11 @@ namespace nlogic_sim
 
             Console.ForegroundColor = original_color;
             Console.WriteLine("Simulation ready; press any key to run...");
-            Console.ReadKey();
+
+            if (!silent_test_mode)
+            {
+                Console.ReadKey();
+            }
 
             //clear the output messages so far
             if (visualizer_enabled)
@@ -235,8 +252,12 @@ namespace nlogic_sim
             }
 
             Console.WriteLine("Press any key to end...");
-            Console.ReadKey();
-            Console.Clear();
+
+            if (!silent_test_mode)
+            {
+                Console.ReadKey();
+                Console.Clear();
+            }
             return;
         }
 

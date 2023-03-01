@@ -95,7 +95,7 @@ if $GENERATING
         # the expected output in future runs
         echo "[4] Generating expected output"
         cp -r output expected
-        echo -e "\033[1;34mGenerated test output.\033[0m"
+        echo -e "\033[1;34mGenerated test case.\033[0m"
         exit 0
 fi
 
