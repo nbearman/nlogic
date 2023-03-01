@@ -22,6 +22,11 @@ trap TEST_CASE_FAILED ERR
 
 GENERATING=false
 
+if ! [ -d "$1" ]; then
+    echo -e "\nFirst argument must be a directory holding a test case."
+    exit 1
+fi
+
 cd $1
 
 echo ""
@@ -82,6 +87,7 @@ echo "Running debug assembler" | INDENT
 python3 $PY_ASSEMBLER -p -o $STARTING_DIR/output/BUILD_DEBUG $pro_files > $STARTING_DIR/output/BUILD_ASM/program.asm
 
 echo "[3] Running simulator"
+# the simulator will fail if we don't use a proper windows path (file does not exist...)
 WINDOWS_PROGRAM_PATH=$(wslpath -w $STARTING_DIR/output/BUILD_ASM/program.asm)
 WINDOWS_OUTPUT_PATH=$(wslpath -w $STARTING_DIR/output/LOGS/)\\cpu_log.txt
 $SIM_EXE run $WINDOWS_PROGRAM_PATH -l $WINDOWS_OUTPUT_PATH -t

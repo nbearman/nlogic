@@ -16,7 +16,7 @@ Use the bash script "run_test_case.sh" to create or run an end-to-end test
     Requires exporting 2 environment variables:
         SIM_EXE: file location of nlogic_sim.exe (simulator)
         PY_ASSEMBLER: file location of AssembleDebug.py (debug assembler)
-    Hint: use `realpath` command to get full windows paths to files to avoid errors
+    Hint: use `realpath` command to get full paths to files to avoid errors
 
     create a test case, which is a folder containing an "input" folder
         the "input" folder should have a "program" folder and a "disk" folder
@@ -31,6 +31,17 @@ Use the bash script "run_test_case.sh" to create or run an end-to-end test
         the program and disk will be built and run in the simulator
         the debug builds, assembled programs, and state logs will be compared with those saved in the "expected" folder
         if there are any differences, the test fails
+
+Use the bash script "test_all.sh" to run all end-to-end test cases in a directory
+    Requires exporting 3 environment variables:
+        SIM_EXE: file location of nlogic_sim.exe (simulator)
+        PY_ASSEMBLER: file location of AssembleDebug.py (debug assembler)
+        TEST_SH: file location of run_test_case.sh (test case runner)
+    Hint: use `realpath` command to get full paths to files to avoid errors
+
+    run "./test_all.sh [test directory]" to run all tests in the directory
+        runs all test cases in the test directory
+        each test case should be a directory that has been run with "./run_test_case.sh [folder] --generate"
 
 =====================================
 Original build scripts
