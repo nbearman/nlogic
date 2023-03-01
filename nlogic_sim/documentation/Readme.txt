@@ -23,6 +23,7 @@ Use the bash script "run_test_case.sh" to create or run an end-to-end test
             the "program" folder contains any number of .pro files to be compiled into the boot program
             the "disk" folder contains files to be built into a virtual disk
                 these will be built with disk_builder_python, so follow the instructions for that script's input
+            for tests that don't need any data on disk, the "disk" folder can be omitted
     run "./run_test_case.sh [test case folder] --generate" to generate the expected output
         the program and disk will be built and run in the simulator
         the debug builds of all files, the assembled programs, and the CPU state logs will be saved

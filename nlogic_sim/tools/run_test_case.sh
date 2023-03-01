@@ -54,6 +54,9 @@ mkdir output/BUILD_ASM
 mkdir output/BUILD_DEBUG
 mkdir output/LOGS
 
+# make it so *s that don't match anything become empty lists, rather than the string "*"
+shopt -s nullglob
+
 for d in input/disk/*; do
     cd $STARTING_DIR
     if [ -d "$d" ]; then
@@ -76,6 +79,9 @@ done
 
 # remove undivided assembly output, leaving only blocks
 rm -f *.asm
+
+# turn off because this interferes with the simulator outputting logs for some reason
+shopt -u nullglob
 
 echo "[2] Building boot program"
 cd $STARTING_DIR
