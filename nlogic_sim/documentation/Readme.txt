@@ -2,10 +2,21 @@
 Go
 =====================================
 
-Use the bash script "go.txt" to run programs using the python debug assembler
-    run "./go.txt [disk folder] [boot program folder] [-v] [-d]" to fully build the disk and run the boot program
-        shortcut for running ./disk_builder_python and then ./builder_python
-        use the guide in "Debug Build" section for how to configure the disk and boot program folders
+Use the bash script "go.sh" to build programs then run them on the simulator
+    Requires exporting 2 environment variables:
+        SIM_EXE: file location of nlogic_sim.exe (simulator)
+        PY_ASSEMBLER: file location of AssembleDebug.py (debug assembler)
+    e.g.: ```
+        export PY_ASSEMBLER=$(realpath AssembleDebug.py)
+        export SIM_EXE=$(realpath ../bin/Debug/nlogic_sim.exe)
+        ./go.sh ../programs/OS/ -v -d
+    ```
+
+    run "./go.sh [program folder] [-v] [-d]" to fully build the disk and boot program and run the simulator
+        [program folder] should be the path to directory with "disk" and "program" subdirectories
+            disk subdirectory should contain an unbuilt virtual disk layout
+            program subdirectory should contain an unbuilt boot program (pro files)
+    use the guide in "Debug Build" section for hohw to configure the disk and program folders
 
 
 =====================================
