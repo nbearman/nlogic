@@ -81,6 +81,7 @@ namespace nlogic_sim
             {
                 bool visualizer = false;
                 string log_output_filepath = null;
+                string virtual_disk_filepath = "./virtual_disk";
 
                 List<string> codefiles = new List<string>();
                 for (int i = 0; i < additional_args.Count(); i++)
@@ -105,6 +106,21 @@ namespace nlogic_sim
                             i++;
                         }
                     }
+                    else if (aa.ToLower() == "disk")
+                    {
+                        if (i == additional_args.Count() - 1)
+                        {
+                            Console.WriteLine("No valid disk path provided");
+                            return;
+                        }
+                        else
+                        {
+                            // interpret the next argument as the virtual disk filepath
+                            virtual_disk_filepath = additional_args[i + 1];
+                            // skip the next argument
+                            i++;
+                        }
+                    }
                     else
                     {
                         //it's not a flag, so it's a codefile
@@ -118,7 +134,7 @@ namespace nlogic_sim
                     return;
                 }
 
-                assemble_and_run(codefiles.ToArray(), visualizer, log_output_filepath);
+                assemble_and_run(codefiles.ToArray(), visualizer, log_output_filepath, virtual_disk_filepath);
                 return;
             }
 
@@ -178,7 +194,7 @@ namespace nlogic_sim
             return;
         }
 
-        private static void assemble_and_run(string[] codefiles, bool visualizer_enabled, string logging_file_path)
+        private static void assemble_and_run(string[] codefiles, bool visualizer_enabled, string logging_file_path, string virtual_disk_path)
         {
             ConsoleColor original_color = Console.ForegroundColor;
 
@@ -200,7 +216,7 @@ namespace nlogic_sim
             Console.WriteLine("Program assembly successful");
 
             SimpleVirtualDisplay VIRTUAL_DISPLAY = new SimpleVirtualDisplay();
-            VirtualDisk VIRTUAL_DISK = new VirtualDisk("./virtual_disk");
+            VirtualDisk VIRTUAL_DISK = new VirtualDisk(virtual_disk_path);
 
             List<MMIO> mmio_devices = new List<MMIO> { VIRTUAL_DISK, VIRTUAL_DISPLAY };
 

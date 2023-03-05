@@ -3,11 +3,16 @@ if [[ -z "$SIM_EXE" ]] ; then
 	exit 1
 fi
 
+if [[ -z "$PY_ASSEMBLER" ]] ; then
+	echo "[test_all][Error] You must run 'export PY_ASSEMBLER=<debug assembler .py path>' first."
+	exit 1
+fi
+
 pro_files=$(find $1 -type f -name "*.pro")
 echo "    [builder_python] found files: $pro_files"
 mkdir -p BUILD_DEBUG
 echo "    [builder_python] running python debug assembler"
-python3 AssembleDebug.py -p -o BUILD_DEBUG $pro_files > BUILD_DEBUG/program.asm
+python3 $PY_ASSEMBLER -p -o BUILD_DEBUG $pro_files > BUILD_DEBUG/program.asm
 
 echo "    [builder_python] running simulator from $SIM_EXE:"
 echo "    [builder_python] nlogic_sim run:"

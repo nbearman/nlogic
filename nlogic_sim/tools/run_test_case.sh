@@ -97,6 +97,7 @@ echo "[3] Running simulator"
 WINDOWS_PROGRAM_PATH=$(wslpath -w $STARTING_DIR/output/BUILD_ASM/program.asm)
 WINDOWS_OUTPUT_PATH=$(wslpath -w $STARTING_DIR/output/LOGS/)\\cpu_log.txt
 $SIM_EXE run $WINDOWS_PROGRAM_PATH -l $WINDOWS_OUTPUT_PATH -t
+# $SIM_EXE run $WINDOWS_PROGRAM_PATH -l $WINDOWS_OUTPUT_PATH -d -v # uncomment to run test case with debugger and visualizer
 echo "Done" | INDENT
 
 cd $STARTING_DIR
