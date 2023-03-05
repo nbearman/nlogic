@@ -1,0 +1,18 @@
+-- -- -- -- |	// This test uses COPMR to jump to a
+-- -- -- -- |	// hardcoded location and overwriting the
+-- -- -- -- |	// skipped part of the program with an earlier
+-- -- -- -- |	// part of the program
+00 00 00 00 |	COMPR PC
+00 00 00 02 |	00 00 00 12
+00 00 00 06 |	7F GPA
+00 00 00 08 |	7F FLAG // Program should NOT exit here
+00 00 00 0A |	FF FF
+00 00 00 0C |	FF FF
+00 00 00 0E |	FF FF
+00 00 00 10 |	FF FF
+00 00 00 12 |	0C RBASE
+00 00 00 14 |	RMEM GPA
+00 00 00 16 |	C0 GPC
+00 00 00 18 |	GPC CC
+00 00 00 1A |	RMEM GPD
+00 00 00 1C |	7F FLAG // Program should exit here

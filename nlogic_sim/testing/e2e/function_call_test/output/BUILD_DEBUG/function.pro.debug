@@ -1,0 +1,381 @@
+00 00 00 00 |	00 00 00 00 00 00 00 00
+00 00 00 08 |	00 00 00 00 00 00 00 00
+-- -- -- -- |	
+-- -- -- -- |	//set up WMEM as FP and SP
+00 00 00 10 |	00 WOFST
+00 00 00 12 |	IADF WBASE
+00 00 00 14 |	SKIP PC
+00 00 00 16 |	::STACK
+-- -- -- -- |	
+-- -- -- -- |	//set up ALU for stacking
+00 00 00 1A |	01 ALUM //add mode
+00 00 00 1C |	WOFST ALUA //SP to ALUA
+00 00 00 1E |	04 ALUB
+-- -- -- -- |	//ALUR holds SP + 4
+-- -- -- -- |	
+-- -- -- -- |	//push Y and X onto stack
+00 00 00 20 |	02 WMEM
+00 00 00 22 |	ALUR WOFST
+00 00 00 24 |	ALUR ALUA
+-- -- -- -- |	
+00 00 00 26 |	01 WMEM
+00 00 00 28 |	ALUR WOFST
+00 00 00 2A |	ALUR ALUA
+-- -- -- -- |	
+-- -- -- -- |	//push target function address onto stack
+00 00 00 2C |	IADF WMEM
+00 00 00 2E |	SKIP PC
+00 00 00 30 |	:f_add
+00 00 00 34 |	ALUR WOFST
+00 00 00 36 |	ALUR ALUA
+-- -- -- -- |	
+-- -- -- -- |	//fill registers with values to see if they are correctly restored
+00 00 00 38 |	01 GPA
+00 00 00 3A |	02 GPB
+00 00 00 3C |	03 GPC
+00 00 00 3E |	04 GPD
+00 00 00 40 |	05 GPE
+00 00 00 42 |	06 GPF
+00 00 00 44 |	07 GPG
+00 00 00 46 |	08 GPH
+00 00 00 48 |	08 ALUM
+00 00 00 4A |	09 ALUA
+00 00 00 4C |	0A ALUB
+00 00 00 4E |	0B FPUM
+00 00 00 50 |	0C FPUA
+00 00 00 52 |	0D FPUB
+00 00 00 54 |	0E COMPA
+00 00 00 56 |	0F COMPB
+00 00 00 58 |	10 RBASE
+00 00 00 5A |	11 ROFST
+-- -- -- -- |	
+-- -- -- -- |	//invoke the function call helper
+00 00 00 5C |	RTRN LINK
+00 00 00 5E |	IADN PC
+00 00 00 60 |	::FUNC
+-- -- -- -- |	//return from function call
+-- -- -- -- |	
+-- -- -- -- |	//pop result from stack
+00 00 00 64 |	03 ALUM //subtract mode
+00 00 00 66 |	WOFST ALUA
+00 00 00 68 |	04 ALUB
+-- -- -- -- |	
+00 00 00 6A |	ALUR WOFST
+00 00 00 6C |	WMEM GPA //result to GPA
+-- -- -- -- |	
+-- -- -- -- |	//pop arguments from stack
+00 00 00 6E |	ALUR ALUA
+00 00 00 70 |	ALUR ALUA
+00 00 00 72 |	ALUR WOFST
+-- -- -- -- |	
+-- -- -- -- |	
+-- -- -- -- |	
+00 00 00 74 |	7F FLAG
+-- -- -- -- |	
+-- -- -- -- |	
+-- -- -- -- |	
+-- -- -- -- |	/////////////////////////////////////////////////
+-- -- -- -- |	
+-- -- -- -- |	@f_add
+00 00 00 76 |	WBASE GPH
+-- -- -- -- |	//retrive arguments from stack
+00 00 00 78 |	03 ALUM //subtract mode
+00 00 00 7A |	WBASE ALUA
+00 00 00 7C |	5C ALUB
+00 00 00 7E |	ALUR WBASE
+00 00 00 80 |	WMEM GPB
+00 00 00 82 |	04 WOFST
+00 00 00 84 |	WMEM GPA
+-- -- -- -- |	//X in GPA and Y in GPB
+-- -- -- -- |	
+-- -- -- -- |	//will store the result here, and don't need the stack
+00 00 00 86 |	08 WOFST
+-- -- -- -- |	
+-- -- -- -- |	//add X and Y
+00 00 00 88 |	01 ALUM //add mode
+00 00 00 8A |	GPA ALUA
+00 00 00 8C |	GPB ALUB
+00 00 00 8E |	ALUR WMEM
+-- -- -- -- |	
+-- -- -- -- |	//correct FP and SP to point to bottom of our stack frame
+00 00 00 90 |	GPH WBASE
+00 00 00 92 |	00 WOFST
+-- -- -- -- |	
+-- -- -- -- |	//clear registers to see if they are correctly restored
+00 00 00 94 |	00 GPA
+00 00 00 96 |	00 GPB
+00 00 00 98 |	00 GPC
+00 00 00 9A |	00 GPD
+00 00 00 9C |	00 GPE
+00 00 00 9E |	00 GPF
+00 00 00 A0 |	00 GPG
+00 00 00 A2 |	00 GPH
+00 00 00 A4 |	00 ALUM
+00 00 00 A6 |	00 ALUA
+00 00 00 A8 |	00 ALUB
+00 00 00 AA |	00 FPUM
+00 00 00 AC |	00 FPUA
+00 00 00 AE |	00 FPUB
+00 00 00 B0 |	00 COMPA
+00 00 00 B2 |	00 COMPB
+00 00 00 B4 |	00 RBASE
+00 00 00 B6 |	00 ROFST
+-- -- -- -- |	
+-- -- -- -- |	//return
+00 00 00 B8 |	LINK PC
+-- -- -- -- |	/////////////////////////////////////////////////
+-- -- -- -- |	
+-- -- -- -- |	
+-- -- -- -- |	
+-- -- -- -- |	
+-- -- -- -- |	
+-- -- -- -- |	@@FUNC
+-- -- -- -- |	/////////////////////////////////////////////////
+-- -- -- -- |	//Call target function with new stack frame
+-- -- -- -- |	//Processor state is preserved and restored
+-- -- -- -- |	//before returning to caller
+-- -- -- -- |	
+-- -- -- -- |	//push target function arguments onto stack
+-- -- -- -- |	//push target function address onto stack
+-- -- -- -- |	//load return address into LINK
+-- -- -- -- |	//jump to FUNC
+-- -- -- -- |	//WMEM accessor is reserved for stack operations
+-- -- -- -- |	//DMEM will be overwritten
+-- -- -- -- |	//target function address will be overwritten with
+-- -- -- -- |	//function call result
+-- -- -- -- |	
+-- -- -- -- |	//target function should store result at (FP - 54)
+-- -- -- -- |	//first function argument is accessible at (FP - 58)
+-- -- -- -- |	
+-- -- -- -- |	//invoke this helper with:
+-- -- -- -- |	//RTRN LINK
+-- -- -- -- |	//IADN PC
+-- -- -- -- |	//::FUNC
+-- -- -- -- |	/////////////////////////////////////////////////
+-- -- -- -- |	//caller save layout
+-- -- -- -- |	//GPA
+-- -- -- -- |	//GPB
+-- -- -- -- |	//GPC
+-- -- -- -- |	//GPD
+-- -- -- -- |	//GPE
+-- -- -- -- |	//GPF
+-- -- -- -- |	//GPG
+-- -- -- -- |	//GPH
+-- -- -- -- |	//ALUM
+-- -- -- -- |	//ALUA
+-- -- -- -- |	//ALUB
+-- -- -- -- |	//FPUM
+-- -- -- -- |	//FPUA
+-- -- -- -- |	//FPUB
+-- -- -- -- |	//RBASE
+-- -- -- -- |	//ROFST
+-- -- -- -- |	//COMPA
+-- -- -- -- |	//COMPB
+-- -- -- -- |	//LINK
+-- -- -- -- |	//frame pointer
+-- -- -- -- |	/////////////////////////////////////////////////
+-- -- -- -- |	
+-- -- -- -- |	//clear ALU
+00 00 00 BA |	ALUM DMEM00
+00 00 00 BC |	ALUA DMEM04
+00 00 00 BE |	ALUB DMEM08
+-- -- -- -- |	
+-- -- -- -- |	//clear GPA to store target address
+00 00 00 C0 |	GPA DMEM0C
+-- -- -- -- |	
+-- -- -- -- |	//set up ALU for popping target function address
+00 00 00 C2 |	03 ALUM //subtract mode
+00 00 00 C4 |	WOFST ALUA
+00 00 00 C6 |	04 ALUB //4 bytes per register
+-- -- -- -- |	
+-- -- -- -- |	//read top of stack: target function address
+00 00 00 C8 |	ALUR WOFST //SP = SP - 4
+00 00 00 CA |	WMEM GPA
+-- -- -- -- |	
+-- -- -- -- |	//restore SP to top of stack
+00 00 00 CC |	ALUA WOFST //SP = SP
+-- -- -- -- |	
+-- -- -- -- |	//set up ALU for stacking
+00 00 00 CE |	01 ALUM //add mode
+-- -- -- -- |	
+-- -- -- -- |	//push caller save registers onto stack
+00 00 00 D0 |	DMEM0C WMEM //GPA was stored in DMEM earlier
+00 00 00 D2 |	ALUR WOFST
+00 00 00 D4 |	ALUR ALUA
+00 00 00 D6 |	GPB WMEM
+00 00 00 D8 |	ALUR WOFST
+00 00 00 DA |	ALUR ALUA
+00 00 00 DC |	GPC WMEM
+00 00 00 DE |	ALUR WOFST
+00 00 00 E0 |	ALUR ALUA
+00 00 00 E2 |	GPD WMEM
+00 00 00 E4 |	ALUR WOFST
+00 00 00 E6 |	ALUR ALUA
+00 00 00 E8 |	GPE WMEM
+00 00 00 EA |	ALUR WOFST
+00 00 00 EC |	ALUR ALUA
+00 00 00 EE |	GPF WMEM
+00 00 00 F0 |	ALUR WOFST
+00 00 00 F2 |	ALUR ALUA
+00 00 00 F4 |	GPG WMEM
+00 00 00 F6 |	ALUR WOFST
+00 00 00 F8 |	ALUR ALUA
+00 00 00 FA |	GPH WMEM
+00 00 00 FC |	ALUR WOFST
+00 00 00 FE |	ALUR ALUA
+-- -- -- -- |	
+-- -- -- -- |	//ALU was stored in DMEM temporarily
+00 00 01 00 |	DMEM00 WMEM
+00 00 01 02 |	ALUR WOFST
+00 00 01 04 |	ALUR ALUA
+00 00 01 06 |	DMEM04 WMEM
+00 00 01 08 |	ALUR WOFST
+00 00 01 0A |	ALUR ALUA
+00 00 01 0C |	DMEM08 WMEM
+00 00 01 0E |	ALUR WOFST
+00 00 01 10 |	ALUR ALUA
+-- -- -- -- |	
+00 00 01 12 |	FPUM WMEM
+00 00 01 14 |	ALUR WOFST
+00 00 01 16 |	ALUR ALUA
+00 00 01 18 |	FPUA WMEM
+00 00 01 1A |	ALUR WOFST
+00 00 01 1C |	ALUR ALUA
+00 00 01 1E |	FPUB WMEM
+00 00 01 20 |	ALUR WOFST
+00 00 01 22 |	ALUR ALUA
+-- -- -- -- |	
+00 00 01 24 |	RBASE WMEM
+00 00 01 26 |	ALUR WOFST
+00 00 01 28 |	ALUR ALUA
+00 00 01 2A |	ROFST WMEM
+00 00 01 2C |	ALUR WOFST
+00 00 01 2E |	ALUR ALUA
+-- -- -- -- |	
+00 00 01 30 |	COMPA WMEM
+00 00 01 32 |	ALUR WOFST
+00 00 01 34 |	ALUR ALUA
+00 00 01 36 |	COMPB WMEM
+00 00 01 38 |	ALUR WOFST
+00 00 01 3A |	ALUR ALUA
+-- -- -- -- |	
+00 00 01 3C |	LINK WMEM
+00 00 01 3E |	ALUR WOFST
+00 00 01 40 |	ALUR ALUA
+-- -- -- -- |	
+-- -- -- -- |	//push frame pointer on to stack
+00 00 01 42 |	WBASE WMEM
+00 00 01 44 |	ALUR WOFST
+-- -- -- -- |	
+-- -- -- -- |	//add a stack frame
+00 00 01 46 |	WBASE ALUA
+00 00 01 48 |	WOFST ALUB
+00 00 01 4A |	ALUR WBASE
+00 00 01 4C |	00 WOFST
+-- -- -- -- |	
+00 00 01 4E |	SKIP LINK
+00 00 01 50 |	GPA PC
+00 00 01 52 |	00 00 //NOP so SKIP points to the correct address
+-- -- -- -- |	
+-- -- -- -- |	//return from target function
+-- -- -- -- |	
+-- -- -- -- |	//retrieve frame pointer from stack
+-- -- -- -- |	//subtract 4 from the current frame pointer to
+-- -- -- -- |	//get the last item on the stack (the last FP)
+00 00 01 54 |	WBASE ALUA
+00 00 01 56 |	04 ALUB
+00 00 01 58 |	03 ALUM //subtract mode
+00 00 01 5A |	ALUR WBASE //set WBASE to last stack slot
+00 00 01 5C |	00 WOFST //(clear WOFST)
+00 00 01 5E |	WMEM WBASE //FP is the last thing in the stack
+-- -- -- -- |	
+00 00 01 60 |	ALUR ALUA //ALUR still holds the top stack slot, equivalent to (old FP + old SP)
+00 00 01 62 |	WBASE ALUB
+-- -- -- -- |	//subtract last FP (WBASE) from last FP + SP (ALUR) to get last SP
+00 00 01 64 |	ALUR WOFST //store last SP in WOFST
+-- -- -- -- |	//WBASE now holds old FP and WOFST now holds old SP
+-- -- -- -- |	//FP and SP are now current
+-- -- -- -- |	
+-- -- -- -- |	//set up ALU for unstacking
+00 00 01 66 |	WOFST ALUA //FP to ALU
+00 00 01 68 |	04 ALUB //ALU is in -4 mode
+-- -- -- -- |	
+-- -- -- -- |	//pop last FP from the stack, don't store because it's already in WBASE
+00 00 01 6A |	ALUR WOFST
+00 00 01 6C |	ALUR ALUA
+-- -- -- -- |	
+-- -- -- -- |	//pop caller save registers from stack
+00 00 01 6E |	WMEM LINK
+00 00 01 70 |	ALUR WOFST
+00 00 01 72 |	ALUR ALUA
+-- -- -- -- |	
+00 00 01 74 |	WMEM COMPB
+00 00 01 76 |	ALUR WOFST
+00 00 01 78 |	ALUR ALUA
+00 00 01 7A |	WMEM COMPA
+00 00 01 7C |	ALUR WOFST
+00 00 01 7E |	ALUR ALUA
+-- -- -- -- |	
+00 00 01 80 |	WMEM ROFST
+00 00 01 82 |	ALUR WOFST
+00 00 01 84 |	ALUR ALUA
+00 00 01 86 |	WMEM RBASE
+00 00 01 88 |	ALUR WOFST
+00 00 01 8A |	ALUR ALUA
+-- -- -- -- |	
+00 00 01 8C |	WMEM FPUB
+00 00 01 8E |	ALUR WOFST
+00 00 01 90 |	ALUR ALUA
+00 00 01 92 |	WMEM FPUA
+00 00 01 94 |	ALUR WOFST
+00 00 01 96 |	ALUR ALUA
+00 00 01 98 |	WMEM FPUM
+00 00 01 9A |	ALUR WOFST
+00 00 01 9C |	ALUR ALUA
+-- -- -- -- |	
+-- -- -- -- |	//store ALU in DMEM while we're still using it
+00 00 01 9E |	WMEM DMEM08 //ALUB
+00 00 01 A0 |	ALUR WOFST
+00 00 01 A2 |	ALUR ALUA
+00 00 01 A4 |	WMEM DMEM04 //ALUA
+00 00 01 A6 |	ALUR WOFST
+00 00 01 A8 |	ALUR ALUA
+00 00 01 AA |	WMEM DMEM00 //ALUM
+00 00 01 AC |	ALUR WOFST
+00 00 01 AE |	ALUR ALUA
+-- -- -- -- |	
+00 00 01 B0 |	WMEM GPH
+00 00 01 B2 |	ALUR WOFST
+00 00 01 B4 |	ALUR ALUA
+00 00 01 B6 |	WMEM GPG
+00 00 01 B8 |	ALUR WOFST
+00 00 01 BA |	ALUR ALUA
+00 00 01 BC |	WMEM GPF
+00 00 01 BE |	ALUR WOFST
+00 00 01 C0 |	ALUR ALUA
+00 00 01 C2 |	WMEM GPE
+00 00 01 C4 |	ALUR WOFST
+00 00 01 C6 |	ALUR ALUA
+00 00 01 C8 |	WMEM GPD
+00 00 01 CA |	ALUR WOFST
+00 00 01 CC |	ALUR ALUA
+00 00 01 CE |	WMEM GPC
+00 00 01 D0 |	ALUR WOFST
+00 00 01 D2 |	ALUR ALUA
+00 00 01 D4 |	WMEM GPB
+00 00 01 D6 |	ALUR WOFST
+00 00 01 D8 |	ALUR ALUA
+00 00 01 DA |	WMEM GPA
+-- -- -- -- |	
+-- -- -- -- |	//finished with ALU, restore it from DMEM
+-- -- -- -- |	//TODO this can be made slightly more efficient by just doing ALU last
+00 00 01 DC |	DMEM00 ALUM
+00 00 01 DE |	DMEM04 ALUA
+00 00 01 E0 |	DMEM08 ALUB
+-- -- -- -- |	
+-- -- -- -- |	//return to the caller
+00 00 01 E2 |	LINK PC
+-- -- -- -- |	/////////////////////////////////////////////////
+-- -- -- -- |	
+-- -- -- -- |	
+-- -- -- -- |	@@STACK

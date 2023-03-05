@@ -1,0 +1,14 @@
+00 00 00 28 |	0A COMPA
+00 00 00 2A |	0B COMPB
+00 00 00 2C |	COMPR PC
+-- -- -- -- |	@jump
+00 00 00 2E |	:jump
+00 00 00 32 |	:jump
+00 00 00 36 |	:jump
+00 00 00 3A |	:jump
+00 00 00 3E |	:jump
+00 00 00 42 |	:jump
+00 00 00 46 |	:jump
+-- -- -- -- |	@@jump
+00 00 00 4A |	0A GPA
+00 00 00 4C |	7F FLAG

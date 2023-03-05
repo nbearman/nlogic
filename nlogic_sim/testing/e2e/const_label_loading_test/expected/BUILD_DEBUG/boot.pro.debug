@@ -1,0 +1,29 @@
+-- -- -- -- |	//read constant from memory
+-- -- -- -- |	//first, load address of label "const" as address into RBASE
+00 00 00 00 |	IADF RBASE
+00 00 00 02 |	SKIP PC
+00 00 00 04 |	:const
+-- -- -- -- |	
+-- -- -- -- |	//then read the value at address of value at address with label "const"
+00 00 00 08 |	RMEM ALUA
+-- -- -- -- |	
+-- -- -- -- |	//store an arbitrary value at an arbitrary address
+00 00 00 0A |	3D WBASE
+00 00 00 0C |	42 WMEM
+-- -- -- -- |	//direct read the contents at that address into a register
+00 00 00 0E |	DMEM3D ALUB
+00 00 00 10 |	DMEM3D ALUB
+-- -- -- -- |	
+-- -- -- -- |	//set the ALU to add and store the result
+00 00 00 12 |	01 ALUM
+00 00 00 14 |	ALUR GPA
+-- -- -- -- |	
+-- -- -- -- |	//halt the processor
+00 00 00 16 |	7F FLAG
+-- -- -- -- |	
+-- -- -- -- |	//fill with some blank memory before the constant
+00 00 00 18 |	00 00 00 00 00 00 00 00 00 00
+-- -- -- -- |	
+-- -- -- -- |	//place a constant value at a named address for example of loading constant in program by label name
+-- -- -- -- |	@const
+00 00 00 22 |	00 00 12 34
