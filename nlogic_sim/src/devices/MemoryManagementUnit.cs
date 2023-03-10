@@ -60,13 +60,21 @@ namespace nlogic_sim
         /// <summary>
         /// When in kernel mode, the MMU will not raise interrupts
         /// </summary>
-        private bool kernel_mode = false;
+        private bool kernel_mode = false; // TODO probably unused?
 
         /// <summary>
         /// When the MMU breakpoint is enabled, the breakpoint address will be checked for during translation. If
         /// disabled, the breakpoint will not be triggered.
         /// </summary>
         private bool breakpoint_enabled = false;
+
+        /// <summary>
+        /// The MMU breakpoint will only be triggered if breakpoint_enabled is true AND breakpoint_cycle_delay is 0.
+        /// When the breakpoint is enabled, every time the MMU gets the cycle signal from the processor, the MMU
+        /// will decrease the breakpoint cycle delay counter by 1. This allows the processor to set a breakpoint
+        /// that doesn't activate for a set number of cycles.
+        /// </summary>
+        private uint breakpoint_cycle_delay_counter = 0;
 
         /// <summary>
         /// Physical memory of this MMU's environment (RAM)
@@ -169,7 +177,11 @@ namespace nlogic_sim
             }
 
             //swap the active page directory and queued page directory if hitting the breakpoint
-            if (this.breakpoint_enabled && address == this.mmu_breakpoint)
+            if (
+                this.breakpoint_enabled
+                && (this.breakpoint_cycle_delay_counter == 0)
+                && (address == this.mmu_breakpoint)
+            )
             {
                 this.breakpoint_enabled = false;
                 this.swap_directories();
@@ -249,11 +261,18 @@ namespace nlogic_sim
         }
 
         /// <summary>
-        /// Clear the fault status of the MMU
+        /// Signal to the MMU that the processor has cycled.
+        /// This will clear the fault status of the MMU and
+        /// decrease the breakpoint cycle delay counter by 1
+        /// if the breakpoint is enabled.
         /// </summary>
-        public void clear_fault()
+        public void signal_cycle()
         {
             this.faulted = false;
+            if (this.breakpoint_enabled && this.breakpoint_cycle_delay_counter > 0)
+            {
+                this.breakpoint_cycle_delay_counter -= 1;
+            }
         }
 
         public void swap_directories()
@@ -275,7 +294,7 @@ namespace nlogic_sim
 
         uint MMIO.get_size()
         {
-            //28 bytes for 7 uint registers:
+            //32 bytes for 8 uint registers:
             //  active page directory base address
             //  queued page directory base address
             //  virtual address mmu breakpoint
@@ -283,7 +302,8 @@ namespace nlogic_sim
             //  faulted address
             //  breakpoint enabled
             //  enabled
-            return 28;
+            //  breakpoint cycle delay counter
+            return 32; // TODO if this changes, the address of the virtual disk needs to be updated in boot and handler
         }
 
         //TODO this is out of date (missing MMU registers) and currently not used (write_byte / read_byte currently used instead)
@@ -333,8 +353,10 @@ namespace nlogic_sim
             //TODO clean this mess up by changing the MMU's registers from uint variables
             //to some kind of dictionary or array or something with accessors to make it convenient
             uint value;
-            if (address >= (uint)MMIOLayout.ENABLED + 4)
+            if (address >= (uint)MMIOLayout.BREAKPOINT_CYCLE_DELAY_COUNTER + 4)
                 throw new ArgumentException("MMU access error: the given address is beyond the range of writable registers");
+            else if (address >= (uint)MMIOLayout.BREAKPOINT_CYCLE_DELAY_COUNTER)
+                value = this.breakpoint_cycle_delay_counter;
             else if (address >= (uint)MMIOLayout.ENABLED)
                 value = this.enabled ? (uint)1 : (uint)0;
             else if (address >= (uint)MMIOLayout.BREAKPOINT_ENABLED)
@@ -356,7 +378,9 @@ namespace nlogic_sim
             register_bytes[address % 4] = data;
             uint new_value = Utility.uint32_from_byte_array(register_bytes);
 
-            if (address >= (uint)MMIOLayout.ENABLED)
+            if (address >= (uint)MMIOLayout.BREAKPOINT_CYCLE_DELAY_COUNTER)
+                this.breakpoint_cycle_delay_counter = new_value;
+            else if (address >= (uint)MMIOLayout.ENABLED)
                 this.enabled = (new_value != 0);
             else if (address >= (uint)MMIOLayout.BREAKPOINT_ENABLED)
                 this.breakpoint_enabled = (new_value != 0);
@@ -506,7 +530,7 @@ namespace nlogic_sim
 
         public void initialize(SimulationEnvironment environment)
         {
-            //no set up required
+            //no setup required
             return;
         }
 
@@ -535,7 +559,7 @@ namespace nlogic_sim
                 //physical page number is held in the bottom 20 bits
                 this.number = data & 0x000FFFFF;
 
-                //store the original PTE as it was read from; this will allow the MMU to 
+                //store the original PTE as it was read from; this will allow the MMU to
                 //fill a register with the faulty PTE for the processor to retrieve later
                 this.original_pte_data = data;
             }
@@ -587,6 +611,7 @@ namespace nlogic_sim
             FAULTED_ADDRESS_REGISTER = 16,
             BREAKPOINT_ENABLED = 20,
             ENABLED = 24,
+            BREAKPOINT_CYCLE_DELAY_COUNTER = 28,
         }
     }
 }

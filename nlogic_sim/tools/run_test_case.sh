@@ -95,9 +95,9 @@ python3 $PY_ASSEMBLER -p -o $STARTING_DIR/output/BUILD_DEBUG $pro_files > $START
 echo "[3] Running simulator"
 # the simulator will fail if we don't use a proper windows path (file does not exist...)
 WINDOWS_PROGRAM_PATH=$(wslpath -w $STARTING_DIR/output/BUILD_ASM/program.asm)
+WINDOWS_VIRTUAL_DISK_PATH=$(wslpath -w $STARTING_DIR/output/DISK_ASM)
 WINDOWS_OUTPUT_PATH=$(wslpath -w $STARTING_DIR/output/LOGS/)\\cpu_log.txt
-$SIM_EXE run $WINDOWS_PROGRAM_PATH -l $WINDOWS_OUTPUT_PATH -t
-# $SIM_EXE run $WINDOWS_PROGRAM_PATH -l $WINDOWS_OUTPUT_PATH -d -v # uncomment to run test case with debugger and visualizer
+$SIM_EXE run $WINDOWS_PROGRAM_PATH disk $WINDOWS_VIRTUAL_DISK_PATH -l $WINDOWS_OUTPUT_PATH -t
 echo "Done" | INDENT
 
 cd $STARTING_DIR

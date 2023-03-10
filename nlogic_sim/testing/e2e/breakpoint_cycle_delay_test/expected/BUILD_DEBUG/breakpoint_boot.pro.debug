@@ -1,0 +1,226 @@
+-- -- -- -- |	//system boot
+-- -- -- -- |	
+-- -- -- -- |	//=========================================================================
+-- -- -- -- |	// Entry point / MMU departure point
+-- -- -- -- |	//=========================================================================
+-- -- -- -- |	//This instruction, physical address 0, will be run twice before we enable virtual addressing
+-- -- -- -- |	//The first time is as the very first instruction; in this case, it will basically be a NOP
+-- -- -- -- |	//The second time, we want to write a value to the MMU in order to enable it
+-- -- -- -- |	//We want the PC to be as close to 0 as possible when the MMU is enabled so that the kernel
+-- -- -- -- |	//entry point in VA can be close to 0 (to avoid wasting space and confusing FILL macros)
+-- -- -- -- |	//Therefore, we put the final instruction we want to run before the MMU is enabled at 0x00
+-- -- -- -- |	//	We will jump back here after completing the rest of boot and preparing WMEM to point to the MMU
+-- -- -- -- |	//	That means these instructions will be run twice: once "on boot," and once "on jumpback"
+-- -- -- -- |	
+-- -- -- -- |	//The last instruction we need to run before starting the MMU is a write to WMEM
+-- -- -- -- |	//On jumpback, WMEM will be pointed to the MMU, but on boot, WMEM is pointed at 0x00
+-- -- -- -- |	//	Therefore, on boot, the WMEM write will overwrite the first 2 instructions
+-- -- -- -- |	//	They must be NOPs to avoid erasing any useful code
+00 00 00 00 |		00 00 00 00
+-- -- -- -- |	//This is the final instruction we need to execute to enable the MMU
+-- -- -- -- |	//On boot, this will overwrite the previous 4 bytes (noted above)
+-- -- -- -- |	//On jumpback, this will enable the MMU, and we will continue executing in VA
+00 00 00 04 |		01 WMEM
+-- -- -- -- |	
+-- -- -- -- |	//On jumpback, execution will not reach here; the MMU is enabled and we are no longer executing from PPage 0
+-- -- -- -- |	//On boot, continue with the real initialization process
+-- -- -- -- |	//	All instructions from here forward are therefore only executed on boot (no double execution from jumpback)
+-- -- -- -- |	
+-- -- -- -- |	//=========================
+-- -- -- -- |	// physcial memory layout
+-- -- -- -- |	//==========
+-- -- -- -- |	// page 0: [here] boot sequence
+-- -- -- -- |	//==========
+-- -- -- -- |	// page 1: program 1 page directory
+-- -- -- -- |	//==========
+-- -- -- -- |	// page 2: program 1 page table 0
+-- -- -- -- |	//==========
+-- -- -- -- |	// page 3: program 1 page 0, 0x00 00 00 00 in prog1 VM
+-- -- -- -- |	//==========
+-- -- -- -- |	// page 4: empty
+-- -- -- -- |	//==========
+-- -- -- -- |	// page 5: program 2 page directory
+-- -- -- -- |	//==========
+-- -- -- -- |	// page 6: program 2 page table 0
+-- -- -- -- |	//==========
+-- -- -- -- |	// page 7: program 2 page 0, 0x00 00 00 00 in prog2 VM
+-- -- -- -- |	//==========
+-- -- -- -- |	//=========================
+-- -- -- -- |	
+-- -- -- -- |	
+-- -- -- -- |	//=========================================================================
+-- -- -- -- |	// intialize program 1 memory
+-- -- -- -- |	//=========================================================================
+-- -- -- -- |	
+-- -- -- -- |	//create a PDE in program 1's page directory
+00 00 00 06 |	IADF WBASE
+00 00 00 08 |	SKIP PC
+00 00 00 0A |	00 00 10 00
+-- -- -- -- |	
+00 00 00 0E |	IADF WMEM
+00 00 00 10 |	SKIP PC
+-- -- -- -- |	// R !W physical page 2
+00 00 00 12 |	80 00 00 02
+-- -- -- -- |	
+-- -- -- -- |	//create a PTE in program 1's page table for virtual page 0
+-- -- -- -- |	//the page table is at physical address 00 00 20 00, so write the PTE there
+00 00 00 16 |	IADF WBASE
+00 00 00 18 |	SKIP PC
+00 00 00 1A |	00 00 20 00
+-- -- -- -- |	
+00 00 00 1E |	IADF WMEM
+00 00 00 20 |	SKIP PC
+-- -- -- -- |	// R W physical page 3
+00 00 00 22 |	C0 00 00 03
+-- -- -- -- |	
+-- -- -- -- |	//add another PTE for virtual page 1
+-- -- -- -- |	//map it to the MMIO devices (physical address FF 00 00 00)
+00 00 00 26 |	04 WOFST //(each PTE is 4 bytes, so the next PTE is 00 00 20 04)
+00 00 00 28 |	IADF WMEM
+00 00 00 2A |	SKIP PC
+00 00 00 2C |	C0 0F F0 00
+-- -- -- -- |	
+-- -- -- -- |	
+-- -- -- -- |	//=========================================================================
+-- -- -- -- |	// initialize program 2 memory
+-- -- -- -- |	//=========================================================================
+-- -- -- -- |	
+-- -- -- -- |	//create a PDE in program 2's page directory (page 5)
+00 00 00 30 |	00 WOFST
+00 00 00 32 |	IADF WBASE
+00 00 00 34 |	SKIP PC
+00 00 00 36 |	00 00 50 00
+-- -- -- -- |	
+00 00 00 3A |	IADF WMEM
+00 00 00 3C |	SKIP PC
+-- -- -- -- |	// R !W physical page 6
+00 00 00 3E |	80 00 00 06
+-- -- -- -- |	
+-- -- -- -- |	//create a PTE in program 2's page table for virtual page 0
+-- -- -- -- |	//the page table is at physical address 00 00 60 00, so write the PTE there
+00 00 00 42 |	IADF WBASE
+00 00 00 44 |	SKIP PC
+00 00 00 46 |	00 00 60 00
+-- -- -- -- |	
+00 00 00 4A |	IADF WMEM
+00 00 00 4C |	SKIP PC
+-- -- -- -- |	// R !W (resident, clean) physical page 7
+00 00 00 4E |	80 00 00 07
+-- -- -- -- |	
+-- -- -- -- |	//=========================================================================
+-- -- -- -- |	// load program 1 into memory from disk
+-- -- -- -- |	//=========================================================================
+-- -- -- -- |	
+-- -- -- -- |	//virtual disk is MMIO device; MMIO devices start at 0xFF 00 00 00
+00 00 00 52 |	IADF WBASE
+00 00 00 54 |	SKIP PC
+00 00 00 56 |	FF 00 00 20
+-- -- -- -- |	
+-- -- -- -- |	//load into physical page 3
+00 00 00 5A |	00 WOFST
+00 00 00 5C |	03 WMEM
+-- -- -- -- |	
+-- -- -- -- |	//read from disk block 64
+00 00 00 5E |	04 WOFST
+00 00 00 60 |	40 WMEM
+-- -- -- -- |	
+-- -- -- -- |	//set read mode by writing 0
+00 00 00 62 |	08 WOFST
+00 00 00 64 |	00 WMEM
+-- -- -- -- |	
+-- -- -- -- |	//initiate the transfer
+00 00 00 66 |	0C WOFST
+00 00 00 68 |	01 WMEM
+-- -- -- -- |	
+-- -- -- -- |	//=========================================================================
+-- -- -- -- |	// load program 2 into memory from disk
+-- -- -- -- |	//=========================================================================
+-- -- -- -- |	
+-- -- -- -- |	//virtual disk is MMIO device; MMIO devices start at 0xFF 00 00 00
+00 00 00 6A |	IADF WBASE
+00 00 00 6C |	SKIP PC
+00 00 00 6E |	FF 00 00 20
+-- -- -- -- |	
+-- -- -- -- |	//load into physical page 7
+00 00 00 72 |	00 WOFST
+00 00 00 74 |	07 WMEM
+-- -- -- -- |	
+-- -- -- -- |	//read from disk block 100
+00 00 00 76 |	04 WOFST
+00 00 00 78 |	64 WMEM
+-- -- -- -- |	
+-- -- -- -- |	//set read mode by writing 0
+00 00 00 7A |	08 WOFST
+00 00 00 7C |	00 WMEM
+-- -- -- -- |	
+-- -- -- -- |	//initiate the transfer
+00 00 00 7E |	0C WOFST
+00 00 00 80 |	01 WMEM
+-- -- -- -- |	
+-- -- -- -- |	
+-- -- -- -- |	//=========================================================================
+-- -- -- -- |	// set MMU page directory base registers
+-- -- -- -- |	//=========================================================================
+-- -- -- -- |	
+-- -- -- -- |	//set the active page directory base register to physical page 1 (program 1 page directory)
+-- -- -- -- |	
+-- -- -- -- |	//load address of MMU registers into WBASE
+00 00 00 82 |	IADF RBASE
+00 00 00 84 |	SKIP PC
+00 00 00 86 |	:MMU_registers
+00 00 00 8A |	RMEM WBASE
+-- -- -- -- |	//set offset to active page directory register
+00 00 00 8C |	00 WOFST
+00 00 00 8E |	01 WMEM
+-- -- -- -- |	
+-- -- -- -- |	//set offset to queued page directory register
+00 00 00 90 |	04 WOFST
+-- -- -- -- |	//set the queued page directory base register to physical page 5 (program 2 page directory)
+00 00 00 92 |	05 WMEM
+-- -- -- -- |	
+-- -- -- -- |	//=========================================================================
+-- -- -- -- |	// enable MMU
+-- -- -- -- |	//=========================================================================
+-- -- -- -- |	
+-- -- -- -- |	@@ENABLE_MMU
+-- -- -- -- |	
+-- -- -- -- |	//load address of MMU registers
+00 00 00 94 |	IADF RBASE
+00 00 00 96 |	SKIP PC
+00 00 00 98 |	:MMU_registers
+-- -- -- -- |	
+00 00 00 9C |	RMEM WBASE
+-- -- -- -- |	
+-- -- -- -- |	//enable the MMU and see what happens
+-- -- -- -- |	//point WMEM at the correct MMU register
+00 00 00 9E |		18 WOFST
+-- -- -- -- |	//this is the instruction that we want to run, but we want PC to be closer to 0
+-- -- -- -- |		//This instruction is at the beginning of physical memory, so jump there to execute it
+-- -- -- -- |		//(more explanation around that instruction at 0x00)
+-- -- -- -- |		//To start the MMU, we would execute: 01 WMEM
+-- -- -- -- |	
+-- -- -- -- |	//jump back to the start of memory, where we will actually enable the MMU
+00 00 00 A0 |	00 PC
+-- -- -- -- |	
+-- -- -- -- |	
+-- -- -- -- |	//for now, hard code the physical address of the MMU
+-- -- -- -- |	//also hard code this into the simulation environment
+-- -- -- -- |	@MMIO_devices
+-- -- -- -- |	@MMU_registers
+00 00 00 A2 |	FF 00 00 00
+-- -- -- -- |	//00 active page dir base addr
+-- -- -- -- |	//04 queued page dir base addr
+-- -- -- -- |	//08 virtual addr mmu breakpoint
+-- -- -- -- |	//0C faulted pte
+-- -- -- -- |	//10 fautled addr
+-- -- -- -- |	//14 breakpoint enabled
+-- -- -- -- |	//18 enabled
+-- -- -- -- |	//1C breakpoint cycle delay counter
+-- -- -- -- |	
+-- -- -- -- |	//=========================================================================
+-- -- -- -- |	//=========================================================================
+-- -- -- -- |	
+-- -- -- -- |	//shouldn't reach here is MMU is enabled successfully
+-- -- -- -- |	//halt the processor
+00 00 00 A6 |	7F FLAG
+-- -- -- -- |	

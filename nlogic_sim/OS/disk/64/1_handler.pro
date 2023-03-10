@@ -518,7 +518,7 @@ IADN PC
     //point RMEM to virtual disk
         IADF RBASE
         SKIP PC
-        00 00 10 1C //MMIO starts at VA 1000
+        00 00 10 20 //MMIO starts at VA 1000, disk starts at 20
     //tell disk the target physical page (stored in GPH)
         00 ROFST
         GPH RMEM

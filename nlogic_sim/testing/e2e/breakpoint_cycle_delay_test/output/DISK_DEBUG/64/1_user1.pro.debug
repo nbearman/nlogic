@@ -1,0 +1,49 @@
+-- -- -- -- |	//=========================================================================
+-- -- -- -- |	// program 1 entry point
+-- -- -- -- |	//=========================================================================
+-- -- -- -- |	
+-- -- -- -- |	
+-- -- -- -- |	// PC is at 0x08 when MMU is enabled, so these won't be executed
+-- -- -- -- |	//   (unless the breakpoint doesn't work and we jump here instead of
+-- -- -- -- |	//      program 2)
+00 00 00 00 |	00 00 // this shouldn't run, since the breakpoint was triggered
+-- -- -- -- |	    // the other program's code should be running instead
+00 00 00 02 |	00 00
+00 00 00 04 |	7F FLAG
+-- -- -- -- |	
+-- -- -- -- |	// entry point; MMU enabled, we're in VA now
+00 00 00 06 |	00 RBASE
+00 00 00 08 |	00 ROFST
+-- -- -- -- |	
+00 00 00 0A |	01 GPA
+00 00 00 0C |	02 GPB
+-- -- -- -- |	
+-- -- -- -- |	//set the MMU VA break point
+00 00 00 0E |	IADF WBASE
+00 00 00 10 |	SKIP PC
+00 00 00 12 |	00 00 10 00 //MMIO base address (in VA)
+00 00 00 16 |	08 WOFST //breakpoint register
+00 00 00 18 |	00 WMEM //breakpoint at 0
+-- -- -- -- |	
+-- -- -- -- |	//set the breakpoint cycle delay
+00 00 00 1A |	1C WOFST // breakpoint cycle delay counter register
+00 00 00 1C |	04 WMEM // set a delay of 4 cycles
+-- -- -- -- |	
+-- -- -- -- |	//enable the breakpoint
+00 00 00 1E |	14 WOFST //breakpoint enabled register
+00 00 00 20 |	01 WMEM //non-zero -> enabled
+-- -- -- -- |	
+-- -- -- -- |	// [cycle - counter @ 3]
+00 00 00 22 |	RMEM GPD // read from the breakpoint address (0x00)
+-- -- -- -- |	// this shouldn't trigger the breakpoint, since the delay counter is > 0
+-- -- -- -- |	
+-- -- -- -- |	// [cycle - counter @ 2]
+-- -- -- -- |	
+00 00 00 24 |	03 GPC // this will be executed, since the breakpoint was skipped
+-- -- -- -- |	
+-- -- -- -- |	// [cycle - counter @ 1]
+-- -- -- -- |	//jump to 0 in user space
+00 00 00 26 |	RMEM PC // breakpoint is not hit here, since the counter > 0 when RMEM (0x00) is accessed
+-- -- -- -- |	
+-- -- -- -- |	// [cycle - counter @ 0; breakpoint enabled]
+-- -- -- -- |	// instruction fetch after this should trigger the breakpoint, since we access 0x00

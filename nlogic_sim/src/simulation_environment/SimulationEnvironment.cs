@@ -125,7 +125,7 @@ namespace nlogic_sim
                 this.resolve_signal_queue();
 
                 //clear faults on the MMU when the processor cycles
-                MMU.clear_fault();
+                MMU.signal_cycle();
 
                 //cycle the processor
                 cycle_status = this.processor.cycle();
