@@ -17,7 +17,8 @@ namespace nlogic_sim
         /// </summary>
         public void print_current_state()
         {
-
+            update_readout(READOUT.CycleCounter_contents, Utility.byte_array_string(Utility.byte_array_from_uint32(4, cycle_count)));
+            update_readout(READOUT.CycleCounter_expansion, cycle_count.ToString());
 
             update_readout(READOUT.FLAG_contents, Utility.byte_array_string(registers[FLAG].data_array, "", false));
 
@@ -697,7 +698,7 @@ namespace nlogic_sim
         /// </summary>
         private static void print_skeleton()
         {
-            Console.WriteLine("|");
+            Console.WriteLine("|                                                                        [             ]");
             Console.WriteLine("============================================================================================================");
             Console.WriteLine("##||       |               ||##||                     |         |                 ||##");
             Console.WriteLine("######################################################################################");

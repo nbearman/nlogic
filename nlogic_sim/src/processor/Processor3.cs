@@ -14,6 +14,8 @@ namespace nlogic_sim
 
         private ushort current_instruction;
 
+        private uint cycle_count = 0; // count total number of cycles for visualizer only; not accessible by the processor
+
         private LastStateCache last_instruction_cache;
 
         public Dictionary<byte, I_Register> registers;
@@ -29,6 +31,8 @@ namespace nlogic_sim
 
         public uint cycle()
         {
+            this.cycle_count += 1;
+
             //check the status register to determine if we should trap
             check_status();
 

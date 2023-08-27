@@ -44,6 +44,7 @@ namespace nlogic_sim
             WMEM, WMEM_contents,
             MemoryContext1,
             MemoryContext2,
+            CycleCounter, CycleCounter_contents, CycleCounter_expansion
         };
 
         /// <summary>
@@ -54,6 +55,9 @@ namespace nlogic_sim
         private static Dictionary<READOUT, Tuple<int, int, int>> readout_coordinates = new Dictionary<READOUT, Tuple<int, int, int>>
         {
             { READOUT.Header, new Tuple<int, int, int>(1, 0, 40) },
+            { READOUT.CycleCounter, new Tuple<int, int, int>(33, 0, 21) },
+            { READOUT.CycleCounter_contents, new Tuple<int, int, int>(57, 0, 15) },
+            { READOUT.CycleCounter_expansion, new Tuple<int, int, int>(75, 0, 11) },
             ////////////////////////////////////////////////////////////////////////////
             { READOUT.FLAG, new Tuple<int, int, int>(4, 2, 7) },
             { READOUT.FLAG_contents, new Tuple<int, int, int>(12, 2, 15) },
@@ -194,7 +198,7 @@ namespace nlogic_sim
             {"WMEM", ConsoleColor.Green },
             {"CurrentInstruction", ConsoleColor.Cyan },
             {"Header", ConsoleColor.DarkYellow },
-
+            {"CycleCounter", ConsoleColor.Green },
         };
 
     }
