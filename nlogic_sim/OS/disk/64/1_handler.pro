@@ -859,12 +859,15 @@ IADN PC
     GPA RMEM
 
 //set the MMU breakpoint
-    //TODO change this to include setting the number of cycles before the breakpoint
-    //activates
     08 ROFST //MMU breakpoint address register
     DMEM30 RMEM //PC from last instruction cache
-        //TODO is the breakpoint supposed to be set at the PC of the first user instruction, or the PC of the last kernel instruction?
-        //TODO step through to validate that interrupts are re-enabled atomically
+        // breakpoint will be triggered when the instruction at <user PC> is fetched
+
+    //set the breakpoint delay so it doesn't activate until the first cycle in user space
+    //this will avoid unintentionally reading the breakpoint address if it happens to
+    //coincide with one of the instructions between here and jumping back to <user PC>
+    1C ROFST
+    31 RMEM // 49 cycles until we want the breakpoint to become active
 
     //enable the breakpoint
     14 ROFST //break point enabled register
@@ -875,7 +878,7 @@ IADN PC
     IADF DMEM08 //store the FLAG in DMEM so it can be set without using other registers immediately before returning
     SKIP PC
     //TODO for now, just set: !unlocked, !disabled, delay, !retry, !kernel, !user disabled, !user delay, no signal bits
-    //  need to decide which other bits of the existing value need to be 
+    //  need to decide which other bits of the existing value need to be
     20 00 00 00
 
     //TODO need to restore LINK as well
@@ -938,11 +941,12 @@ IADN PC
     DMEM30 PC
 
 
-//nothing left
+//nothing left (this should never run)
 02 FPUM
 11 FPUA
 22 FPUB
 FPUR GPC
+BREAK
 7F FLAG
 // end interrupt handler
 
