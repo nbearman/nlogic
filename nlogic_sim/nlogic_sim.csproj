@@ -35,6 +35,8 @@
   <ItemGroup>
     <Reference Include="System" />
     <Reference Include="System.Core" />
+    <Reference Include="System.Drawing" />
+    <Reference Include="System.Windows.Forms" />
     <Reference Include="System.Xml.Linq" />
     <Reference Include="System.Data.DataSetExtensions" />
     <Reference Include="Microsoft.CSharp" />
@@ -64,6 +66,7 @@
     <None Include="tools\os_disk\64\2_func.pro" />
     <None Include="tools\os_disk\64\1_handler.pro" />
     <None Include="tools\os_disk\100\user.pro" />
+    <Compile Include="src\MemoryWindow.cs" />
     <Compile Include="src\processor\Processor3.cs" />
     <Compile Include="src\processor\ProcessorDefinitions.cs" />
     <Compile Include="src\devices\VirtualDisplay.cs" />
@@ -89,6 +92,7 @@
   </ItemGroup>
   <ItemGroup>
     <Content Include="AssembleDebug.py" />
+    <Content Include="tools\run_test_cast.txt" />
     <Content Include="tools\builder.txt">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
@@ -170,6 +174,7 @@
     </Content>
   </ItemGroup>
   <ItemGroup>
+    <Folder Include="testing\e2e\" />
     <Folder Include="testing\programs\virtual_display_program\" />
     <Folder Include="tools\virtual_disk\" />
   </ItemGroup>

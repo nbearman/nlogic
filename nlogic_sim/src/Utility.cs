@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Linq;
 
 namespace nlogic_sim
 {
@@ -303,14 +304,14 @@ namespace nlogic_sim
         /// <summary>
         /// Returns a string of the given byte array.
         /// </summary>
-        public static string byte_array_string(byte[] data, string separator = " ", bool prepend_separator = false)
+        public static string byte_array_string(IEnumerable<byte> data, string separator = " ", bool prepend_separator = false)
         {
             string result = "";
-            for (int i = 0; i < data.Length; i++)
+            for (int i = 0; i < data.Count(); i++)
             {
                 if (prepend_separator || i > 0)
                     result += separator;
-                result += data[i].ToString("X2");
+                result += data.ElementAt(i).ToString("X2");
             }
 
             return result;

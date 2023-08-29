@@ -1,6 +1,8 @@
 ﻿using System;
 using System.Diagnostics;
 using System.Collections.Generic;
+using System.Threading;
+using System.Windows.Forms;
 
 namespace nlogic_sim
 {
@@ -13,6 +15,10 @@ namespace nlogic_sim
     /// </summary>
     public class SimulationEnvironment : I_Environment
     {
+        // the visualizer can only be enabled once; keep track
+        // of if it has been initialized already
+        private static bool visualizer_initialized = false;
+
         //logging information
         private const int MAX_LOG_SIZE = 1000;
         private bool logging_enabled = false;
@@ -92,9 +98,13 @@ namespace nlogic_sim
         /// <param name="halt_status">The value of the FLAG register which will cause the simulation to end.</param>
         public void run(bool visualizer_enabled, uint halt_status)
         {
+            // At all times during the simulation, the simulation thread
+            // should be the only one with access to the environment memory
+            Monitor.Enter(memory);
+
             if (visualizer_enabled)
             {
-                this.processor.initialize_visualizer();
+                this.initialize_visualizer();
             }
 
             uint cycle_status = 0;
@@ -104,7 +114,7 @@ namespace nlogic_sim
                 if (cycle_status == Processor.BREAKPOINT && !visualizer_enabled)
                 {
                     Console.Clear();
-                    this.processor.initialize_visualizer();
+                    this.initialize_visualizer();
                     visualizer_enabled = true;
                 }
 
@@ -118,7 +128,14 @@ namespace nlogic_sim
                 if (visualizer_enabled)
                 {
                     this.processor.print_current_state();
+
+                    // The memory explorer window might be waiting to update its view of memory
+                    // Unlock memory only while the simulation is paused waiting for the user
+                    // to advance by a step
+                    Monitor.Exit(this.memory);
                     Console.ReadKey();
+                    // Wait to resume the simulation until we again have exclusive access to memory
+                    Monitor.Enter(this.memory);
                 }
 
                 //send outstanding interrupts to the processor
@@ -138,6 +155,10 @@ namespace nlogic_sim
                 Console.WriteLine("Press enter.");
                 Console.ReadLine();
             }
+
+
+            // Release the exclusive lock on memory
+            Monitor.Exit(this.memory);
 
         }
 
@@ -524,6 +545,20 @@ namespace nlogic_sim
                 log_string += this.state_logs[i];
             }
             return log_string;
+        }
+
+        private void initialize_visualizer()
+        {
+            Debug.Assert(!visualizer_initialized);
+            visualizer_initialized = true;
+            this.processor.initialize_visualizer();
+            Thread memory_window_thread = new Thread(StartMemoryWindow);
+            memory_window_thread.Start();
+        }
+
+        private void StartMemoryWindow()
+        {
+            Application.Run(new MemoryWindow(this.memory).get_form());
         }
     }
 }
