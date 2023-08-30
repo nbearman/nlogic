@@ -5,6 +5,7 @@
 // This program tests that a non-resident, mapped page of a program causes
 // a page fault and resumes after that page is brought into memory
 
+01 ALUM
 12 GPB
 GPB GPC
 GPC ALUA

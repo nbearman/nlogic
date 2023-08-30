@@ -45,230 +45,95 @@
 //==========
 // page 7: user page 0, 0x00 00 00 00 in user VM
 //==========
+// page 8-15: empty
 //=========================
 
-
-//=========================================================================
-// intialize kernel memory
-//=========================================================================
-
-//create a PDE in the kernel's page directory
+//To initialize memory, load a bunch of page directories, page tables, and programs from disk
+//Point the WMEM accessor to the virtual disk MMIO device
+//Virtual disk is MMIO device starting at 0xFF 00 00 20
+// (MMU is first MMIO device, starts at 0xFF 00 00 00)
 IADF WBASE
 SKIP PC
-00 00 10 00
+FF 00 00 20
 
-IADF WMEM
-SKIP PC
-// R !W physical page 2
-80 00 00 02
+//=========================================================================
+// load kernel page directory into memory from disk
+//=========================================================================
 
-//create a PTE in the kernel's page table for virtual page 0
-//the page table is at physical address 00 00 20 00, so write the PTE there
-IADF WBASE
-SKIP PC
-00 00 20 00
+// 0x00: physical page destination (physical page 1)
+00 WOFST 01 WMEM
+// 0x04: disk block source (disk block 64)
+04 WOFST 40 WMEM
+// 0x08: read/write mode (set read mode)
+08 WOFST 00 WMEM
+// 0x0C: start transfer
+0C WOFST 01 WMEM
 
-IADF WMEM
-SKIP PC
-// R W physical page 3
-C0 00 00 03
+//=========================================================================
+// load kernel page table 0 into memory from disk
+//=========================================================================
 
-//add another PTE for virtual page 1
-//map it to the MMIO devices (physical address FF 00 00 00)
-04 WOFST //(each PTE is 4 bytes, so the next PTE is 00 00 20 04)
-IADF WMEM
-SKIP PC
-C0 0F F0 00
-
-//add PTEs for virtual pages 0x3F0-0x3FF
-//map them to physical physical memory in order (physical address 0x00 00 00 00 - 0x00 00 F0 00)
-//to access physical address from kernel virtual address space, add 0x00 3F 00 00
-// TODO we shouldn't map all of physical memory to kernel's VA
-//	As physical memory increases, there becomes less usable space in the kernel's VA
-//	Add another way for kernel to access physical addresses directly; special registers in MMU?
-IADF WOFST
-SKIP PC
-00 00 0F C0 //(0x3F0 * 4, 4 bytes per PTE, 3F0th entry)
-IADF WMEM
-SKIP PC
-C0 00 00 00
-
-01 ALUM //add
-WOFST ALUA
-04 ALUB
-ALUR WOFST
-
-IADF WMEM
-SKIP PC
-C0 00 00 01
-
-WOFST ALUA
-ALUR WOFST
-IADF WMEM
-SKIP PC
-C0 00 00 02
-
-WOFST ALUA
-ALUR WOFST
-IADF WMEM
-SKIP PC
-C0 00 00 03
-
-WOFST ALUA
-ALUR WOFST
-IADF WMEM
-SKIP PC
-C0 00 00 04
-
-WOFST ALUA
-ALUR WOFST
-IADF WMEM
-SKIP PC
-C0 00 00 05
-
-WOFST ALUA
-ALUR WOFST
-IADF WMEM
-SKIP PC
-C0 00 00 06
-
-WOFST ALUA
-ALUR WOFST
-IADF WMEM
-SKIP PC
-C0 00 00 07
-
-WOFST ALUA
-ALUR WOFST
-IADF WMEM
-SKIP PC
-C0 00 00 08
-
-WOFST ALUA
-ALUR WOFST
-IADF WMEM
-SKIP PC
-C0 00 00 09
-
-WOFST ALUA
-ALUR WOFST
-IADF WMEM
-SKIP PC
-C0 00 00 0A
-
-WOFST ALUA
-ALUR WOFST
-IADF WMEM
-SKIP PC
-C0 00 00 0B
-
-WOFST ALUA
-ALUR WOFST
-IADF WMEM
-SKIP PC
-C0 00 00 0C
-
-WOFST ALUA
-ALUR WOFST
-IADF WMEM
-SKIP PC
-C0 00 00 0D
-
-WOFST ALUA
-ALUR WOFST
-IADF WMEM
-SKIP PC
-C0 00 00 0E
-
-WOFST ALUA
-ALUR WOFST
-IADF WMEM
-SKIP PC
-C0 00 00 0F
+// 0x00: physical page destination (physical page 2)
+00 WOFST 02 WMEM
+// 0x04: disk block source (disk block 65)
+04 WOFST 41 WMEM
+// 0x08: read/write mode (set read mode)
+08 WOFST 00 WMEM
+// 0x0C: start transfer
+0C WOFST 01 WMEM
 
 
 //=========================================================================
-// initialize user memory
+// load user page directory into memory from disk
 //=========================================================================
 
-//create a PDE in the users's page directory (page 5)
-00 WOFST
-IADF WBASE
-SKIP PC
-00 00 50 00
+// 0x00: physical page destination (physical page 5)
+00 WOFST 05 WMEM
+// 0x04: disk block source (disk block 100)
+04 WOFST 64 WMEM
+// 0x08: read/write mode (set read mode)
+08 WOFST 00 WMEM
+// 0x0C: start transfer
+0C WOFST 01 WMEM
 
-IADF WMEM
-SKIP PC
-// R !W physical page 6
-80 00 00 06
+//=========================================================================
+// load user page table 0 into memory from disk
+//=========================================================================
 
-//create a PTE in the user page table for virtual page 0
-//the page table is at physical address 00 00 60 00, so write the PTE there
-IADF WBASE
-SKIP PC
-00 00 60 00
-
-IADF WMEM
-SKIP PC
-// R !W (resident, clean) physical page 7
-80 00 00 07
-
-//create a PTE in the user page table for virtual page 1, the second instruction page
-04 WOFST
-IADF WMEM
-SKIP PC
-// !R W (mapped, evicted) disk block 101
-40 00 00 65
+// 0x00: physical page destination (physical page 6)
+00 WOFST 06 WMEM
+// 0x04: disk block source (disk block 101)
+04 WOFST 65 WMEM
+// 0x08: read/write mode (set read mode)
+08 WOFST 00 WMEM
+// 0x0C: start transfer
+0C WOFST 01 WMEM
 
 //=========================================================================
 // load kernel program into memory from disk
 //=========================================================================
 
-//virtual disk is MMIO device; MMIO devices start at 0xFF 00 00 00
-IADF WBASE
-SKIP PC
-FF 00 00 20
-
-//load into physical page 3
-00 WOFST
-03 WMEM
-
-//read from disk block 64
-04 WOFST
-40 WMEM
-
-//set read mode by writing 0
-08 WOFST
-00 WMEM
-
-//initiate the transfer
-0C WOFST
-01 WMEM
+// 0x00: physical page destination (physical page 3)
+00 WOFST 03 WMEM
+// 0x04: disk block source (disk block 66)
+04 WOFST 42 WMEM
+// 0x08: read/write mode (set read mode)
+08 WOFST 00 WMEM
+// 0x0C: start transfer
+0C WOFST 01 WMEM
 
 //=========================================================================
 // load user program into memory from disk
 //=========================================================================
 
-//virtual disk is MMIO device; MMIO devices start at 0xFF 00 00 00
-IADF WBASE
-SKIP PC
-FF 00 00 20
-
-//load into physical page 7
-00 WOFST
-07 WMEM
-
-//read from disk block 100
-04 WOFST
-64 WMEM
-
-//set read mode by writing 0
-08 WOFST
-00 WMEM
-
-//initiate the transfer
-0C WOFST
-01 WMEM
+// 0x00: physical page destination (physical page 7)
+00 WOFST 07 WMEM
+// 0x04: disk block source (disk block 102)
+04 WOFST 66 WMEM
+// 0x08: read/write mode (set read mode)
+08 WOFST 00 WMEM
+// 0x0C: start transfer
+0C WOFST 01 WMEM
 
 
 //=========================================================================
@@ -338,6 +203,7 @@ FF 00 00 00
 //10 fautled addr
 //14 breakpoint enabled
 //18 enabled
+//1C breakpoint cycle delay counter 
 
 //=========================================================================
 //=========================================================================
