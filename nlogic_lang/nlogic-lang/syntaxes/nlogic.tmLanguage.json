@@ -47,6 +47,25 @@
 		},
 
 		{
+			"match": "(?i)iconst_([^\\W]*)",
+			"name": "nlogic.const_variable_immediate"
+		},
+
+		{
+			"match": "(?i)const_([^\\W]*)",
+			"name": "nlogic.const_variable_full"
+		},
+
+		{
+			"match": "(?i)const\\s(\\w+)\\s([a-fA-F0-9]+)",
+			"captures": {
+				"0": { "name": "nlogic.const_variable_decl_start" },
+				"1": { "name": "nlogic.const_variable_decl_identifier" },
+				"2": { "name": "nlogic.const_variable_decl_value" }
+			}
+		},
+
+		{
 			"match": "(?i)break",
 			"name": "nlogic.break"
 		},

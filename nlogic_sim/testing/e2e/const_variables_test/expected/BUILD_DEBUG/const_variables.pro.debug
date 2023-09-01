@@ -1,0 +1,26 @@
+00 00 00 00 |	const ONE 1
+00 00 00 00 |	CONST two 02
+-- -- -- -- |	
+00 00 00 00 |	CONST GPA 34
+-- -- -- -- |	
+00 00 00 00 |	ICONST_GPA GPD
+-- -- -- -- |	
+00 00 00 02 |	ICONST_ONE GPA
+-- -- -- -- |	
+00 00 00 04 |	ICONST_ONE ALUM
+00 00 00 06 |	ICONST_two ALUA
+-- -- -- -- |	
+00 00 00 08 |	IADF GPH
+00 00 00 0A |	SKIP PC
+00 00 00 0C |	CONST x EECCAA88
+00 00 00 0C |	CONST_x
+-- -- -- -- |	
+00 00 00 10 |	CONST tHrEe 003
+00 00 00 10 |	iconst_tHrEe ALUB
+00 00 00 12 |	ALUR GPG
+-- -- -- -- |	
+00 00 00 14 |	IADF GPF
+00 00 00 16 |	SKIP PC
+00 00 00 18 |	CONST_ONE
+-- -- -- -- |	
+00 00 00 1C |	7F FLAG

@@ -64,6 +64,30 @@
             },
 
             {
+                "scope": "nlogic.const_variable_immediate, nlogic.const_variable_full",
+                "settings": {
+                    "foreground": "#25a8ff",
+                    "fontStyle": "italic bold"
+                }
+            },
+
+            {
+                "scope": "nlogic.const_variable_decl_start",
+                "settings": {
+                    "foreground": "#38d1ec",
+                    "fontStyle": "bold"
+                }
+            },
+
+            {
+                "scope": "nlogic.const_variable_decl_identifier",
+                "settings": {
+                    "foreground": "#FFFFFF",
+                    "fontStyle": "italic"
+                }
+            },
+
+            {
                 "scope": "nlogic.stack_variable_immediate, nlogic.stack_variable_full",
                 "settings": {
                     "foreground": "#e6b241",
@@ -89,6 +113,14 @@
 
             {
                 "scope": "nlogic.stack_variable_decl_size",
+                "settings": {
+                    "foreground": "#fffeb0",
+                    "fontStyle": ""
+                }
+            },
+
+            {
+                "scope": "nlogic.const_variable_decl_value",
                 "settings": {
                     "foreground": "#b0efff",
                     "fontStyle": ""

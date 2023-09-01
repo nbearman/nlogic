@@ -2,6 +2,7 @@ import re
 import argparse
 import os
 from pathlib import Path
+from abc import ABC, abstractmethod
 
 name_to_byte = {
     "IMM": "00",
@@ -96,35 +97,83 @@ class StackVariableDeclaration:
         self.size = stack_variable_size.num_bytes
         self.name = stack_variable_identifier.name
 
-class StackVariableIdentifier:
+class ConstVariableDeclaration:
+    def __init__(self, const_variable_identifier: "ConstVariableIdentifier", const_variable_value: "ConstVariableValue"):
+    # def __init__(self, const_variable_identifier, const_variable_value):
+        if type(const_variable_identifier) is not ConstVariableIdentifier:
+            raise Exception(f"cannot create ConstVariableDeclaration: {type(const_variable_identifier)} is not ConstVariableIdentifier")
+        if type(const_variable_value) is not ConstVariableValue:
+            raise Exception(f"cannot create ConstVariableDeclaration: {type(const_variable_value)} is not ConstVariableValue")
+        self.value = const_variable_value.value
+        self.name = const_variable_identifier.name
+
+class Identifier:
     def __init__(self, name):
         stack_var_id_match = re.match("[a-zA-Z]+\w*$", name)
         if not stack_var_id_match:
-            raise Exception(f"illegal stack variable identifier: {name} must start with a letter and contain only numbers, letters, and underscores")
+            raise Exception(f"illegal {type(self).__name__}: {name} must start with a letter and contain only numbers, letters, and underscores")
         self.name = name
+
+class StackVariableIdentifier(Identifier):
+    pass
+
+class ConstVariableIdentifier(Identifier):
+    pass
 
 class StackVariableSize:
     def __init__(self, num_bytes):
         # if the size is not a valid number, this will cause an exception
         self.num_bytes = int(num_bytes.lower(), base=16)
 
-class StackVariableReferenceImmediate:
+class ConstVariableValue:
+    def __init__(self, value):
+        # if the value is not a valid number, this will cause an exception
+        self.value = int(value.lower(), base=16)
+
+class VariableReference(ABC):
+    @abstractmethod
+    def get_reference_prefix(self):
+        pass
+
+    @abstractmethod
+    def get_reference_prefix_help_string(self):
+        pass
+    
     def __init__(self, name):
-        reference_prefix = "(?i)^istack_"
+        reference_prefix = self.get_reference_prefix()
         if not re.match(reference_prefix, name):
-            raise Exception(f"StackVariableReferenceImmediate created for identifier without ISTACK_ prefix: {name}")
-        # remove the ISTACK_ prefix from the reference macro to get just the variable name
+            raise Exception(f"{type(self).__name__} created for identifier without {self.get_reference_prefix_help_string()} prefix: {name}")
+        # remove the prefix from the reference macro to get just the variable name
         identifier = re.sub(reference_prefix, "", name)
         self.name = identifier
 
-class StackVariableReferenceFull:
-    def __init__(self, name):
-        reference_prefix = "(?i)^stack_"
-        if not re.match(reference_prefix, name):
-            raise Exception(f"StackVariableReferenceFull created for identifier without STACK_ prefix: {name}")
-        # remove the STACK_ prefix from the reference macro to get just the variable name
-        identifier = re.sub(reference_prefix, "", name)
-        self.name = identifier
+class StackVariableReferenceImmediate(VariableReference):
+    def get_reference_prefix(self):
+        return "(?i)^istack_"
+    
+    def get_reference_prefix_help_string(self):
+        return "ISTACK_"
+
+class StackVariableReferenceFull(VariableReference):
+    def get_reference_prefix(self):
+        return "(?i)^stack_"
+    
+    def get_reference_prefix_help_string(self):
+        return "STACK_"
+
+class ConstVariableReferenceImmediate(VariableReference):
+    def get_reference_prefix(self):
+        return "(?i)^iconst_"
+    
+    def get_reference_prefix_help_string(self):
+        return "ICONST_"
+    
+class ConstVariableReferenceFull(VariableReference):
+    def get_reference_prefix(self):
+        return "(?i)^const_"
+    
+    def get_reference_prefix_help_string(self):
+        return "CONST_"
 
 class StackFrameStart:
     def __init__(self):
@@ -217,6 +266,7 @@ class Line:
 
         # stack variable declarations are multi-word macros; some statefulness is needed to mark the part of the macro that we expect next
         next_stack_var_word = None
+        next_const_var_word = None
 
         for word in line.split():
             # for each word on the line, construct the matching code item
@@ -249,12 +299,39 @@ class Line:
             if next_stack_var_word:
                 raise Exception(f"invalid stack variable declaration; expected '{next_stack_var_word.lower()}' but no parsing for that part exists")
 
+            # do the same process as stack variable declarations for const variables
+            # try to complete in-progress const variable declaration
+            if next_const_var_word == "IDENTIFIER":
+                result.append(ConstVariableIdentifier(word))
+                next_const_var_word = "VALUE"
+                continue
+
+            if next_const_var_word == "VALUE":
+                result.append(ConstVariableValue(word.lower()))
+                variable_value = result.pop()
+                variable_identifier = result.pop()
+                result.append(ConstVariableDeclaration(variable_identifier, variable_value))
+                # macro parsing complete; clear the expectation for the next word -- it can be anything
+                next_const_var_word = ""
+                continue
+
+            if next_const_var_word:
+                raise Exception(f"invalid const variable declaration; expected '{next_const_var_word.lower()}' but no parsing for that part exists")
+
             # find stack variable declarations
             stack_var_def_match = re.match("stack$", word.lower())
             if stack_var_def_match:
                 # do not create the StackVariableDeclaration; that will be created after the full macro is parsed
                 next_stack_var_word = "IDENTIFIER"
                 continue
+
+            # find const variable declarations
+            const_var_def_match = re.match("const$", word.lower())
+            if const_var_def_match:
+                # do not create the ConstVariableDeclaration; that will be created after the full macro is parsed
+                next_const_var_word = "IDENTIFIER"
+                continue
+
 
             # identify label definitions and references
             global_label_def_match = re.match("^@@.+", word)
@@ -316,6 +393,17 @@ class Line:
             stack_variable_full_match = re.match("^(STACK|stack)_([a-zA-Z]+\w*$)", word)
             if stack_variable_full_match:
                 result.append(StackVariableReferenceFull(word))
+                continue
+
+            # find const variable references
+            const_variable_imm_match = re.match("^(ICONST|iconst)_([a-zA-Z]+\w*$)", word)
+            if const_variable_imm_match:
+                result.append(ConstVariableReferenceImmediate(word))
+                continue
+
+            const_variable_full_match = re.match("^(CONST|const)_([a-zA-Z]+\w*$)", word)
+            if const_variable_full_match:
+                result.append(ConstVariableReferenceFull(word))
                 continue
 
             # find stack size references
@@ -384,6 +472,9 @@ class Program:
         stack_variables_to_offsets = {}
         within_stack_frame = False # true if currently in a stack frame context
         current_stack_frame_size = 0
+
+        # identifier -> value to use when replace ConstVariableReference code items
+        const_variables_to_values = {}
 
         # labels -> VAs to use when resolving labels after first assembly pass
         label_mapping = {}
@@ -507,7 +598,16 @@ class Program:
                     # do nothing; variable declarations do not emit code, and these were already
                     # counted when we encountered the StackFrameStart
 
-                elif t is StackVariableIdentifier or t is StackVariableSize:
+                elif t is ConstVariableDeclaration:
+                    # no code is generate for const variable declarations, so don't increment PC
+                    # set the value of this variable as the value from the declaration
+                    const_variables_to_values[item.name] = item.value
+
+                elif ( t is StackVariableIdentifier
+                    or t is StackVariableSize
+                    or t is ConstVariableIdentifier
+                    or t is ConstVariableValue
+                ):
                     # there should be none of these in the code items
                     raise Exception(f"{t}s should have been consumed during Line.parse")
 
@@ -515,7 +615,7 @@ class Program:
                     if not within_stack_frame:
                         raise Exception("IFRAME_SIZE cannot be used outside stack frame context; use FRAME_START first")
                     if current_stack_frame_size > 0x7F:
-                        raise Exception("IFRAME_SIZE cannot be used when stack frame size exceeds 0x7F bytes; use FRAME_SIZE instead")
+                        raise Exception("IFRAME_SIZE cannot be used when stack frame size exceeds 0x7F; use FRAME_SIZE instead")
                     code.append(number_to_byte(current_stack_frame_size))
                     # immediate will take one byte
                     pc += 1
@@ -524,7 +624,7 @@ class Program:
                     if not within_stack_frame:
                         raise Exception("FRAME_SIZE cannot be used outside stack frame context; use FRAME_START first")
                     if current_stack_frame_size > 0xFFFFFFFF:
-                        raise Exception("FRAME_SIZE cannot be used; frame size exceeds 0xFFFFFFFF bytes")
+                        raise Exception("FRAME_SIZE cannot be used; frame size exceeds 0xFFFFFFFF")
                     # full frame size reference uses 4 bytes so it can be loaded with IAD instructions
                     code.append(address_to_bytes(current_stack_frame_size))
                     pc += 4
@@ -535,7 +635,7 @@ class Program:
                     # if there's an exception here, the variable referenced has not been declared
                     offset = stack_variables_to_offsets[item.name]
                     if offset > 0x7F:
-                        raise Exception("stack variable cannot be used; offset exceeds 0x7F bytes; use STACK_ instead")
+                        raise Exception("stack variable cannot be used; offset exceeds 0x7F; use STACK_ instead")
                     code.append(number_to_byte(offset))
                     # immediate will take one byte
                     pc += 1
@@ -546,9 +646,27 @@ class Program:
                     # if there's an exception here, the variable referenced has not been declared
                     offset = stack_variables_to_offsets[item.name]
                     if offset > 0xFFFFFFFF:
-                        raise Exception("stack variable cannot be used; offset exceeds 0xFFFFFFFF bytes")
+                        raise Exception("stack variable cannot be used; offset exceeds 0xFFFFFFFF")
                     # full stack variable reference uses 4 bytes so it can be loaded with IAD instructions
                     code.append(address_to_bytes(offset))
+                    pc += 4
+
+                elif t is ConstVariableReferenceImmediate:
+                    # if there's an exception here, the variable referenced has not been declared
+                    value = const_variables_to_values[item.name]
+                    if value > 0x7F:
+                        raise Exception("const variable cannot be used; value exceeds 0x7F; use CONST_ instead")
+                    code.append(number_to_byte(value))
+                    # immediate will take one byte
+                    pc += 1
+
+                elif t is ConstVariableReferenceFull:
+                    # if there's an exception here, the variable referenced has not been declared
+                    value = const_variables_to_values[item.name]
+                    if value > 0xFFFFFFFF:
+                        raise Exception("const variable cannot be used; value exceeds 0xFFFFFFFF")
+                    # full const variable reference uses 4 bytes so it can be loaded with IAD instructions
+                    code.append(address_to_bytes(value))
                     pc += 4
 
         # final output assembly, with all label references replaced
