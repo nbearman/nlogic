@@ -1,0 +1,18 @@
+R: read allowed
+W: write protected
+
+RW
+00  Not mapped, not resident
+10  Mapped, resident, not clean, not shared (read and write allowed)
+
+R	W	Mapped	Resident	Referenced	Clean	Shared
+1	0	Yes	    Yes	        Yes	        No	    No
+1	1	Yes	    Yes	        Yes	        Yes	    Yes
+1	1	Yes	    Yes     	Yes	        Yes 	No
+1	1	Yes	    Yes     	Yes	        No	    Yes
+0	1	Yes	    Yes     	No	        No	    No
+0	1	Yes	    Yes     	No	        Yes 	Yes
+0	1	Yes	    Yes     	No	        Yes 	No
+0	1	Yes	    Yes     	No	        No	    Yes
+0	1	Yes	    No	        No	        Yes 	No
+0	0	No	    No	        No	        Yes 	No
