@@ -560,5 +560,10 @@ namespace nlogic_sim
         {
             Application.Run(new MemoryWindow(this.memory).get_form());
         }
+
+        public bool get_mmu_enabled()
+        {
+            return this.MMU.get_enabled();
+        }
     }
 }

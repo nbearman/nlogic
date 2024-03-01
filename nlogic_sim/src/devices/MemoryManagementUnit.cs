@@ -511,6 +511,11 @@ namespace nlogic_sim
             return;
         }
 
+        public bool get_enabled()
+        {
+            return this.enabled;
+        }
+
         private struct PageTableEntry
         {
             //PTE protection bits
