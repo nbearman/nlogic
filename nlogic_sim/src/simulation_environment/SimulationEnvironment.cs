@@ -145,7 +145,19 @@ namespace nlogic_sim
                 MMU.signal_cycle();
 
                 //cycle the processor
-                cycle_status = this.processor.cycle();
+                try
+                {
+                    cycle_status = this.processor.cycle();
+                }
+                catch (Exception e)
+                {
+                    Console.WriteLine("Exception during processor cycle()");
+                    Console.WriteLine("\tMMU:\t" + (this.MMU.get_enabled() ? "Enabled" : "Disabled"));
+                    Console.WriteLine("\tPC:\t0x" + Utility.byte_array_string(this.processor.registers[Processor.PC].data_array, "", false));
+                    Console.WriteLine("\tEXE:\t0x" + Utility.byte_array_string(this.processor.registers[Processor.EXE].data_array, "", false));
+                    Console.WriteLine("\tFLAG:\t0x" + Utility.byte_array_string(this.processor.registers[Processor.FLAG].data_array, "", false));
+                    throw e;
+                }
             }
 
             //print the end state of the processor if the visualizer is enabled

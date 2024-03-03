@@ -199,7 +199,7 @@ namespace nlogic_sim
             ConsoleColor original_color = Console.ForegroundColor;
 
             //assemble code files
-            Assembler.assemble(codefiles);
+            Assembler.assemble(codefiles, null, true);
             if (!Assembler.assembled)
             {
                 Console.ForegroundColor = ConsoleColor.Red;
@@ -220,12 +220,6 @@ namespace nlogic_sim
 
             List<MMIO> mmio_devices = new List<MMIO> { VIRTUAL_DISK, VIRTUAL_DISPLAY };
 
-            Console.ForegroundColor = ConsoleColor.DarkCyan;
-            Console.Write("Connected MMIO devices: ");
-            foreach (var mmio in mmio_devices)
-                Console.Write(mmio + ", ");
-            Console.WriteLine();
-
             //set up the simulation environment
             SimulationEnvironment environment =
                 new SimulationEnvironment(
@@ -235,6 +229,19 @@ namespace nlogic_sim
 
             Console.ForegroundColor = ConsoleColor.Green;
             Console.WriteLine("Simluation environment setup successful");
+
+            Console.ForegroundColor = ConsoleColor.DarkCyan;
+            Console.WriteLine("Connected MMIO devices: ");
+            uint cumulative_mmio_offset = 0;
+            foreach (var mmio in mmio_devices)
+            {
+                string offset_string = Utility.byte_array_string(Utility.byte_array_from_uint32(4, cumulative_mmio_offset));
+                Console.WriteLine("\t0x" + offset_string + "\t" + mmio);
+                cumulative_mmio_offset += mmio.get_size();
+            }
+            Console.ForegroundColor = ConsoleColor.Red;
+            Console.WriteLine("Update hardcoded references to above addresses!");
+            Console.WriteLine();
 
             Console.ForegroundColor = original_color;
             Console.WriteLine("Simulation ready; press any key to run...");
