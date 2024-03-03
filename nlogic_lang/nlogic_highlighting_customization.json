@@ -25,6 +25,20 @@
             },
 
             {
+                "scope": "nlogic.alu-op",
+                "settings": {
+                    "foreground": "#7de7ff"
+                }
+            },
+
+            {
+                "scope": "nlogic.fpu-op",
+                "settings": {
+                    "foreground": "#d27dff"
+                }
+            },
+
+            {
                 "scope": "nlogic.line-number",
                 "settings": {
                     "foreground": "#afafaf"

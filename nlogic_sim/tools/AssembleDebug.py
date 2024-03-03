@@ -42,6 +42,29 @@ name_to_byte = {
     "DMEM": "c0",
 }
 
+alu_op_to_byte = {
+    "ANOP": "00",
+    "AADD": "01",
+    "AMUL": "02",
+    "ASUB": "03",
+    "ADIV": "04",
+    "ALSFT": "05",
+    "ARSFT": "06",
+    "AOR": "07",
+    "AAND": "08",
+    "AXOR": "09",
+    "ANAND": "0a",
+    "ANOR": "0b",
+}
+
+fpu_op_to_byte = {
+    "FNOP": "00",
+    "FADD": "01",
+    "FMUL": "02",
+    "FSUB": "03",
+    "FDIV": "04",
+}
+
 def address_to_bytes(addr:int) -> str:
     """
     Return string of 4 bytes separated by spaces
@@ -138,7 +161,7 @@ class VariableReference(ABC):
     @abstractmethod
     def get_reference_prefix_help_string(self):
         pass
-    
+
     def __init__(self, name):
         reference_prefix = self.get_reference_prefix()
         if not re.match(reference_prefix, name):
@@ -150,28 +173,28 @@ class VariableReference(ABC):
 class StackVariableReferenceImmediate(VariableReference):
     def get_reference_prefix(self):
         return "(?i)^istack_"
-    
+
     def get_reference_prefix_help_string(self):
         return "ISTACK_"
 
 class StackVariableReferenceFull(VariableReference):
     def get_reference_prefix(self):
         return "(?i)^stack_"
-    
+
     def get_reference_prefix_help_string(self):
         return "STACK_"
 
 class ConstVariableReferenceImmediate(VariableReference):
     def get_reference_prefix(self):
         return "(?i)^iconst_"
-    
+
     def get_reference_prefix_help_string(self):
         return "ICONST_"
-    
+
 class ConstVariableReferenceFull(VariableReference):
     def get_reference_prefix(self):
         return "(?i)^const_"
-    
+
     def get_reference_prefix_help_string(self):
         return "CONST_"
 
@@ -228,7 +251,7 @@ class Literal:
 
 class Fill:
     def __init__(self, fill: str):
-        # convert fill instruction to int of VA it targets, 
+        # convert fill instruction to int of VA it targets,
         # "FILLFF" -> 127
         self.target = int(fill.lower().replace("fill", ""), base=16)
 
@@ -244,7 +267,11 @@ class Instruction:
         # string of byte it translates to
         self.byte = name_to_byte.get(inst)
         if not self.byte:
-            # no known processor location
+            self.byte = alu_op_to_byte.get(inst)
+        if not self.byte:
+            self.byte = fpu_op_to_byte.get(inst)
+        if not self.byte:
+            # no known processor location or op macro
             raise Exception(f"cannot parse instruction {inst}")
 
 class Line:
@@ -353,7 +380,7 @@ class Line:
             if local_label_use_match:
                 result.append(LabelReference(word, linked=False, file_info=self.file_info))
                 continue
-            
+
             # find DMEM macros
             dmem_match = re.match("(dmem)[0-9a-f][0-9a-f]$", word.lower())
             if dmem_match:
@@ -416,7 +443,7 @@ class Line:
             if stack_size_imm_match:
                 result.append(StackFrameSizeFull())
                 continue
-            
+
             # identify byte literals
             literal_match = re.match("^[0-9a-f][0-9a-f]$", word.lower())
             if literal_match:
@@ -521,7 +548,7 @@ class Program:
                 elif t is Instruction:
                     code.append(item.byte)
                     pc += 1
-                
+
                 elif t is Fill:
                     if pc > item.target:
                         # FILLXX places the next instruction at address XX
@@ -532,7 +559,7 @@ class Program:
                         # we reach the target
                         code.append("00")
                         pc += 1
-                
+
                 elif t is LabelReference:
                     # label references refer to 32 bit addresses, so increment counter by 4
                     # push the label reference as is, and we will convert it to 4 bytes in the
@@ -543,6 +570,8 @@ class Program:
                 elif t is LabelDefinition:
                     # no code is generated for label definitions, so don't increment PC
                     # resolve the target of this label as the current VA
+                    if label_mapping.get(item.lookup):
+                        raise Exception(f"Duplicate label defined: {item.label}")
                     label_mapping[item.lookup] = pc
 
                 elif t is StackFrameStart:

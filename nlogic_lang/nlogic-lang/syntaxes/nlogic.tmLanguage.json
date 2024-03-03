@@ -81,6 +81,16 @@
 		},
 
 		{
+			"match": "\\b(ANOP|AADD|AMUL|ASUB|ADIV|ALSFT|ARSFT|AOR|AAND|AXOR|ANAND|ANOR)\\b",
+			"name": "nlogic.alu-op"
+		},
+
+		{
+			"match": "\\b(FNOP|FADD|FMUL|FSUB|FDIV)\\b",
+			"name": "nlogic.fpu-op"
+		},
+
+		{
 			"match": "\\b((0x)?[0-9a-fA-F]+)\\b",
 			"name": "nlogic.number"
 		},
