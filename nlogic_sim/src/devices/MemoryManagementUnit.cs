@@ -72,6 +72,11 @@ namespace nlogic_sim
         private uint breakpoint_cycle_delay_counter = 0;
 
         /// <summary>
+        /// 0x1 if the faulted operation was a write. 0x0 if it was a read. Stored for reference by the page fault handler
+        /// </summary>
+        private bool faulted_operation_was_write = false;
+
+        /// <summary>
         /// Physical memory of this MMU's environment (RAM)
         /// </summary>
         private byte[] environment_memory;
@@ -263,22 +268,6 @@ namespace nlogic_sim
             this.raise_interrupt = signal_callback;
         }
 
-        //MMIO device interface methods
-
-        uint MMIO.get_size()
-        {
-            //32 bytes for 8 uint registers:
-            //  active page directory base address
-            //  queued page directory base address
-            //  virtual address mmu breakpoint
-            //  faulted PTE
-            //  faulted address
-            //  breakpoint enabled
-            //  enabled
-            //  breakpoint cycle delay counter
-            return 32; // TODO if this changes, the address of the virtual disk needs to be updated in boot and handler
-        }
-
         //TODO this is out of date (missing MMU registers) and currently not used (write_byte / read_byte currently used instead)
         void MMIO.write_memory(uint address, byte[] data)
         {
@@ -326,8 +315,10 @@ namespace nlogic_sim
             //TODO clean this mess up by changing the MMU's registers from uint variables
             //to some kind of dictionary or array or something with accessors to make it convenient
             uint value;
-            if (address >= (uint)MMIOLayout.BREAKPOINT_CYCLE_DELAY_COUNTER + 4)
+            if (address >= (uint)MMIOLayout.FAULTED_OPERATION_REGISTER + 4)
                 throw new ArgumentException("MMU access error: the given address is beyond the range of writable registers");
+            else if (address >= (uint)MMIOLayout.FAULTED_OPERATION_REGISTER)
+                throw new ArgumentException("MMU access error: the faulted operation register is read-only");
             else if (address >= (uint)MMIOLayout.BREAKPOINT_CYCLE_DELAY_COUNTER)
                 value = this.breakpoint_cycle_delay_counter;
             else if (address >= (uint)MMIOLayout.ENABLED)
@@ -370,8 +361,12 @@ namespace nlogic_sim
         public byte read_byte(uint address)
         {
             uint value;
-            if (address >= (uint)MMIOLayout.ENABLED + 4)
+            if (address >= (uint)MMIOLayout.FAULTED_OPERATION_REGISTER + 4)
                 throw new ArgumentException("MMU access error: the given address is beyond the range of readable registers");
+            else if (address >= (uint)MMIOLayout.FAULTED_OPERATION_REGISTER)
+                value = this.faulted_operation_was_write ? (uint)1 : (uint)0;
+            else if (address >= (uint)MMIOLayout.BREAKPOINT_CYCLE_DELAY_COUNTER)
+                throw new ArgumentException("MMU access error: the breakpoint cycle delay counter is not a readable register");
             else if (address >= (uint)MMIOLayout.ENABLED)
                 value = this.enabled ? (uint)1 : (uint)0;
             else if (address >= (uint)MMIOLayout.BREAKPOINT_ENABLED)
@@ -473,7 +468,7 @@ namespace nlogic_sim
             //[1111 1111 11][00 0000 0000][0000 0000 0000]
             uint directory_number = (virtual_address & 0xFFC00000) >> 22;
 
-            //page directory entry address:
+            //page directory entry physical address:
             //[directory base address]  [directory #] [00]
             //[0000 0000 0000 0000 0000][00 0000 0000][00]
             return (page_directory_base_address << 12) | (directory_number << 2);
@@ -486,7 +481,7 @@ namespace nlogic_sim
             //[0000 0000 00][11 1111 1111][0000 0000 0000]
             uint page_number = (virtual_address & 0x003FF000) >> 12;
 
-            //page table entry address:
+            //page table entry physical address:
             //[table phsyical page #]   [page #]      [00]
             //[0000 0000 0000 0000 0000][00 0000 0000][00]
             return (page_table_physical_page_number << 12) | (page_number << 2);
@@ -584,6 +579,22 @@ namespace nlogic_sim
             BREAKPOINT_ENABLED = 20,
             ENABLED = 24,
             BREAKPOINT_CYCLE_DELAY_COUNTER = 28,
+            FAULTED_OPERATION_REGISTER = 32,
+        }
+
+        uint MMIO.get_size()
+        {
+            //36 bytes for 9 uint registers:
+            //  active page directory base address
+            //  queued page directory base address
+            //  virtual address mmu breakpoint
+            //  faulted PTE
+            //  faulted address
+            //  breakpoint enabled
+            //  enabled
+            //  breakpoint cycle delay counter
+            //  faulted operation (write? == 1)
+            return 36; // TODO if this changes, the address of the virtual disk needs to be updated in boot and handler
         }
     }
 }
