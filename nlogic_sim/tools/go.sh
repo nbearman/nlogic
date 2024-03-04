@@ -49,7 +49,7 @@ if [ ! -d ./disk ] ; then
     echo ""
     echo "Missing: /disk directory."
     echo "Continue without creating a virtual disk? "
-    select skip_disk in "Yes" "No"; do
+    select skip_disk in "No" "Yes"; do
         case $skip_disk in
             Yes ) SKIP_DISK=true; break;;
             No ) exit 1; break;;
