@@ -553,7 +553,7 @@ class Program:
                     if pc > item.target:
                         # FILLXX places the next instruction at address XX
                         # We can't place the next instruction there if we are already past it
-                        raise Exception("cannot fill; already past target")
+                        raise Exception(f"cannot fill; already past target {item.target} (current: {pc})")
                     while pc < item.target:
                         # push a byte and increment PC for each filled instruction until
                         # we reach the target

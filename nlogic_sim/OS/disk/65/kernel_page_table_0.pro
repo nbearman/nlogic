@@ -30,8 +30,8 @@
 //
 
 
-C0  00  00  03 // R W (read and write) physical page 3 (kernel program page 0)
-C0  0F  F0  00 // R W (read and write) physical page 0xFF000 (MMIO devices)
+80  00  00  03 // R W (10) (read and write allowed) physical page 3 (kernel program page 0)
+80  0F  F0  00 // R W (10) (read and write allowed) physical page 0xFF000 (MMIO devices)
 00  00  00  00
 00  00  00  00
 00  00  00  00

@@ -14,5 +14,5 @@
 //  kernel code files
 //  In real systems, the stack would start at the end of VA space and grow down
 //      to do this, we would need to change kernel to use an upside-down stack
-FILL0C00
+FILL0F00
 @@KERNEL_STACK

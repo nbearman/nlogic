@@ -1,4 +1,7 @@
-﻿//=========================================================================
+﻿CONST physical_memory_pages 10
+CONST mmio_disk_base_address 1024
+
+//=========================================================================
 // kernel entry point
 //=========================================================================
 
@@ -48,12 +51,17 @@ FILL100 //data should start after DMEM accessible region (0x00 - 0x3F) so it can
 //==========
 // 0x00 |   uint    |   process id
 // 0x04 |   uint    |   directory physical page
-// 0x08 |   uint    |   virtual page number
+// 0x08 |   uint    |   virtual page / table number
 // 0x0C |   uint    |   number of references
 // 0x10 |   uint    |   disk block number
+// 0x14 |   uint    |   LRU referenced?
+// 0x18 |   uint    |   dirty
 //=========================
+CONST ppage_map_entry_size 1C
 
 //boot sequence (no owner)
+00 00 00 00
+00 00 00 00
 00 00 00 00
 00 00 00 00
 00 00 00 00
@@ -66,6 +74,8 @@ FILL100 //data should start after DMEM accessible region (0x00 - 0x3F) so it can
 00 00 00 00 //this is a directory
 00 00 00 01 //kernel process references this physical page
 00 00 00 00 //no disk block number, can never be evicted
+00 00 00 00
+00 00 00 00
 
 //kernel page table 0
 00 00 00 01 //kernel process ID == 1
@@ -73,6 +83,8 @@ FILL100 //data should start after DMEM accessible region (0x00 - 0x3F) so it can
 00 00 00 00 //virtual table 0
 00 00 00 01 //kernel process references this physical page
 00 00 00 00 //no disk block number, can never be evicted
+00 00 00 00
+00 00 00 00
 
 //kernel virtual page 0
 00 00 00 01 //kernel process ID == 1
@@ -80,8 +92,12 @@ FILL100 //data should start after DMEM accessible region (0x00 - 0x3F) so it can
 00 00 00 00 //virtual page 0
 00 00 00 01 //kernel process references this physical page
 00 00 00 00 //no disk block number, can never be evicted
+00 00 00 00
+00 00 00 00
 
 //empty (no owner)
+00 00 00 00
+00 00 00 00
 00 00 00 00
 00 00 00 00
 00 00 00 00
@@ -94,6 +110,8 @@ FILL100 //data should start after DMEM accessible region (0x00 - 0x3F) so it can
 00 00 00 00 //this is a directory
 00 00 00 01 //user process references this physical page
 00 00 00 00 //no disk block number yet
+00 00 00 00
+00 00 00 00
 
 //user page table 0
 00 00 00 02 //user process ID == 2
@@ -101,6 +119,8 @@ FILL100 //data should start after DMEM accessible region (0x00 - 0x3F) so it can
 00 00 00 00 //virtual table 0
 00 00 00 01 //user process references this physical page
 00 00 00 00 //no disk block number yet
+00 00 00 00
+00 00 00 00
 
 //user virtual page 0
 00 00 00 02 //user process ID == 2
@@ -108,6 +128,8 @@ FILL100 //data should start after DMEM accessible region (0x00 - 0x3F) so it can
 00 00 00 00 //virtual page 0
 00 00 00 01 //user process references this physical page
 00 00 00 64 //loaded from disk block 100
+00 00 00 00
+00 00 00 00
 
 
 
@@ -117,19 +139,11 @@ FILL100 //data should start after DMEM accessible region (0x00 - 0x3F) so it can
 00 00 00 00
 00 00 00 00
 00 00 00 00
-//empty (no owner)
-00 00 00 00
-00 00 00 00
-00 00 00 00
 00 00 00 00
 00 00 00 00
 //empty (no owner)
 00 00 00 00
 00 00 00 00
-00 00 00 00
-00 00 00 00
-00 00 00 00
-//empty (no owner)
 00 00 00 00
 00 00 00 00
 00 00 00 00
@@ -141,10 +155,6 @@ FILL100 //data should start after DMEM accessible region (0x00 - 0x3F) so it can
 00 00 00 00
 00 00 00 00
 00 00 00 00
-//empty (no owner)
-00 00 00 00
-00 00 00 00
-00 00 00 00
 00 00 00 00
 00 00 00 00
 //empty (no owner)
@@ -153,7 +163,35 @@ FILL100 //data should start after DMEM accessible region (0x00 - 0x3F) so it can
 00 00 00 00
 00 00 00 00
 00 00 00 00
+00 00 00 00
+00 00 00 00
 //empty (no owner)
+00 00 00 00
+00 00 00 00
+00 00 00 00
+00 00 00 00
+00 00 00 00
+00 00 00 00
+00 00 00 00
+//empty (no owner)
+00 00 00 00
+00 00 00 00
+00 00 00 00
+00 00 00 00
+00 00 00 00
+00 00 00 00
+00 00 00 00
+//empty (no owner)
+00 00 00 00
+00 00 00 00
+00 00 00 00
+00 00 00 00
+00 00 00 00
+00 00 00 00
+00 00 00 00
+//empty (no owner)
+00 00 00 00
+00 00 00 00
 00 00 00 00
 00 00 00 00
 00 00 00 00
@@ -161,7 +199,7 @@ FILL100 //data should start after DMEM accessible region (0x00 - 0x3F) so it can
 00 00 00 00
 
 //end physical page map (32 page mappings)(TODO only 16 shown; space reserved for the rest with FILL)
-FILL380
+FILL480
 
 @@process_map
 //process map
@@ -174,6 +212,8 @@ FILL380
 // 0x08 |   uint    |   number of pages resident in memory
 // 0x0C |   uint    |   disk block of process page directory
 //=========================
+CONST process_map_entry_size 10
+CONST process_map_length 10
 
 //kernel process descriptor
 00 00 00 01 //kernel process ID == 1
@@ -182,7 +222,7 @@ FILL380
 00 00 00 00 //no disk block number, kernel page directory can never be evicted
 
 //user process descriptor
-00 00 00 01 //user process ID == 2
+00 00 00 02 //user process ID == 2
 00 00 00 03 //2 pages are mapped: 2 pages of memory
 00 00 00 03 //page directory, page table, 1 page of memory
 00 00 00 00 //TODO figure out if we're supposed to load process page directory from disk...
@@ -191,8 +231,7 @@ FILL380
             // mapped out of the box [length of program data])
 
 //end process map (16 process descriptors)
-FILL480
-
+FILL580
 
 //TODO unused space between 0x480 and 0x500
 //  interrupt handler could be moved to 0x480
@@ -201,7 +240,7 @@ FILL480
 //=========================================================================
 // interrupt handler
 //=========================================================================
-FILL500
+FILL600
 //Fill to place the interrupt handler code at the correct location
     //TODO the address of the interrupt handler is currently hardcoded in the simulation environment
     //interrupt_handler_address in Processor class
@@ -279,29 +318,45 @@ FRAME_START
 //=========================
 // interrupt handler stack layout / local variables
 //==========
+// TODO out of date with the stack macros below
 // 0x00 |   uint    |   FLAG
 // 0x04 |   uint    |   faulted PTE
 // 0x08 |   uint    |   faulted virtual address
-// 0x0C |   uint    |   faulted PTE disk block
-// 0x10 |   uint    |   virtual page number from faulted virtual address
-// 0x14 |   uint    |   active process ID
-// 0x18 |   uint    |   active process page directory physical page
-// 0x1C |   uint    |   physical page new page is moved into
+// 0x0C |   uint    |   faulted virtual address
+// 0x10 |   uint    |   faulted PTE disk block
+// 0x14 |   uint    |   virtual page number from faulted virtual address
+// 0x18 |   uint    |   active process ID
+// 0x1C |   uint    |   active process page directory physical page
+// 0x20 |   uint    |   physical page new page is moved into
 //=========================
 
     STACK flag_val 04
     STACK faulted_pte 04
     STACK faulted_va 04
+    STACK faulted_operation 04
     STACK faulted_pte_block 04
     STACK faulted_va_vpage_num 04
+    STACK faulted_va_table_num 04
     STACK active_process_id 04
     STACK active_process_page_directory_ppage 04
+    STACK active_process_map_entry_index 04
     STACK target_ppage 04
     STACK fetched_pde 04 // possibly different than faulted PTE if the leaf page faulted
     STACK fetched_pte 04 // retrieved by following the PDE if leaf page faulted
                             //should be the same as faulted PTE in that case
     STACK fetched_pde_kpa 04
     STACK fetched_pte_kpa 04
+
+    //lower 20 bits of fetched PDE and PTE; if the page it points
+    //to is resident, it's a physical page number, else it's a disk
+    //block number where the page was evicted to
+    STACK fetched_pde_number 04
+    STACK fetched_pte_number 04
+
+    STACK updated_pde 04
+    STACK updated_pte 04
+    STACK virtual_table_ppage 04
+    STACK virtual_page_ppage 04
 
 //add stack frame; registers are dumped to bottom of the stack, so we don't need to save a frame pointer
 //  (specifically because handler runs at the very bottom of the kernel's stack)
@@ -397,12 +452,42 @@ ISIZE_FRAME WOFST //WOFST = SP == frame size
     10 ROFST //0x10 == faulted VA register offset in MMU address range
     RMEM GPB
 
+//retrieve the faulted operation from the MMU
+    20 ROFST //0x20 == faulted operation register offset in MMU address range
+    RMEM GPC
+
 //store faulted PTE and faulted virtual address in local variables
     WBASE RBASE
     ISTACK_faulted_pte ROFST
     GPA RMEM
     ISTACK_faulted_va ROFST
     GPB RMEM
+    ISTACK_faulted_operation ROFST
+    GPC RMEM
+
+//break the VA into its parts and store in local variables
+    GPB ALUA //faulted VA to ALU
+    IADF ALUB
+    SKIP PC
+    FF C0 00 00 //table number mask
+    AAND ALUM
+    ALUR ALUA
+    16 ALUB
+    ARSFT ALUM
+    ISTACK_faulted_va_table_num ROFST
+    ALUR RMEM
+
+    GPB ALUA
+    IADF ALUB
+    SKIP PC
+    00 3F F0 00 //virtual page number mask
+    AAND ALUM
+    ALUR ALUA
+    0C ALUB
+    ARSFT ALUM
+    ISTACK_faulted_va_vpage_num ROFST
+    ALUR RMEM
+
 
 //get the active process ID and page directory physical page from kernel memory
     00 ROFST
@@ -422,55 +507,425 @@ ISIZE_FRAME WOFST //WOFST = SP == frame size
     ISTACK_active_process_page_directory_ppage ROFST
     GPD RMEM
 
-//check PTE protections
-//get them from PTE
-    GPA ALUA //PTE to ALU
-    IADF ALUB //mask to ALU
+//store active process entry index in local variable
+    GPC GPH //active process ID to GPH
+    RTRN LINK
+    IADN PC
+    :lite_find_process_map_entry_index_by_id //[GPH] -> [GPG][GPH]
+
+    GPG COMPA
+    00 COMPB
+    COMPR PC
+    :active_process_entry_not_found
+    :active_process_entry_is_found
+    @active_process_entry_not_found
+    7F FLAG //no process entry found for active process; halt
+    @active_process_entry_is_found
+    WBASE RBASE
+    ISTACK_active_process_map_entry_index ROFST
+    GPH RMEM //store the process map entry ID in local variable
+
+////////////////////////////////////
+////////////////// New new handler
+////////////////////////////////////
+
+////////////////////////////////////////////
+// fetch PDE
+//
+// check table is mapped
+//     halt if not
+// check table is resident
+//     retrieve from disk if not
+// mark table as referenced
+// update page directory
+//     set PDE R to 1
+//
+// fetch PTE
+//
+// check page is mapped
+//     halt if not
+// check page is resident
+//     retrieve from disk if not
+// mark page as referenced
+// if write
+//     check if page clean
+//         check if page shared
+//             split if so
+//     mark page as dirty
+// update page table
+//     if page table is write protected
+//         check if table clean
+//             check if table shared
+//                 split if so
+//         make table as dirty
+//         update page directory
+//             set PDE W to 0
+//     set PTE R to 1 (read allowed)
+//     set PTE W to == !clean && !shared
+////////////////////////////////////////////
+
+//get PDE
+    ALSFT ALUM //left shift
+    GPD ALUA //active process page directory physical page
+    0C ALUB //12 bits
+    ALUR GPA //GPA = page directory base address
+
+    //page table number = (virtual address & 0xFFC00000) >> 22
+    AAND ALUM //AND
+    GPB ALUA //virtual address
+    IADF ALUB //mask for first 12 bits
     SKIP PC
-    C0 00 00 00 //mask for the RW bits of the PTE
-    08 ALUM //AND mode
+    FF C0 00 00
 
-    ALUR ALUA //RW bits to ALU
-    1E ALUB //shift 30 bits right
-    06 ALUM //right shift mode
+    ALUR ALUA
+    ARSFT ALUM //right shift
+    14 ALUB //20 bits (page number is given by shifting 22 bits, but offset into page table is page number * 4, so shift left 2 bits)
 
-//see which of 00, 01, 10, 11 the RW bits are
-ALUR COMPA
-00 COMPB //0b00
+    ALUR ALUB
+    GPA ALUA
+    AOR ALUM //OR
+        //TODO setting OR then AND? probably do the same thing in this case
+        // probably need to swap the next two instructions: use OR, retrieve result, then set AND
+    AADD ALUM //add
+    ALUR ALUA //page directory entry physical address
+    IADF ALUB //add 0x00 3F 00 00 to get kernel virtual address of physical address
+    SKIP PC
+    00 3F 00 00
+
+    //save kernel's VA of the PDE in local variable; we'll need to write the updated PDE back later
+    WBASE RBASE
+    ISTACK_fetched_pde_kpa ROFST
+    ALUR RMEM
+
+    //set RBASE to point to the PDE for the faulted address (may or may not be the PDE/PTE that faulted)
+    ALUR RBASE
+    00 ROFST
+    RMEM GPE //PDE to GPE
+
+    //save the PDE in local variable
+    WBASE RBASE
+    ISTACK_fetched_pde ROFST
+    GPE RMEM
+    ISTACK_updated_pde ROFST
+    GPE RMEM
+
+    //save the ppage/disk block number from the PDE in a local variable
+    GPE ALUA
+    IADF ALUB
+    SKIP PC
+    00 0F FF FF //number mask
+    AAND ALUM
+    ISTACK_fetched_pde_number ROFST
+    ALUR RMEM
+
+//check PDE protection bits to see if page table is mapped
+    GPE ALUA //PDE to ALU
+    IADF ALUB //RW bit mask to ALU
+    SKIP PC
+    C0 00 00 00 //RW bit mask
+    AAND ALUM //AND mode
+
+    ALUR ALUA //masked RW bits to ALU
+    1E ALUB //30 bits right
+    ARSFT ALUM //right shift mode
+        //TODO don't need to shift to compare to 0
+
+    //if RW bits are 00, page table is not mapped
+    ALUR COMPA //RW bits to COMP
+    00 COMPB //0b00
+    COMPR PC
+    :pde_not_mapped //RW == 00
+    :pde_is_mapped
+
+    @pde_not_mapped
+    //RW == 00; page table is not mapped; access error
+    7F FLAG //halt here
+
+    @pde_is_mapped
+    //page table is mapped, continue
+
+//check page table is resident
+WBASE RBASE
+ISTACK_fetched_pde ROFST
+RMEM GPH
+RTRN LINK
+IADN PC
+:lite_number_from_pte //[GPH] -> [GPH]
+//GPH holds number (ppage or disk block, not known yet)
+//store in local variable
+    //if it is the ppage, it's correct; if it's not the ppage,
+    //it's the disk block, but we'll update this variable when
+    //loading the table into memory
+WBASE RBASE
+ISTACK_virtual_table_ppage ROFST
+GPH RMEM
+
+//check if the table is resident
+ISTACK_faulted_va_table_num ROFST
+RMEM GPG
+RTRN LINK
+IADN PC
+:lite_check_ppage_matches_vpage //[GPG][GPH] -> [GPH]
+//GPH holds 1 if table is resident
+GPH COMPA
+01 COMPB
 COMPR PC
-:r0w0
-:_r0w0
-@_r0w0
-01 COMPB //0b01
+:page_table_is_resident
+:page_table_not_resident
+
+@page_table_not_resident
+    //the page table is not resident, which means the number in the PDE
+    //actually represents the disk block where the table was evicted to
+    break //TODO not tested
+    RTRN LINK
+    IADN PC
+    :lite_get_open_ppage //() -> [GPH]
+    //GPH holds open ppage
+    //table will be stored in that ppage; store in local variable
+    WBASE RBASE
+    ISTACK_virtual_table_ppage ROFST
+    GPH RMEM
+
+    //load variables needed for loading the page from disk
+    ISTACK_active_process_map_entry_index ROFST
+    RMEM GPC
+    ISTACK_faulted_va_table_num ROFST
+    RMEM GPD
+    ISTACK_active_process_page_directory_ppage ROFST
+    RMEM GPE
+    ISTACK_active_process_id ROFST
+    RMEM GPF
+    ISTACK_fetched_pde ROFST
+    RMEM GPG
+    break
+    RTRN LINK
+    IADN PC
+    :lite_load_pte_to_ppage //[GPC][GPD][GPE][GPF][GPG][GPH] -> [GPG]
+    //store modified PDE in local variable
+    WBASE RBASE
+    ISTACK_updated_pde ROFST
+    GPG RMEM
+
+@page_table_is_resident
+    //update physical page map to show page is referenced
+        //because we're reading this table now
+    WBASE RBASE
+    ISTACK_virtual_table_ppage ROFST
+    RMEM GPH
+    14 GPG //offset to referenced field
+    01 GPF //referenced = true
+    RTRN LINK
+    IADN PC
+    :lite_set_ppage_field //[[GPF][GPG][GPH] -> ()
+
+    //set R to 1 on PDE since the table is loaded and referenced now
+    WBASE RBASE
+    ISTACK_updated_pde ROFST
+    RMEM GPH
+    RTRN LINK
+    IADN PC
+    :lite_set_pte_readable //[GPH] -> [GPH]
+    WBASE RBASE
+    ISTACK_updated_pde ROFST
+    //store newly updated PDE back into local variable
+    GPH RMEM
+    //also store updated PDE back into page directory
+    ISTACK_fetched_pde_kpa ROFST //load PDE physical address
+    RMEM RBASE //set RMEM to point to PDE physical address
+    00 ROFST
+    GPH RMEM //store PDE into page directory
+
+    //mark the directory ppage as dirty, since we updated the PDE
+    break
+    ISTACK_active_process_page_directory_ppage ROFST
+    RMEM GPH
+    18 GPG //offset to dirty field
+    01 GPF //dirty = true
+    RTRN LINK
+    IADN PC
+    :lite_set_ppage_field //[GPF][GPG][GPH] -> ()
+
+//get PTE
+    //calculate PTE physical address
+    WBASE RBASE
+    ISTACK_virtual_table_ppage ROFST
+    RMEM ALUA
+    0C ALUB
+    ALSFT ALUM //shift table physical page left 12 bits
+    ALUR GPH
+
+    ISTACK_faulted_va_vpage_num ROFST
+    RMEM ALUA //get the vpage number
+    02 ALUB //left shift vpage number 2 bits
+    //combine shifted vpage and shifted table ppage to get PTE addr
+    ALUR ALUB
+    GPH ALUA
+    AOR ALUM
+    //ALUR holds PTE physical address, but needs
+    //to be transformed into kernel VA space to be readable
+    ALUR ALUA
+    IADF ALUB
+    SKIP PC
+    00 3F 00 00 //add 0x00 3F 00 00 to get kernel virtual address of physical address
+    AADD ALUM
+    //ALUR holds kernel VA of PTE physical address
+    //store into local variable
+    ISTACK_fetched_pte_kpa ROFST
+    ALUR RMEM
+
+    //read the PTE
+    ALUR RBASE
+    00 ROFST
+    RMEM ALUA //hold in ALUA to extract the number later
+
+    //store PTE into local variable
+    WBASE RBASE
+    ISTACK_fetched_pte ROFST
+    ALUA RMEM
+    ISTACK_updated_pte ROFST
+    ALUA RMEM
+    ALUA GPA //also store in GPA; PTE will be processed next
+
+    //extract the ppage / disk block number (not known which yet)
+    IADF ALUB
+    SKIP PC
+    00 0F FF FF //PTE number mask
+    AAND ALUM
+    //store number in local variable
+    ISTACK_fetched_pte_number ROFST
+    ALUR RMEM
+    //also store as the ppage number
+        //we don't yet know if it's a ppage or disk block,
+        //but if it's not a ppage, this variable will be updated
+        //when pulling the page into memory
+    ISTACK_virtual_page_ppage ROFST
+    ALUR RMEM
+
+//check PTE protection bits to see if page is mapped
+    GPA ALUA //PTE to ALU
+    IADF ALUB
+    SKIP PC
+    C0 00 00 00 //RW bit mask
+    AAND ALUM
+    //if RW bits are 00, page is not mapped
+    ALUR COMPA
+    00 COMPB
+    COMPR PC
+    :pte_not_mapped
+    :pte_is_mapped
+    @pte_not_mapped
+    //RW == 00; page is not mapped; access error
+    7F FLAG //halt here
+    @pte_is_mapped
+    //page is mapped, continue
+
+//check page is resident
+GPA GPH //move PTE to GPH for lite func arg
+WBASE RBASE
+ISTACK_faulted_va_vpage_num ROFST
+RMEM GPG
+RTRN LINK
+IADN PC
+:lite_check_ppage_matches_vpage //[GPG][GPH] -> [GPH]
+//GPH holds 1 if table is resident
+GPH COMPA
+01 COMPB
 COMPR PC
-:r0w1
-:_r0w1
-@_r0w1
-02 COMPB //0b10
-COMPR PC
-:r1w0
-:_r1w0
-@_r1w0
-7F FLAG //halt; RW was 11, no page fault should have occurred
+:page_is_resident
+:page_not_resident
 
-@r0w0
-//not mapped (possibly syscall)
-7F FLAG //TODO for now, just halt
+@page_not_resident
+    //page is not resident, which means the number in the PTE
+    //actually represents the disk block where the page was evicted to
+    RTRN LINK
+    IADN PC
+    :lite_get_open_ppage //() -> [GPH]
+    //GPH holds open ppage
+    //vpage will be stored in that ppage; store in local variable
+    WBASE RBASE
+    ISTACK_virtual_page_ppage ROFST
+    GPH RMEM
 
-@r1w0
-//page is readable but not writable
-//either a shared page or a clean page
-//page needs to be split or marked as dirty
-7F FLAG //TODO for now, just halt
+    //load variables needed for loading the page from disk
+    ISTACK_active_process_map_entry_index ROFST
+    RMEM GPC
+    ISTACK_faulted_va_vpage_num ROFST
+    RMEM GPD
+    ISTACK_active_process_page_directory_ppage ROFST
+    RMEM GPE
+    ISTACK_active_process_id ROFST
+    RMEM GPF
+    ISTACK_fetched_pte ROFST
+    RMEM GPG
+    RTRN LINK
+    IADN PC
+    :lite_load_pte_to_ppage //[GPC][GPD][GPE][GPF][GPG][GPH] -> [GPG]
+    //store modified PTE in local variable
+    WBASE RBASE
+    ISTACK_updated_pte ROFST
+    GPG RMEM
 
-@r0w1
-//not readable and "writable" indicates the page is mapped but paged out
-//page not resident
+@page_is_resident
+    //update physical page map to show page is referenced
+        //because we're accessing this page now
+    WBASE RBASE
+    ISTACK_virtual_page_ppage ROFST
+    RMEM GPH
+    RTRN LINK
+    IADN PC
+    14 GPG //offset to referenced field
+    01 GPF //referenced = true
+    :lite_set_ppage_field //[GPF][GPG][GPH] -> ()
+
+    //set R to 1 on PTE since the page is loaded and referenced
+    WBASE RBASE
+    ISTACK_updated_pte ROFST
+    RMEM GPH
+    RTRN LINK
+    IADN PC
+    :lite_set_pte_readable //[GPH] -> [GPH]
+    break
+    WBASE RBASE
+    ISTACK_updated_pte ROFST
+    //store newly updated PTE back into local variable
+    GPH RMEM
+    //also store updated PTE back into page table
+    ISTACK_fetched_pte_kpa ROFST //load PTE physical address
+    RMEM RBASE //set RMEM to point to PTE physical address
+    00 ROFST
+    GPH RMEM //TODO this is failing because
+        //the page table is write-protected;
+        //before updating, check if write protected,
+        //mark as dirty (add dirty field to struct),
+        //and split if necessary; also do the same
+        //when storing the updated PDE back into the
+        //page directory above
+break
+
+
+7F FLAG //TODO keep going
+
+
+
+////////////////////////////////////
+////////////////////////////////////
+
+////////////////////////////////////
+////////////////////////////////////
+
+
+
+
+////////////////////////////////////
+////////////////// Old handler below
+////////////////////////////////////
+
 
 //push function address onto stack
 IADF WMEM
 SKIP PC
-::get_open_physical_page
+break //TODO commented out because it will probably be removed
+// ::get_open_physical_page
 
 01 ALUM //add mode
 ISIZE_FRAME ALUA //stack frame size
@@ -518,7 +973,7 @@ IADN PC
     //point RMEM to virtual disk
         IADF RBASE
         SKIP PC
-        00 00 10 20 //MMIO starts at VA 1000, disk starts at 20
+        00 00 10 24 //MMIO starts at VA 1000, disk starts at 24
     //tell disk the target physical page (stored in GPH)
         00 ROFST
         GPH RMEM
@@ -543,7 +998,7 @@ IADN PC
     //calculate offset of target physical page entry
         02 ALUM //multiply
         GPH ALUA //target physical page
-        14 ALUB //20 bytes per entry
+        ICONST_ppage_map_entry_size ALUB //24 bytes per entry
         ALUR ROFST //physical page map offset
 
     GPC RMEM //set process ID to user process
@@ -559,7 +1014,7 @@ IADN PC
     //move to next field
         ALUR ALUA
         ALUR ROFST
-        
+
     GPF RMEM //set virtual page/directory number to that of the faulted address
 
     //move to next field
@@ -601,9 +1056,9 @@ IADN PC
         ALUR RMEM
 
 //update page table
-//TODO how do we know if we loaded a page table or a leaf page?
-//  if we loaded a leaf page, we need to update the page table
-//  but if we loaded a page table, we need to update the page directory
+//how do we know if we loaded a page table or a leaf page?
+//  if we loaded a leaf page, we need to update the page table (with new physical page number)
+//  but if we loaded a page table, we need to update the page directory (with new physical page number)
 //      Use the page table to see which of the PDE/PTE was protected -> caused this fault
 //  traverse the page table: the first PDE/PTE with matching protection bits
 //  was the one that failed
@@ -639,78 +1094,8 @@ IADN PC
 //          update the PTE with the new physical page where the page table was put (local var at 0x1C)
 //      done
 
-//get PDE
-    05 ALUM //left shift
-    GPD ALUA //active process page directory physical page
-    0C ALUB //12 bits
-    ALUR GPA //GPA = page directory base address
 
-    //page table number = (virtual address & 0xFFC00000) >> 22
-    08 ALUM //AND
-    GPB ALUA //virtual address
-    IADF ALUB //mask for first 12 bits
-    SKIP PC
-    FF C0 00 00
 
-    ALUR ALUA
-    06 ALUM //right shift
-    14 ALUB //20 bits (page number is given by shifting 22 bits, but offset into page table is page number * 4, so shift left 2 bits)
-
-    ALUR ALUB
-    GPA ALUA
-    07 ALUM //OR
-        //TODO setting OR then AND? probably do the same thing in this case
-        // probably need to swap the next two instructions: use OR, retrieve result, then set AND
-    01 ALUM //add
-    ALUR ALUA //page directory entry physical address
-    IADF ALUB //add 0x00 3F 00 00 to get kernel virtual address of physical address
-    SKIP PC
-    00 3F 00 00
-
-    //save kernel's VA of the PDE in local variable; we'll need to write the updated PDE back later
-    WBASE RBASE
-    ISTACK_fetched_pde_kpa ROFST
-    ALUR RMEM
-
-    //set RBASE to point to the PDE for the faulted address (may or may not be the PDE/PTE that faulted)
-    ALUR RBASE
-    00 ROFST
-
-//check if PDE or PTE faulted
-//  PDE faulted if the PDE is !R,W
-//  else PTE faulted (if PTE faulted, PDE is necessarily R,W, else it would have faulted first)
-    //extract RW bits from PDE
-        RMEM ALUA //PDE to ALU
-
-            //store PDE in local variable for later
-            WBASE RBASE
-            ISTACK_fetched_pde ROFST
-            ALUA RMEM
-
-        IADF ALUB //protection mask to ALU
-        SKIP PC
-        C0 00 00 00 //mask for the RW bits of the PDE
-        08 ALUM //AND mode
-
-        ALUR ALUA //RW bits to ALU
-        1E ALUB //shift 30 bits right
-        06 ALUM //right shift mode
-
-    //compare PDE RW bits to !R,W (0x01)
-        ALUR COMPA //RW bits to comparator
-        01 COMPB //!R,W (0x01) to comparator
-        COMPR PC
-        :table_caused_r0w1 //the PDE faulted, so we just loaded a page table into memory
-        :leaf_caused_r0w1 //the PTE faulted, so we just loaded a leaf page into memory
-
-@table_caused_r0w1 //IF CLAUSE (PDE faulted)
-//if PDE faulted, we just loaded a page table in; update the PDE
-//  update the PDE to be R,!W,!F,!D
-    7F FLAG // TODO implement this
-
-// skip else clause
-IADN PC
-:conclude_r0w1
 
 @leaf_caused_r0w1 //ELSE CLAUSE (PTE faulted)
 //else if PTE faulted, we just loaded a leaf page in; update the PDE and PTE
@@ -742,7 +1127,7 @@ IADN PC
         SKIP PC
         00 3F F0 00 //page number mask
         08 ALUM //AND
-        
+
         ALUR ALUA // page number of PTE (from PDE, unshifted)
         06 ALUM //right shift
         0A ALUB //10 bits
@@ -950,21 +1335,378 @@ BREAK
 7F FLAG
 // end interrupt handler
 
-FRAME_END
 
-//=========================================================================
-// [function] get_open_physical_page | void TODO: this is not void
-//=========================================================================
-@@get_open_physical_page
-//returns physical page number that is available for incoming page
-//may or may not result in page eviction
+//=========================
+// Interrupt handler lite functions
+//=============
+// These subroutines share a stack frame with the interrupt handler
+// (WBASE still holds frame pointer, stack variables still accessible)
+// Lite functions:
+//  1. Must restore WBASE before returning
+//  2. May overwrite all registers
+//=========================
+
+//=========================
+@lite_number_from_pte
+// Input
+//  [GPH]: PTE (or PDE)
+// Returns: number in GPH
+//=========================
+GPH ALUA
+IADF ALUB
+SKIP PC
+00 0F FF FF //page/disk block number mask
+AAND ALUM
+ALUR GPH
+LINK PC
+//=========================
+// End lite_number_from_pte
+//=========================
+
+//=========================
+@lite_set_pte_readable
+// Input
+//  [GPH]: PTE (or PDE)
+// Returns: updated PTE in GPH
+//=========================
+GPH ALUA
+IADF ALUB
+SKIP PC
+80 00 00 00 //R bit mask
+AOR ALUM
+ALUR GPH
+LINK PC
+//=========================
+// End lite_set_pte_readable
+//=========================
+
+//=========================
+@lite_set_ppage_field
+// Input
+//  [GPF]: new value
+//  [GPG]: field offset
+//  [GPH]: ppage index
+// Returns nothing
+//=========================
+GPH ALUA //physical page index
+ICONST_ppage_map_entry_size ALUB
+AMUL ALUM
+ALUR ALUB //offset into physical page map array
+IADF ALUA
+SKIP PC
+::physical_page_map
+AADD ALUM
+ALUR RBASE
+GPG ROFST //offset into page entry
+GPF RMEM //store new value
+LINK PC
+//=========================
+// End lite_set_ppage_field
+//=========================
+
+//=========================
+@lite_find_process_map_entry_index_by_id
+// Input
+//  [GPH]: process ID
+// Returns process map entry index in GPH
+//  Returns 1 in GPG if successful, 0 if entry not found
+//=========================
+
+AMUL ALUM
+ICONST_process_map_entry_size ALUA
+ICONST_process_map_length ALUB
+ALUR GPG //GPG holds stop offset
+
+AADD ALUM
+00 ALUA
+ICONST_process_map_entry_size ALUB
+
+IADF RBASE
+SKIP PC
+::process_map
+
+00 ROFST
+@lite_find_process_0_loop
+ROFST COMPA
+GPG COMPB
+COMPR PC
+:lite_find_process_0_past_range
+:lite_find_process_0_in_range
+
+@lite_find_process_0_in_range
+GPH COMPA
+RMEM COMPB
+COMPR PC
+:lite_find_process_0_is_match
+:lite_find_process_0_not_match
+@lite_find_process_0_not_match
 
 
-//calculate address where return value should be stored
-    03 ALUM //subtract
-    WBASE ALUA //original FP
-    54 ALUB // -84
-    ALUR GPH //GPH = result address = FP - 84
+ALUR ROFST
+ALUR ALUA
+IADN PC
+:lite_find_process_0_loop
+
+@lite_find_process_0_past_range
+00 GPG
+LINK PC
+
+@lite_find_process_0_is_match
+01 GPG //set the success output to true
+ROFST ALUA //entry offset to ALUA
+ICONST_process_map_entry_size ALUB
+ADIV ALUM //divide entry offset by entry length to get entry index
+ALUR GPH //return entry index in GPH
+LINK PC
+
+//=========================
+// End lite_find_process_map_entry_index_by_id
+//=========================
+
+//=========================
+@lite_load_pte_to_ppage
+// Input
+//  [GPC]: process map entry index
+//  [GPD]: virtual page / table number
+//  [GPE]: process page directory ppage
+//  [GPF]: process ID
+//  [GPG]: PTE (or PDE)
+//  [GPH]: physical page index
+// Returns nothing
+//=========================
+// load from disk block in PTE to physical page
+// update physical page map
+//update physical page map with new entry
+GPH ALUA //physical page index
+ICONST_ppage_map_entry_size ALUB
+AMUL ALUM
+ALUR ALUA //offset into physical page map array
+
+IADF ALUB //physical page map base address
+SKIP PC
+::physical_page_map
+AADD ALUM //ALUR holds base addr + offset to specific entry
+    //this way we can use ROFST as offset to specific field within entry
+
+ALUR RBASE
+00 ROFST
+//RMEM points to first byte of target physical page entry
+GPF RMEM //store process ID in first field
+04 ROFST
+GPE RMEM //store process directory ppage index
+08 ROFST
+GPD RMEM //store virtual page/table number
+0C ROFST
+01 RMEM //set number of references to 1
+    //this page was just loaded; it has only one reference
+    //TODO is this always true?
+10 ROFST
+
+//get disk block number from PTE
+GPG ALUA
+IADF ALUB
+SKIP PC
+00 0F FF FF //disk block number mask
+AAND ALUM
+//ALUR holds block number
+ALUR RMEM //store block number in physical page map entry
+
+14 ROFST
+01 RMEM //set recently referenced to true, since it was just loaded
+    //this should prevent this page getting evicted immediately
+
+//load page from disk block (still in ALUR)
+IADF RBASE
+SKIP PC
+CONST_mmio_disk_base_address
+//tell disk the target physical page
+00 ROFST
+GPH RMEM
+//tell disk target disk block
+04 ROFST
+ALUR RMEM //ALUR holds disk block number
+//use read mode
+08 ROFST
+00 RMEM
+//initiate transfer from disk to memory
+0C ROFST
+01 RMEM
+
+//update process map with new # of resident pages
+GPC ALUA
+ICONST_process_map_entry_size ALUB
+AMUL ALUM
+ALUR ALUA
+IADF ALUB
+SKIP PC
+::process_map
+AADD ALUM
+//ALUR holds process map base addr + offset to specific entry
+ALUR RBASE
+08 ROFST //point to number of resident pages field
+RMEM ALUA
+01 ALUB
+AADD ALUM //increment field value by 1
+ALUR RMEM //store back into process map entry
+
+//update the PTE with the new physical page and updated protections
+//(but don't store it back to memory)
+
+//unset the number in the PTE
+GPG ALUA //PTE to ALU
+IADF ALUB
+SKIP PC
+FF F0 00 00 //mask to unset PTE number
+AAND ALUM
+ALUR ALUA
+//set the new ppage number
+GPH ALUB //ppage number to ALU
+AOR ALUM
+ALUR ALUA
+//unset the protection bits
+IADF ALUB
+SKIP PC
+3F FF FF FF //mask to unset RW
+AAND ALUM
+ALUR ALUA
+//set RW to 11
+IADF ALUB
+SKIP PC
+C0 00 00 00 //mask to set RW to 11 (mapped, resident, referenced, clean)
+AOR ALUM
+ALUR GPG //store updated PTE to return in GPG
+
+LINK PC
+//=========================
+// End lite_load_pte_to_ppage
+//=========================
+
+//=========================
+@lite_load_block_to_ppage
+// Input
+//  [GPG] disk block
+//  [GPH] physical page number
+// Returns nothing
+//=========================
+//point RMEM to virtual disk
+IADF RBASE
+SKIP PC
+CONST_mmio_disk_base_address
+//tell disk the target physical page
+00 ROFST
+GPH RMEM
+//tell disk target disk block
+04 ROFST
+GPG RMEM
+//use read mode
+08 ROFST
+00 RMEM
+//initiate transfer from disk to memory
+0C ROFST
+01 RMEM
+
+//load is done; return
+LINK PC
+//=========================
+// End lite_load_block_to_page
+//=========================
+
+//=========================
+@lite_check_ppage_matches_vpage
+// Checks the given entry in the physical page map
+// to determine if it belongs to the active process
+// and matches the given virtual page
+// Returns 1 if the page does belong to the active process
+// Input
+//  [GPG] virtual page number
+//  [GPH] physical page number
+// Returns: 0 or 1 in GPH
+//=========================
+
+//The given physical page number might be larger than the number
+//of physical pages we have (in which case, it actually represents
+//the disk block of the evicted page). Check if the number is in range
+
+//num physical pages > page number?
+ICONST_physical_memory_pages ALUA
+GPH ALUB
+ASUB ALUM //num pages - given page number
+ALUR ALUA
+IADF ALUB
+SKIP PC
+80 00 00 00 //two's complement negative number mask
+AAND ALUM
+ALUR COMPA
+00 COMPB //if the masked number is 0, it's positive, and page was in range
+COMPR PC
+:lite_check_ppage_0_ppage_in_range
+:lite_check_ppage_0__ppage_in_range
+
+@lite_check_ppage_0__ppage_in_range
+//number given is beyond range of physical pages, so
+//it cannot match the given vpage (it represents a disk block)
+00 GPH
+LINK PC //return false
+
+@lite_check_ppage_0_ppage_in_range
+//check the ppage entry to see if the process owner
+//and vpage match
+
+WBASE RBASE
+ISTACK_active_process_id ROFST
+RMEM COMPA //active process ID to COMPA
+
+IADF RBASE
+SKIP PC
+::physical_page_map
+
+AMUL ALUM
+GPH ALUA //physical page number == index
+ICONST_ppage_map_entry_size ALUB
+ALUR ROFST //RMEM points to target physical page map entry
+
+RMEM COMPB //ppage process id (offset 0) to COMPA
+
+COMPR PC
+:lite_check_ppage_0_process_matches
+:lite_check_ppage_0__process_matches
+
+@lite_check_ppage_0__process_matches
+//if the ppage owner != active process, the pages can't match
+//return false
+00 GPH
+LINK PC
+
+@lite_check_ppage_0_process_matches
+//the active process owns the target physical page, so check if
+//the vpage numbers match
+ROFST RBASE
+08 ROFST //offset into ppage map entry == 8
+RMEM COMPA
+GPG COMPB
+COMPR PC
+:lite_check_ppage_0_vpage_matches
+:lite_check_ppage_0__vpage_matches
+
+@lite_check_ppage_0_vpage_matches
+//the vpage number and active process both match, so
+//we know the given vpage is resident in the given ppage
+01 GPH
+LINK PC
+
+@lite_check_ppage_0__vpage_matches
+00 GPH
+LINK PC
+//=========================
+// End lite_check_ppage_matches_vpage
+//=========================
+
+
+
+//=========================
+// Returns open physical page number in GPH
+@lite_get_open_ppage
+//=========================
 
 //look for open pages, which we can use without evicting anything
 //open pages have a process ID of 0
@@ -977,7 +1719,7 @@ FRAME_END
         00 ROFST
 
     00 GPA //GPA = index
-    10 GPB //GPB = max_index
+    ICONST_physical_memory_pages GPB //GPB = max_index
 
     @open_page_loop
     //check if we're at the end of the loop (index == 16?)
@@ -991,7 +1733,7 @@ FRAME_END
     //calculate offset from index
         02 ALUM //multiply mode
         GPA ALUA // ALUA = index
-        14 ALUB //20 bytes per entry
+        ICONST_ppage_map_entry_size ALUB
         ALUR ROFST
 
     //read process ID (offset 0)
@@ -1003,18 +1745,14 @@ FRAME_END
         COMPR PC
         :open_page_proc_id_0
         :open_page_loop_next
-    
+
     @open_page_proc_id_0
     // found an open page
     // return the index as the open physical page
-        WBASE ALUA //store FP somewhere
-        GPH WBASE //point WMEM to the result address
-        00 WOFST
-        GPA WMEM //result = index into physical page map
-        ALUA WBASE //restore FP
+        GPA GPH //move result into designated return register
         LINK PC //return
 
-    
+
 
     @open_page_loop_next
     //increment index
@@ -1046,9 +1784,118 @@ BREAK
 //          The process descriptor in the process map also has the number of resident pages
 
 //TODO implement this
-00 RBASE
-00 ROFST
-7F RMEM
-
+7F FLAG
 //return
 LINK PC
+//=========================
+// End lite_get_open_ppage
+//=========================
+
+
+
+//=========================
+// interrupt handler stack frame end
+//==========
+FRAME_END
+//=========================
+
+// //=========================================================================
+// // [function] get_open_physical_page | void TODO: this is not void
+// //=========================================================================
+// @@get_open_physical_page
+// //returns physical page number that is available for incoming page
+// //may or may not result in page eviction
+
+
+// //calculate address where return value should be stored
+//     03 ALUM //subtract
+//     WBASE ALUA //original FP
+//     54 ALUB // -84
+//     ALUR GPH //GPH = result address = FP - 84
+
+// //look for open pages, which we can use without evicting anything
+// //open pages have a process ID of 0
+
+// //iterate over physical page map
+//     //point RMEM to physical page map array
+//         IADF RBASE
+//         SKIP PC
+//         ::physical_page_map
+//         00 ROFST
+
+//     00 GPA //GPA = index
+//     ICONST_physical_memory_pages GPB //GPB = max_index
+
+//     @open_page_loop
+//     //check if we're at the end of the loop (index == 16?)
+//         GPA COMPA
+//         GPB COMPB
+//         COMPR PC
+//         :open_page_loop_end
+//         :open_page_loop_go
+
+//     @open_page_loop_go
+//     //calculate offset from index
+//         02 ALUM //multiply mode
+//         GPA ALUA // ALUA = index
+//         14 ALUB //20 bytes per entry
+//         ALUR ROFST
+
+//     //read process ID (offset 0)
+//     RMEM GPC //GPC = process id
+
+//     //process id == 0?
+//         GPC COMPA
+//         00 COMPB
+//         COMPR PC
+//         :open_page_proc_id_0
+//         :open_page_loop_next
+
+//     @open_page_proc_id_0
+//     // found an open page
+//     // return the index as the open physical page
+//         WBASE ALUA //store FP somewhere
+//         GPH WBASE //point WMEM to the result address
+//         00 WOFST
+//         GPA WMEM //result = index into physical page map
+//         ALUA WBASE //restore FP
+//         LINK PC //return
+
+
+
+//     @open_page_loop_next
+//     //increment index
+//         01 ALUM //add mode
+//         GPA ALUA
+//         01 ALUB
+//         ALUR GPA //index += 1
+//     //go to start of loop
+//     IADN PC
+//     :open_page_loop
+
+//     //TODO implement this
+
+
+// @open_page_loop_end
+// //no open pages
+// BREAK
+
+// //      TODO important insight:
+// //      An evictable page is one where no other non-empty page mapping entry has a "directory physical page" that
+// //      matches the evictable page's physical page (this is true of all leaf pages, all page tables with
+// //      no child pages in memory, and all page directories with no child tables in memory -- except page
+// //      directories point to themselves, so never count self reference)
+// //      TODO the above is only true if leaf pages point to their page tables; right now, the "directory physical page"
+// //      variable points to the owning process's page directory
+// //          Why is it set up that way? To make it easy to see if a process has any non-directory tables or pages in memory?
+// //          It should be possible to find the owning process of any page mapping entry by following the "directory physical page"
+// //          pointer until it references itself (only true of directories), which is at most 2 steps (2 for leafs, 1 for tables)
+// //          The process descriptor in the process map also has the number of resident pages
+
+// //TODO implement this
+// 00 RBASE
+// 00 ROFST
+// 7F RMEM
+
+// //return
+// LINK PC

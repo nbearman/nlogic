@@ -156,7 +156,7 @@ namespace nlogic_sim
                     Console.WriteLine("\tPC:\t0x" + Utility.byte_array_string(this.processor.registers[Processor.PC].data_array, "", false));
                     Console.WriteLine("\tEXE:\t0x" + Utility.byte_array_string(this.processor.registers[Processor.EXE].data_array, "", false));
                     Console.WriteLine("\tFLAG:\t0x" + Utility.byte_array_string(this.processor.registers[Processor.FLAG].data_array, "", false));
-                    throw e;
+                    throw;
                 }
             }
 
