@@ -45,8 +45,8 @@ namespace nlogic_sim
             byte source = instruction_array[0];
             byte destination = instruction_array[1];
 
-            Debug.Assert(source <= RTRN || source >= DMEM, "source is unused processor location");
-            Debug.Assert(destination <= RTRN || destination >= DMEM, "destination is unused processor location");
+            Debug.Assert(source <= RTRN || source >= DMEM, "source is unused processor location: " + source.ToString());
+            Debug.Assert(destination <= RTRN || destination >= DMEM, "destination is unused processor location: " + destination.ToString());
 
             //[debug]
             //set the current instruction (currently only used for the debugger readout)
