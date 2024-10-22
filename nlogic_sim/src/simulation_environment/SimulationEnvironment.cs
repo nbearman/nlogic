@@ -151,11 +151,11 @@ namespace nlogic_sim
                 }
                 catch (Exception e)
                 {
-                    Console.WriteLine("Exception during processor cycle()");
-                    Console.WriteLine("\tMMU:\t" + (this.MMU.get_enabled() ? "Enabled" : "Disabled"));
-                    Console.WriteLine("\tPC:\t0x" + Utility.byte_array_string(this.processor.registers[Processor.PC].data_array, "", false));
-                    Console.WriteLine("\tEXE:\t0x" + Utility.byte_array_string(this.processor.registers[Processor.EXE].data_array, "", false));
-                    Console.WriteLine("\tFLAG:\t0x" + Utility.byte_array_string(this.processor.registers[Processor.FLAG].data_array, "", false));
+                    Console.Error.WriteLine("Exception during processor cycle()");
+                    Console.Error.WriteLine("\tMMU:\t" + (this.MMU.get_enabled() ? "Enabled" : "Disabled"));
+                    Console.Error.WriteLine("\tPC:\t0x" + Utility.byte_array_string(this.processor.registers[Processor.PC].data_array, "", false));
+                    Console.Error.WriteLine("\tEXE:\t0x" + Utility.byte_array_string(this.processor.registers[Processor.EXE].data_array, "", false));
+                    Console.Error.WriteLine("\tFLAG:\t0x" + Utility.byte_array_string(this.processor.registers[Processor.FLAG].data_array, "", false));
                     throw;
                 }
             }
