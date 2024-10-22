@@ -18,7 +18,7 @@ fi
 echo ""
 
 if ! [ -d "$1" ]; then
-    echo -e "First argument must be a directory holding a test case."
+    echo -e "First argument must be a directory holding a program folder."
     exit 1
 fi
 

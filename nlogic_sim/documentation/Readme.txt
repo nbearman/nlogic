@@ -7,6 +7,7 @@ Use the bash script "go.sh" to build programs then run them on the simulator
         SIM_EXE: file location of nlogic_sim.exe (simulator)
         PY_ASSEMBLER: file location of AssembleDebug.py (debug assembler)
     e.g.: ```
+        cd tools/
         export PY_ASSEMBLER=$(realpath AssembleDebug.py)
         export SIM_EXE=$(realpath ../bin/Debug/nlogic_sim.exe)
         ./go.sh ../programs/OS/ -v -d
