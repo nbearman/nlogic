@@ -76,7 +76,7 @@ if ! $SKIP_DISK ; then
                     echo $d | INDENT
                     cd $d
                     disk_folder_name=${PWD##*/} #crazy thing from stack overflow
-                    pro_files=$(find . -type f -name "*.pro")
+                    pro_files=$(find . -type f -name "*.pro" | sort)
                     echo "$pro_files" | LIST
                     echo "Running debug assembler" | INDENT
                     python3 $PY_ASSEMBLER -p -o $STARTING_DIR/BUILD/DISK_DEBUG/$disk_folder_name $pro_files > $STARTING_DIR/BUILD/DISK_ASM/$disk_folder_name.asm
@@ -104,7 +104,7 @@ echo "Building boot program..."
 (
     cd program
     echo "Finding pro files" | INDENT
-    pro_files=$(find . -type f -name "*.pro")
+    pro_files=$(find . -type f -name "*.pro" | sort)
     echo "$pro_files" | LIST
     echo "Running debug assembler" | INDENT
     python3 $PY_ASSEMBLER -p -o $STARTING_DIR/BUILD/BUILD_DEBUG $pro_files > $STARTING_DIR/BUILD/BUILD_ASM/program.asm

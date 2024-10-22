@@ -49,7 +49,6 @@ echo "[1] Building virtual disk"
 STARTING_DIR=$(pwd)
 rm -rf output
 mkdir output
-mkdir output/DISK_ASM
 mkdir output/BUILD_ASM
 mkdir output/BUILD_DEBUG
 mkdir output/LOGS
@@ -58,24 +57,27 @@ mkdir output/LOGS
 shopt -s nullglob
 
 for d in input/disk/*; do
+    mkdir -p output/DISK_ASM
     cd $STARTING_DIR
     if [ -d "$d" ]; then
         echo $d | INDENT
         cd $d
         disk_folder_name=${PWD##*/} #crazy thing from stack overflow
-        pro_files=$(find . -type f -name "*.pro")
+        pro_files=$(find . -type f -name "*.pro" | sort)
         echo "$pro_files" | LIST
         echo "Running debug assembler" | INDENT
         python3 $PY_ASSEMBLER -p -o $STARTING_DIR/output/DISK_DEBUG/$disk_folder_name $pro_files > $STARTING_DIR/output/DISK_ASM/$disk_folder_name.asm
     fi
 done
 
-echo "Dividing virtual disk data into blocks" | INDENT
-cd $STARTING_DIR/output/DISK_ASM
-for f in *; do
-    number_only=$(echo $f | cut -f 1 -d '.')
-    split -b12288 --numeric-suffixes=$number_only -a 5 --additional-suffix .txt $f ""
-done
+if [ -d "$STARTING_DIR/output/DISK_ASM" ]; then
+    echo "Dividing virtual disk data into blocks" | INDENT
+    cd $STARTING_DIR/output/DISK_ASM
+    for f in *; do
+        number_only=$(echo $f | cut -f 1 -d '.')
+        split -b12288 --numeric-suffixes=$number_only -a 5 --additional-suffix .txt $f ""
+    done
+fi
 
 # remove undivided assembly output, leaving only blocks
 rm -f *.asm
@@ -87,7 +89,7 @@ echo "[2] Building boot program"
 cd $STARTING_DIR
 cd input/program
 echo "Finding pro files" | INDENT
-pro_files=$(find . -type f -name "*.pro")
+pro_files=$(find . -type f -name "*.pro" | sort)
 echo "$pro_files" | LIST
 echo "Running debug assembler" | INDENT
 python3 $PY_ASSEMBLER -p -o $STARTING_DIR/output/BUILD_DEBUG $pro_files > $STARTING_DIR/output/BUILD_ASM/program.asm
