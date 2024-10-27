@@ -318,34 +318,23 @@ FRAME_START
 //=========================
 // interrupt handler stack layout / local variables
 //==========
-// TODO out of date with the stack macros below
-// 0x00 |   uint    |   FLAG
-// 0x04 |   uint    |   faulted PTE
-// 0x08 |   uint    |   faulted virtual address
-// 0x0C |   uint    |   faulted virtual address
-// 0x10 |   uint    |   faulted PTE disk block
-// 0x14 |   uint    |   virtual page number from faulted virtual address
-// 0x18 |   uint    |   active process ID
-// 0x1C |   uint    |   active process page directory physical page
-// 0x20 |   uint    |   physical page new page is moved into
-//=========================
 
-    STACK flag_val 04
-    STACK faulted_pte 04
-    STACK faulted_va 04
-    STACK faulted_operation 04
-    STACK faulted_pte_block 04
-    STACK faulted_va_vpage_num 04
-    STACK faulted_va_table_num 04
-    STACK active_process_id 04
-    STACK active_process_page_directory_ppage 04
-    STACK active_process_map_entry_index 04
-    STACK target_ppage 04
-    STACK fetched_pde 04 // possibly different than faulted PTE if the leaf page faulted
-    STACK fetched_pte 04 // retrieved by following the PDE if leaf page faulted
-                            //should be the same as faulted PTE in that case
-    STACK fetched_pde_kpa 04
-    STACK fetched_pte_kpa 04
+    STACK flag_val 04               // FLAG contents
+    STACK faulted_pte 04            // faulted PTE
+    STACK faulted_va 04             // faulted virtual address
+    STACK faulted_operation 04      // faulted operation (0 if read, 1 if write)
+    STACK faulted_pte_block 04      // disk block from faulted PTE
+    STACK faulted_va_vpage_num 04   // virtual page number from faulted virtual address
+    STACK faulted_va_table_num 04   // virtual table number from faulted virtual address
+    STACK active_process_id 04      // process ID of the active process
+    STACK active_process_page_directory_ppage 04    // physical page of the active process's page directory
+    STACK active_process_map_entry_index 04         // index of active process in the process map
+    STACK target_ppage 04           // physical page new page is moved into (TODO: unused)
+    STACK fetched_pde 04            // possibly different than faulted PTE if the leaf page faulted
+    STACK fetched_pte 04            // retrieved by following the PDE if leaf page faulted
+                                    //   should be the same as faulted PTE in that case
+    STACK fetched_pde_kpa 04        // VA in kernel space of fetched PDE's physical address
+    STACK fetched_pte_kpa 04        // VA in kernel space of fetched PTE's physical address
 
     //lower 20 bits of fetched PDE and PTE; if the page it points
     //to is resident, it's a physical page number, else it's a disk
@@ -353,10 +342,12 @@ FRAME_START
     STACK fetched_pde_number 04
     STACK fetched_pte_number 04
 
-    STACK updated_pde 04
-    STACK updated_pte 04
-    STACK virtual_table_ppage 04
-    STACK virtual_page_ppage 04
+    STACK updated_pde 04            // PDE data after updating tables
+    STACK updated_pte 04            // PTE data after updating tables
+    STACK virtual_table_ppage 04    // physical page number of the VA's page table
+    STACK virtual_page_ppage 04     // physical page number of the VA's page
+
+//=========================
 
 //add stack frame; registers are dumped to bottom of the stack, so we don't need to save a frame pointer
 //  (specifically because handler runs at the very bottom of the kernel's stack)
