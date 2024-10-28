@@ -122,7 +122,6 @@ class StackVariableDeclaration:
 
 class ConstVariableDeclaration:
     def __init__(self, const_variable_identifier: "ConstVariableIdentifier", const_variable_value: "ConstVariableValue"):
-    # def __init__(self, const_variable_identifier, const_variable_value):
         if type(const_variable_identifier) is not ConstVariableIdentifier:
             raise Exception(f"cannot create ConstVariableDeclaration: {type(const_variable_identifier)} is not ConstVariableIdentifier")
         if type(const_variable_value) is not ConstVariableValue:
@@ -531,6 +530,7 @@ class Program:
                 if t not in [
                     LabelDefinition,
                     StackVariableDeclaration,
+                    ConstVariableDeclaration,
                     StackFrameStart,
                     StackFrameEnd
                 ]:
