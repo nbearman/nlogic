@@ -23,6 +23,7 @@ namespace nlogic_sim
         private const int MAX_LOG_SIZE = 1000;
         private bool logging_enabled = false;
         private List<string> state_logs = new List<string>(MAX_LOG_SIZE);
+        private List<string> coverage_logs = new List<string>(MAX_LOG_SIZE);
 
         /// <summary>
         /// An interval tree which maps uint addresses to (uint base address, MMIO device) tuples
@@ -543,6 +544,14 @@ namespace nlogic_sim
             }
             state_string += "\n";
             this.state_logs.Add(state_string);
+
+            uint active_page_directory_address = this.MMU.get_active_page_directory_base_address();
+            string active_page_directory_string = Utility.byte_array_string(Utility.byte_array_from_uint32(4, active_page_directory_address));
+            this.coverage_logs.Add(
+                (this.get_mmu_enabled() ? "MMU On" : "MMU Off")
+                    + "\t" + "APPDBA " + active_page_directory_string
+                    + "\t" + Utility.byte_array_string(this.processor.registers[Processor.PC].data_array)
+            );
         }
 
         /// <summary>
@@ -555,6 +564,19 @@ namespace nlogic_sim
             {
                 log_string += String.Format("#{0}\n", i);
                 log_string += this.state_logs[i];
+            }
+            return log_string;
+        }
+
+        /// <summary>
+        /// Return the coverate logs as a single string
+        /// </summary>
+        public string get_coverage_log()
+        {
+            string log_string = "";
+            foreach (string entry in this.coverage_logs)
+            {
+                log_string += entry + "\n";
             }
             return log_string;
         }

@@ -511,6 +511,11 @@ namespace nlogic_sim
             return this.enabled;
         }
 
+        public uint get_active_page_directory_base_address()
+        {
+            return this.active_page_directory_base_address;
+        }
+
         private struct PageTableEntry
         {
             //PTE protection bits

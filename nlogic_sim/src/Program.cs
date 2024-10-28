@@ -81,6 +81,7 @@ namespace nlogic_sim
             {
                 bool visualizer = false;
                 string log_output_filepath = null;
+                string coverage_output_filepath = null;
                 string virtual_disk_filepath = "./virtual_disk";
 
                 List<string> codefiles = new List<string>();
@@ -102,6 +103,21 @@ namespace nlogic_sim
                         {
                             //interpret the next argument as the output filepath
                             log_output_filepath = additional_args[i + 1];
+                            //skip the next argument
+                            i++;
+                        }
+                    }
+                    else if (aa.ToLower() == "coverage" || aa.ToLower() == "-c")
+                    {
+                        if (i == additional_args.Count() - 1)
+                        {
+                            Console.WriteLine("No valid coverage output path provided");
+                            return;
+                        }
+                        else
+                        {
+                            //interpret the next argument as the output filepath
+                            coverage_output_filepath = additional_args[i + 1];
                             //skip the next argument
                             i++;
                         }
@@ -134,7 +150,7 @@ namespace nlogic_sim
                     return;
                 }
 
-                assemble_and_run(codefiles.ToArray(), visualizer, log_output_filepath, virtual_disk_filepath);
+                assemble_and_run(codefiles.ToArray(), visualizer, log_output_filepath, virtual_disk_filepath, coverage_output_filepath);
                 return;
             }
 
@@ -194,7 +210,7 @@ namespace nlogic_sim
             return;
         }
 
-        private static void assemble_and_run(string[] codefiles, bool visualizer_enabled, string logging_file_path, string virtual_disk_path)
+        private static void assemble_and_run(string[] codefiles, bool visualizer_enabled, string logging_file_path, string virtual_disk_path, string coverage_file_path)
         {
             ConsoleColor original_color = Console.ForegroundColor;
 
@@ -256,7 +272,7 @@ namespace nlogic_sim
                 Console.Clear();
 
             //enable logging
-            if (logging_file_path != null)
+            if (logging_file_path != null || coverage_file_path != null)
             {
                 environment.enable_logging();
             }
@@ -272,6 +288,12 @@ namespace nlogic_sim
             {
                 Console.WriteLine("Writing log file");
                 File_Input.write_file(logging_file_path, environment.get_log());
+            }
+
+            if (coverage_file_path != null)
+            {
+                Console.WriteLine("Writing coverage log file");
+                File_Input.write_file(coverage_file_path, environment.get_coverage_log());
             }
 
             Console.WriteLine("Press any key to end...");
