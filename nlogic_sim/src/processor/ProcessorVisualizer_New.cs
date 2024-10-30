@@ -149,6 +149,9 @@ namespace nlogic_sim
 
         public void initialize_visualizer()
         {
+            //clear the cache if it had been initialized already
+            readout_cache.Clear();
+
             //initialize the cache
             Array values = Enum.GetValues(typeof(READOUT));
             foreach (var v in values)

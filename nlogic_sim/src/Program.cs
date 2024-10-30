@@ -17,6 +17,9 @@ namespace nlogic_sim
 
         static bool silent_test_mode = false;
 
+        const uint MEMORY_SIZE = 65536;
+        const uint PAGE_SIZE = 4096;
+
         static void Main(string[] args)
         {
             if (args.Length == 0)
@@ -239,12 +242,16 @@ namespace nlogic_sim
             //set up the simulation environment
             SimulationEnvironment environment =
                 new SimulationEnvironment(
-                    65536,
+                    MEMORY_SIZE,
                     Assembler.program_data,
                     mmio_devices);
 
             Console.ForegroundColor = ConsoleColor.Green;
             Console.WriteLine("Simluation environment setup successful");
+
+            Console.ForegroundColor = ConsoleColor.Blue;
+            const uint num_pages = MEMORY_SIZE / PAGE_SIZE;
+            Console.WriteLine("Memory size: " + MEMORY_SIZE.ToString() + " bytes\t(" + num_pages.ToString() + " pages)");
 
             Console.ForegroundColor = ConsoleColor.DarkCyan;
             Console.WriteLine("Connected MMIO devices: ");

@@ -15,9 +15,7 @@ namespace nlogic_sim
     /// </summary>
     public class SimulationEnvironment : I_Environment
     {
-        // the visualizer can only be enabled once; keep track
-        // of if it has been initialized already
-        private static bool visualizer_initialized = false;
+        private static Thread memory_window_thread = null;
 
         //logging information
         private const int MAX_LOG_SIZE = 1000;
@@ -134,9 +132,18 @@ namespace nlogic_sim
                     // Unlock memory only while the simulation is paused waiting for the user
                     // to advance by a step
                     Monitor.Exit(this.memory);
-                    Console.ReadKey();
+                    ConsoleKeyInfo keypress = Console.ReadKey();
+
                     // Wait to resume the simulation until we again have exclusive access to memory
                     Monitor.Enter(this.memory);
+
+                    // Continue from the breakpoint when C is pressed
+                    if (keypress.Key == ConsoleKey.C)
+                    {
+                        visualizer_enabled = false;
+                        // Kill the memory window thread so that the window (eventually) closes; there should only be one
+                        memory_window_thread.Abort();
+                    }
                 }
 
                 //send outstanding interrupts to the processor
@@ -583,10 +590,8 @@ namespace nlogic_sim
 
         private void initialize_visualizer()
         {
-            Debug.Assert(!visualizer_initialized);
-            visualizer_initialized = true;
             this.processor.initialize_visualizer();
-            Thread memory_window_thread = new Thread(StartMemoryWindow);
+            memory_window_thread = new Thread(StartMemoryWindow);
             memory_window_thread.Start();
         }
 
