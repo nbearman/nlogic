@@ -889,7 +889,6 @@ COMPR PC //read operation == 0
         //it will be written back into the page table later
     ISTACK_updated_pte ROFST
     GPH RMEM
-    break
 
 //possible conflicts from write protection have been resolved
 //continue

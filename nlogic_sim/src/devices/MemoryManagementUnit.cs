@@ -209,6 +209,8 @@ namespace nlogic_sim
                 //set the RETRY flag if the protection requires a retry interrupt
                 this.raise_interrupt(protection == ProtectionCheckResult.RETRY_INTERRUPT, true);
 
+                this.faulted_operation_was_write = write;
+                // TODO do we need to set this.faulted to true?
                 return false;
             }
 
@@ -230,6 +232,8 @@ namespace nlogic_sim
                 //set the RETRY flag if the protection requires a retry interrupt
                 this.raise_interrupt(protection == ProtectionCheckResult.RETRY_INTERRUPT, true);
 
+                this.faulted_operation_was_write = write;
+                // TODO do we need to set this.faulted to true?
                 return false;
             }
 
