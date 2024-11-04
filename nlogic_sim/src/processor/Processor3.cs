@@ -502,6 +502,7 @@ namespace nlogic_sim
             }
 
             //write the dumped data to memory
+            //(since this goes through MMU, this page must be mapped and writes must be allowed)
             write_memory(interrupt_register_dump_address, dumped_data.ToArray());
 
             //set PC to the interrupt handler location
