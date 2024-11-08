@@ -235,14 +235,21 @@ namespace nlogic_sim
             //check the unlocked bit
             if (!Utility.get_flag_bit(flag_data, Flags.UNLOCKED))
             {
-                //FLAG is not unlocked; prevent changing the upper 5 bits
+                //FLAG is not unlocked; prevent changing the upper 4 bits
+                //  UNLOCKED should not be writable because a user could use it to circumvent the lock
+                //  DISABLED should not be writable because a user could disable all interrupts, e.g. MMU
+                //  DELAY should not be writable because a user could set it to postpone all interrupts
+                //  RETRY (TODO does this need to locked? Probably, but describe situation)
+                //  KERNEL should be writable so a user can initiate a kernel interrupt (syscall)
+                //      There is no risk of user overwriting K, because signals are processed after a cycle,
+                //      so user will never see FLAG when it is non-0 if K is set
 
                 //flag_data & M(ask) = (L)ocked portion = [L | 0000...]
                 //data & N(mask 2) = U(nlocked portion) = [...0000 | U]
                 //U | L = new flag contents             = [L | U]
 
                 //create M and N
-                uint M = ((uint)0b11111) << 27;
+                uint M = ((uint)0b1111) << 28; //TODO a certain number of signal bits should be locked and only writable by hardware interrupters
                 uint N = ~M;
 
                 //create L and U
@@ -514,6 +521,11 @@ namespace nlogic_sim
             //return
             return;
 
+        }
+
+        public uint get_cycle_count()
+        {
+            return this.cycle_count;
         }
 
         private void initialize_registers()

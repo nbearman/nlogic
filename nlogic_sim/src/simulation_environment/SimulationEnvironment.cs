@@ -164,7 +164,8 @@ namespace nlogic_sim
                     Console.Error.WriteLine("\tPC:\t0x" + Utility.byte_array_string(this.processor.registers[Processor.PC].data_array, "", false));
                     Console.Error.WriteLine("\tEXE:\t0x" + Utility.byte_array_string(this.processor.registers[Processor.EXE].data_array, "", false));
                     Console.Error.WriteLine("\tFLAG:\t0x" + Utility.byte_array_string(this.processor.registers[Processor.FLAG].data_array, "", false));
-                    throw;
+                    Console.Error.WriteLine("\tCycle count:\t" + this.processor.get_cycle_count());
+                    throw e;
                 }
             }
 

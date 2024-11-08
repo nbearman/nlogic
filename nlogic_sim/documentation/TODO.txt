@@ -1,23 +1,11 @@
 ﻿PTE rework
-	Change MMU to skip automatically marking read bits
-	Change MMU to fault (retryable) on unreferenced page, including page tables
 	Change page fault handler to mark unreferenced page as referenced
-	Remove all references to F and D bits
 
-
-Change boot program to load page tables from disk instead of creating them with instructions
-	this will make it easier to write test programs while working on page fault handlers
-
-(done?) Add cycle delay to MMU breakpoint to avoid returning early
-	Can also be implemented in software by the interrupt handler by introspecting return addressing
-	Manually check for collisions with kernel handler memory accesses
-		High complexity, easier to add cycle delay to MMU
 
 Figure out what the interrupt handler should do with the interrupt channel bits
 	Should they all be cleared? Should handlers only clear bits that they resolved?
 	Should kernel handled interrupts leave the user interrupt bits untouched?
 
-Add macros for ALU and FPU modes
 
 Add some static analysis to debug assembler to catch bugs
 	Ex.: Check for multiple writes to ALUA before reading alur
@@ -30,7 +18,7 @@ Kernel should not map all of physical memory in its VA space
 		MMU could have special physical target address register and physical memory access register
 			Kernel can specify an address in the target register and then read or write to the access register to access that physical address
 		For larger amounts of memory, the MMU could possibly implement range-based DMA transfer (either PA -> PA or kernel VA -> PA)
-	
+
 Move MMU mapping in kernel VA to much higher address
 	MMU is mapped to 0x1000 in kernel VA; interrupt handler is going to overrun this
 

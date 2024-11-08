@@ -24,6 +24,9 @@ FILLFFC
 13 GPE
 
 BREAK
+IADF FLAG
+SKIP PC
+08 00 00 00 // test kernal interrupt from user program
 
 // attempt to read an unmapped page
 IADF RBASE
