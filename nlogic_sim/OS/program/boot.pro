@@ -54,7 +54,7 @@
 // (MMU is first MMIO device, starts at 0xFF 00 00 00)
 IADF WBASE
 SKIP PC
-FF 00 00 20
+FF 00 00 24
 
 //=========================================================================
 // load kernel page directory into memory from disk
@@ -203,7 +203,8 @@ FF 00 00 00
 //10 fautled addr
 //14 breakpoint enabled
 //18 enabled
-//1C breakpoint cycle delay counter 
+//1C breakpoint cycle delay counter
+//20 faulted operation (1 for write / 0 for read)
 
 //=========================================================================
 //=========================================================================

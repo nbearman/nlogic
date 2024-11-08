@@ -17,6 +17,9 @@ namespace nlogic_sim
 
         static bool silent_test_mode = false;
 
+        const uint MEMORY_SIZE = 65536;
+        const uint PAGE_SIZE = 4096;
+
         static void Main(string[] args)
         {
             if (args.Length == 0)
@@ -81,6 +84,7 @@ namespace nlogic_sim
             {
                 bool visualizer = false;
                 string log_output_filepath = null;
+                string coverage_output_filepath = null;
                 string virtual_disk_filepath = "./virtual_disk";
 
                 List<string> codefiles = new List<string>();
@@ -102,6 +106,21 @@ namespace nlogic_sim
                         {
                             //interpret the next argument as the output filepath
                             log_output_filepath = additional_args[i + 1];
+                            //skip the next argument
+                            i++;
+                        }
+                    }
+                    else if (aa.ToLower() == "coverage" || aa.ToLower() == "-c")
+                    {
+                        if (i == additional_args.Count() - 1)
+                        {
+                            Console.WriteLine("No valid coverage output path provided");
+                            return;
+                        }
+                        else
+                        {
+                            //interpret the next argument as the output filepath
+                            coverage_output_filepath = additional_args[i + 1];
                             //skip the next argument
                             i++;
                         }
@@ -134,7 +153,7 @@ namespace nlogic_sim
                     return;
                 }
 
-                assemble_and_run(codefiles.ToArray(), visualizer, log_output_filepath, virtual_disk_filepath);
+                assemble_and_run(codefiles.ToArray(), visualizer, log_output_filepath, virtual_disk_filepath, coverage_output_filepath);
                 return;
             }
 
@@ -194,12 +213,12 @@ namespace nlogic_sim
             return;
         }
 
-        private static void assemble_and_run(string[] codefiles, bool visualizer_enabled, string logging_file_path, string virtual_disk_path)
+        private static void assemble_and_run(string[] codefiles, bool visualizer_enabled, string logging_file_path, string virtual_disk_path, string coverage_file_path)
         {
             ConsoleColor original_color = Console.ForegroundColor;
 
             //assemble code files
-            Assembler.assemble(codefiles);
+            Assembler.assemble(codefiles, null, true);
             if (!Assembler.assembled)
             {
                 Console.ForegroundColor = ConsoleColor.Red;
@@ -220,21 +239,32 @@ namespace nlogic_sim
 
             List<MMIO> mmio_devices = new List<MMIO> { VIRTUAL_DISK, VIRTUAL_DISPLAY };
 
-            Console.ForegroundColor = ConsoleColor.DarkCyan;
-            Console.Write("Connected MMIO devices: ");
-            foreach (var mmio in mmio_devices)
-                Console.Write(mmio + ", ");
-            Console.WriteLine();
-
             //set up the simulation environment
             SimulationEnvironment environment =
                 new SimulationEnvironment(
-                    65536,
+                    MEMORY_SIZE,
                     Assembler.program_data,
                     mmio_devices);
 
             Console.ForegroundColor = ConsoleColor.Green;
             Console.WriteLine("Simluation environment setup successful");
+
+            Console.ForegroundColor = ConsoleColor.Blue;
+            const uint num_pages = MEMORY_SIZE / PAGE_SIZE;
+            Console.WriteLine("Memory size: " + MEMORY_SIZE.ToString() + " bytes\t(" + num_pages.ToString() + " pages)");
+
+            Console.ForegroundColor = ConsoleColor.DarkCyan;
+            Console.WriteLine("Connected MMIO devices: ");
+            uint cumulative_mmio_offset = 0;
+            foreach (var mmio in mmio_devices)
+            {
+                string offset_string = Utility.byte_array_string(Utility.byte_array_from_uint32(4, cumulative_mmio_offset));
+                Console.WriteLine("\t0x" + offset_string + "\t" + mmio);
+                cumulative_mmio_offset += mmio.get_size();
+            }
+            Console.ForegroundColor = ConsoleColor.Red;
+            Console.WriteLine("Update hardcoded references to above addresses!");
+            Console.WriteLine();
 
             Console.ForegroundColor = original_color;
             Console.WriteLine("Simulation ready; press any key to run...");
@@ -249,7 +279,7 @@ namespace nlogic_sim
                 Console.Clear();
 
             //enable logging
-            if (logging_file_path != null)
+            if (logging_file_path != null || coverage_file_path != null)
             {
                 environment.enable_logging();
             }
@@ -265,6 +295,12 @@ namespace nlogic_sim
             {
                 Console.WriteLine("Writing log file");
                 File_Input.write_file(logging_file_path, environment.get_log());
+            }
+
+            if (coverage_file_path != null)
+            {
+                Console.WriteLine("Writing coverage log file");
+                File_Input.write_file(coverage_file_path, environment.get_coverage_log());
             }
 
             Console.WriteLine("Press any key to end...");

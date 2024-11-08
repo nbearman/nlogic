@@ -9,7 +9,7 @@ namespace nlogic_sim
     {
         private I_Environment environment;
 
-        public const ushort interrupt_handler_address = 0x500; //TODO arbitrary address for now; must match location in 1_handler.pro
+        public const ushort interrupt_handler_address = 0x600; //TODO arbitrary address for now; must match location in 1_handler.pro
         public const ushort interrupt_register_dump_address = 0x0028; //TODO reevaluate if this is the best place for these; selected so that FLAG, GPA, and PC get stored at the end of the DMEM accessible region
 
         private ushort current_instruction;
@@ -45,8 +45,8 @@ namespace nlogic_sim
             byte source = instruction_array[0];
             byte destination = instruction_array[1];
 
-            Debug.Assert(source <= RTRN || source >= DMEM, "source is unused processor location");
-            Debug.Assert(destination <= RTRN || destination >= DMEM, "destination is unused processor location");
+            Debug.Assert(source <= RTRN || source >= DMEM, "source is unused processor location: " + source.ToString());
+            Debug.Assert(destination <= RTRN || destination >= DMEM, "destination is unused processor location: " + destination.ToString());
 
             //[debug]
             //set the current instruction (currently only used for the debugger readout)
@@ -502,6 +502,7 @@ namespace nlogic_sim
             }
 
             //write the dumped data to memory
+            //(since this goes through MMU, this page must be mapped and writes must be allowed)
             write_memory(interrupt_register_dump_address, dumped_data.ToArray());
 
             //set PC to the interrupt handler location

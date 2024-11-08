@@ -18,7 +18,7 @@ fi
 echo ""
 
 if ! [ -d "$1" ]; then
-    echo -e "First argument must be a directory holding a test case."
+    echo -e "First argument must be a directory holding a program folder."
     exit 1
 fi
 
@@ -49,7 +49,7 @@ if [ ! -d ./disk ] ; then
     echo ""
     echo "Missing: /disk directory."
     echo "Continue without creating a virtual disk? "
-    select skip_disk in "Yes" "No"; do
+    select skip_disk in "No" "Yes"; do
         case $skip_disk in
             Yes ) SKIP_DISK=true; break;;
             No ) exit 1; break;;
@@ -76,7 +76,7 @@ if ! $SKIP_DISK ; then
                     echo $d | INDENT
                     cd $d
                     disk_folder_name=${PWD##*/} #crazy thing from stack overflow
-                    pro_files=$(find . -type f -name "*.pro")
+                    pro_files=$(find . -type f -name "*.pro" | sort)
                     echo "$pro_files" | LIST
                     echo "Running debug assembler" | INDENT
                     python3 $PY_ASSEMBLER -p -o $STARTING_DIR/BUILD/DISK_DEBUG/$disk_folder_name $pro_files > $STARTING_DIR/BUILD/DISK_ASM/$disk_folder_name.asm
@@ -104,7 +104,7 @@ echo "Building boot program..."
 (
     cd program
     echo "Finding pro files" | INDENT
-    pro_files=$(find . -type f -name "*.pro")
+    pro_files=$(find . -type f -name "*.pro" | sort)
     echo "$pro_files" | LIST
     echo "Running debug assembler" | INDENT
     python3 $PY_ASSEMBLER -p -o $STARTING_DIR/BUILD/BUILD_DEBUG $pro_files > $STARTING_DIR/BUILD/BUILD_ASM/program.asm

@@ -193,5 +193,7 @@ namespace nlogic_sim
         //TODO this is necessary only for the visualizer
         //refactor visualizer to be part of the environment and remove this
         byte[] get_memory();
+
+        bool get_mmu_enabled();
     }
 }

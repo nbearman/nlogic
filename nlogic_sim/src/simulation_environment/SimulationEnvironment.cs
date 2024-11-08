@@ -15,14 +15,13 @@ namespace nlogic_sim
     /// </summary>
     public class SimulationEnvironment : I_Environment
     {
-        // the visualizer can only be enabled once; keep track
-        // of if it has been initialized already
-        private static bool visualizer_initialized = false;
+        private static Thread memory_window_thread = null;
 
         //logging information
         private const int MAX_LOG_SIZE = 1000;
         private bool logging_enabled = false;
         private List<string> state_logs = new List<string>(MAX_LOG_SIZE);
+        private List<string> coverage_logs = new List<string>(MAX_LOG_SIZE);
 
         /// <summary>
         /// An interval tree which maps uint addresses to (uint base address, MMIO device) tuples
@@ -133,9 +132,18 @@ namespace nlogic_sim
                     // Unlock memory only while the simulation is paused waiting for the user
                     // to advance by a step
                     Monitor.Exit(this.memory);
-                    Console.ReadKey();
+                    ConsoleKeyInfo keypress = Console.ReadKey();
+
                     // Wait to resume the simulation until we again have exclusive access to memory
                     Monitor.Enter(this.memory);
+
+                    // Continue from the breakpoint when C is pressed
+                    if (keypress.Key == ConsoleKey.C)
+                    {
+                        visualizer_enabled = false;
+                        // Kill the memory window thread so that the window (eventually) closes; there should only be one
+                        memory_window_thread.Abort();
+                    }
                 }
 
                 //send outstanding interrupts to the processor
@@ -145,7 +153,19 @@ namespace nlogic_sim
                 MMU.signal_cycle();
 
                 //cycle the processor
-                cycle_status = this.processor.cycle();
+                try
+                {
+                    cycle_status = this.processor.cycle();
+                }
+                catch (Exception e)
+                {
+                    Console.Error.WriteLine("Exception during processor cycle()");
+                    Console.Error.WriteLine("\tMMU:\t" + (this.MMU.get_enabled() ? "Enabled" : "Disabled"));
+                    Console.Error.WriteLine("\tPC:\t0x" + Utility.byte_array_string(this.processor.registers[Processor.PC].data_array, "", false));
+                    Console.Error.WriteLine("\tEXE:\t0x" + Utility.byte_array_string(this.processor.registers[Processor.EXE].data_array, "", false));
+                    Console.Error.WriteLine("\tFLAG:\t0x" + Utility.byte_array_string(this.processor.registers[Processor.FLAG].data_array, "", false));
+                    throw;
+                }
             }
 
             //print the end state of the processor if the visualizer is enabled
@@ -531,6 +551,14 @@ namespace nlogic_sim
             }
             state_string += "\n";
             this.state_logs.Add(state_string);
+
+            uint active_page_directory_address = this.MMU.get_active_page_directory_base_address();
+            string active_page_directory_string = Utility.byte_array_string(Utility.byte_array_from_uint32(4, active_page_directory_address));
+            this.coverage_logs.Add(
+                (this.get_mmu_enabled() ? "MMU On" : "MMU Off")
+                    + "\t" + "APPDBA " + active_page_directory_string
+                    + "\t" + Utility.byte_array_string(this.processor.registers[Processor.PC].data_array)
+            );
         }
 
         /// <summary>
@@ -547,18 +575,34 @@ namespace nlogic_sim
             return log_string;
         }
 
+        /// <summary>
+        /// Return the coverate logs as a single string
+        /// </summary>
+        public string get_coverage_log()
+        {
+            string log_string = "";
+            foreach (string entry in this.coverage_logs)
+            {
+                log_string += entry + "\n";
+            }
+            return log_string;
+        }
+
         private void initialize_visualizer()
         {
-            Debug.Assert(!visualizer_initialized);
-            visualizer_initialized = true;
             this.processor.initialize_visualizer();
-            Thread memory_window_thread = new Thread(StartMemoryWindow);
+            memory_window_thread = new Thread(StartMemoryWindow);
             memory_window_thread.Start();
         }
 
         private void StartMemoryWindow()
         {
             Application.Run(new MemoryWindow(this.memory).get_form());
+        }
+
+        public bool get_mmu_enabled()
+        {
+            return this.MMU.get_enabled();
         }
     }
 }

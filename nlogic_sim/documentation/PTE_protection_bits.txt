@@ -1,0 +1,50 @@
+######################################################################################
+# R            | W               | -- ---- ---- | NNNN NNNN NNNN NNNN NNNN           #
+######################################################################################
+# Read allowed | Write protected | 00 0000 0000 | Physical page number (if resident) #
+#              |                 |              | Disk block           (if evicted)  #
+######################################################################################
+
+
+
+R: read allowed
+W: write protected
+
+RW
+00  Not mapped, not resident
+10  Mapped, resident, not clean, not shared (read and write allowed)
+
+R	W	Mapped	Resident	Referenced	Clean	Shared
+1	0	Yes	    Yes	        Yes	        No	    No
+1	1	Yes	    Yes	        Yes	        Yes	    Yes
+1	1	Yes	    Yes     	Yes	        Yes 	No
+1	1	Yes	    Yes     	Yes	        No	    Yes
+0	1	Yes	    Yes     	No	        No	    No
+0	1	Yes	    Yes     	No	        Yes 	Yes
+0	1	Yes	    Yes     	No	        Yes 	No
+0	1	Yes	    Yes     	No	        No	    Yes
+0	1	Yes	    No	        No	        Yes 	No
+0	0	No	    No	        No	        Yes 	No
+
+
+Page fault handler
+10 - no fault
+00 - page fault on read or write
+    access to unmapped memory, fatal error
+    (sys calls will be handled by user-raised interrupts; in a previous design, a specific unmapped page was reserverd for syscalls)
+01 - page fault on read or write, read protected
+    if page is not resident
+        bring page in
+    set page referenced
+    if write fault
+        perform write fault handler (11)
+        (TODO: need to add something to interrupts to be able to determine if this was a write operation;
+        we could also skip this and let the operation retry, it will fault again and enter 11)
+    done
+11 - page fault on write only, write protected
+    if page is shared
+        split page
+    if page is clean
+        mark as dirty
+    done
+

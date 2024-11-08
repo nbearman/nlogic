@@ -60,7 +60,8 @@ SKIP PC
 IADF WMEM
 SKIP PC
 // R !W physical page 2
-80 00 00 02
+// 80 00 00 02
+C0 00 00 02
 
 //create a PTE in program 1's page table for virtual page 0
 //the page table is at physical address 00 00 20 00, so write the PTE there
@@ -71,14 +72,16 @@ SKIP PC
 IADF WMEM
 SKIP PC
 // R W physical page 3
-C0 00 00 03
+// C0 00 00 03
+80 00 00 03
 
 //add another PTE for virtual page 1
 //map it to the MMIO devices (physical address FF 00 00 00)
 04 WOFST //(each PTE is 4 bytes, so the next PTE is 00 00 20 04)
 IADF WMEM
 SKIP PC
-C0 0F F0 00
+// C0 0F F0 00
+80 0F F0 00
 
 
 //=========================================================================
@@ -94,7 +97,8 @@ SKIP PC
 IADF WMEM
 SKIP PC
 // R !W physical page 6
-80 00 00 06
+// 80 00 00 06
+C0 00 00 06
 
 //create a PTE in program 2's page table for virtual page 0
 //the page table is at physical address 00 00 60 00, so write the PTE there
@@ -105,7 +109,8 @@ SKIP PC
 IADF WMEM
 SKIP PC
 // R !W (resident, clean) physical page 7
-80 00 00 07
+// 80 00 00 07
+C0 00 00 07
 
 //=========================================================================
 // load program 1 into memory from disk
@@ -114,7 +119,7 @@ SKIP PC
 //virtual disk is MMIO device; MMIO devices start at 0xFF 00 00 00
 IADF WBASE
 SKIP PC
-FF 00 00 20
+FF 00 00 24
 
 //load into physical page 3
 00 WOFST
@@ -139,7 +144,7 @@ FF 00 00 20
 //virtual disk is MMIO device; MMIO devices start at 0xFF 00 00 00
 IADF WBASE
 SKIP PC
-FF 00 00 20
+FF 00 00 24
 
 //load into physical page 7
 00 WOFST
@@ -216,6 +221,7 @@ FF 00 00 00
 //14 breakpoint enabled
 //18 enabled
 //1C breakpoint cycle delay counter
+//20 faulted operation register
 
 //=========================================================================
 //=========================================================================

@@ -58,11 +58,6 @@ namespace nlogic_sim
         private bool faulted = false;
 
         /// <summary>
-        /// When in kernel mode, the MMU will not raise interrupts
-        /// </summary>
-        private bool kernel_mode = false; // TODO probably unused?
-
-        /// <summary>
         /// When the MMU breakpoint is enabled, the breakpoint address will be checked for during translation. If
         /// disabled, the breakpoint will not be triggered.
         /// </summary>
@@ -77,6 +72,11 @@ namespace nlogic_sim
         private uint breakpoint_cycle_delay_counter = 0;
 
         /// <summary>
+        /// 0x1 if the faulted operation was a write. 0x0 if it was a read. Stored for reference by the page fault handler
+        /// </summary>
+        private bool faulted_operation_was_write = false;
+
+        /// <summary>
         /// Physical memory of this MMU's environment (RAM)
         /// </summary>
         private byte[] environment_memory;
@@ -88,7 +88,7 @@ namespace nlogic_sim
         ///     (bool): is this a kernel-only interrupt
         /// </summary>
         private Action<bool, bool> raise_interrupt;
-        
+
         public MemoryManagementUnit(byte[] memory)
         {
             environment_memory = memory;
@@ -209,6 +209,8 @@ namespace nlogic_sim
                 //set the RETRY flag if the protection requires a retry interrupt
                 this.raise_interrupt(protection == ProtectionCheckResult.RETRY_INTERRUPT, true);
 
+                this.faulted_operation_was_write = write;
+                // TODO do we need to set this.faulted to true?
                 return false;
             }
 
@@ -216,9 +218,6 @@ namespace nlogic_sim
             uint page_table_entry_address = get_page_table_entry_address(PDE.number, address);
             uint page_table_entry_data = read_environment_memory_byte(page_table_entry_address);
             PageTableEntry PTE = new PageTableEntry(page_table_entry_data);
-
-            //set the refernced bit on the PDE for this page table, since we just accessed the page table
-            PDE.referenced = true;
 
             //check that the physical page allows the planned memory operation
             protection = check_protection(PTE, write);
@@ -229,29 +228,14 @@ namespace nlogic_sim
                 //store the address that caused the the fault
                 this.faulted_address = address;
 
-                //update the page directory entry in memory, since we set the referenced bit
-                write_pte_to_environment_memory(PDE, page_directory_entry_address);
-
                 //raise a kernel-handled interrupt and abort translation
                 //set the RETRY flag if the protection requires a retry interrupt
                 this.raise_interrupt(protection == ProtectionCheckResult.RETRY_INTERRUPT, true);
 
+                this.faulted_operation_was_write = write;
+                // TODO do we need to set this.faulted to true?
                 return false;
             }
-
-            //set the dirty bit of the page if we are about to write to the page
-            if (write)
-            {
-                PTE.dirty = true;
-            }
-            //set the refernced bit on the PTE for this page, since we're about to access the page
-            PTE.referenced = true;
-            write_pte_to_environment_memory(PTE, page_table_entry_address);
-
-            //set the dirty bit for the page directory entry, since we just modified the page table it points to
-            PDE.dirty = true;
-            write_pte_to_environment_memory(PDE, page_directory_entry_address);
-
 
             //the page table is safe to access
             //get the final physical address
@@ -286,24 +270,6 @@ namespace nlogic_sim
         void HardwareInterrupter.register_signal_callback(Action<bool, bool> signal_callback)
         {
             this.raise_interrupt = signal_callback;
-        }
-        
-        
-        
-        //MMIO device interface methods
-
-        uint MMIO.get_size()
-        {
-            //32 bytes for 8 uint registers:
-            //  active page directory base address
-            //  queued page directory base address
-            //  virtual address mmu breakpoint
-            //  faulted PTE
-            //  faulted address
-            //  breakpoint enabled
-            //  enabled
-            //  breakpoint cycle delay counter
-            return 32; // TODO if this changes, the address of the virtual disk needs to be updated in boot and handler
         }
 
         //TODO this is out of date (missing MMU registers) and currently not used (write_byte / read_byte currently used instead)
@@ -353,8 +319,10 @@ namespace nlogic_sim
             //TODO clean this mess up by changing the MMU's registers from uint variables
             //to some kind of dictionary or array or something with accessors to make it convenient
             uint value;
-            if (address >= (uint)MMIOLayout.BREAKPOINT_CYCLE_DELAY_COUNTER + 4)
+            if (address >= (uint)MMIOLayout.FAULTED_OPERATION_REGISTER + 4)
                 throw new ArgumentException("MMU access error: the given address is beyond the range of writable registers");
+            else if (address >= (uint)MMIOLayout.FAULTED_OPERATION_REGISTER)
+                throw new ArgumentException("MMU access error: the faulted operation register is read-only");
             else if (address >= (uint)MMIOLayout.BREAKPOINT_CYCLE_DELAY_COUNTER)
                 value = this.breakpoint_cycle_delay_counter;
             else if (address >= (uint)MMIOLayout.ENABLED)
@@ -397,8 +365,12 @@ namespace nlogic_sim
         public byte read_byte(uint address)
         {
             uint value;
-            if (address >= (uint)MMIOLayout.ENABLED + 4)
+            if (address >= (uint)MMIOLayout.FAULTED_OPERATION_REGISTER + 4)
                 throw new ArgumentException("MMU access error: the given address is beyond the range of readable registers");
+            else if (address >= (uint)MMIOLayout.FAULTED_OPERATION_REGISTER)
+                value = this.faulted_operation_was_write ? (uint)1 : (uint)0;
+            else if (address >= (uint)MMIOLayout.BREAKPOINT_CYCLE_DELAY_COUNTER)
+                throw new ArgumentException("MMU access error: the breakpoint cycle delay counter is not a readable register");
             else if (address >= (uint)MMIOLayout.ENABLED)
                 value = this.enabled ? (uint)1 : (uint)0;
             else if (address >= (uint)MMIOLayout.BREAKPOINT_ENABLED)
@@ -435,12 +407,12 @@ namespace nlogic_sim
             if (pte.readable)
             {
                 //page is safe to read
-                //page fault only the page is not writable and we are writing
-                if (!pte.writable && write)
+                //page fault only the page is write protected and we are writing
+                if (pte.write_protected && write)
                 {
                     //readable but not writable
                     //either a shared physical page or a clean page
-                    //page needs to be split or marked as dirty
+                    //page needs to be split or marked as dirty or both
                     return ProtectionCheckResult.RETRY_INTERRUPT;
                 }
 
@@ -449,21 +421,23 @@ namespace nlogic_sim
                 return ProtectionCheckResult.SAFE;
             }
 
-            //if a page is not "readable," both reads and writes are illegal
-            //the writable bit now indicates if the page is paged out or not allocated
+            //if a page is not readable, both reads and writes should fault
+            //the write protection bit now distinguishes between if the page is mapped or not
+            //write protected -> mapped
+            //not write protected -> not mapped
             else
             {
-                if (pte.writable)
+                if (pte.write_protected)
                 {
-                    //not readable and "writable" indicates the page is mapped but paged out
-                    //page is evicted, page fault
+                    //not readable and "write protected" indicates the page is mapped but evicted or
+                    //the referenced bit is not set; in both cases; page fault
                     return ProtectionCheckResult.RETRY_INTERRUPT;
                 }
                 else
                 {
-                    //not readable, not writable indicates the page is not mapped at all
-                    //the handler will also decide if this was intended to be a system call
-                    //access violation, non-retry kernel table interrupt
+                    //not readable, not write protected indicates the page is not mapped at all
+                    //the handler will also decide if this was intended to be a system call or
+                    //access violation; non-retry kernel table interrupt
                     return ProtectionCheckResult.NON_RETRY_INTERRUPT;
                 }
             }
@@ -481,6 +455,8 @@ namespace nlogic_sim
 
         private void write_pte_to_environment_memory(PageTableEntry pte, uint address)
         {
+            // TODO unused because the MMU is no longer automatically setting the referenced bit
+            // (it currently only exists in the software physical page map)
             byte[] data = Utility.byte_array_from_uint32(4, pte.pte_to_uint());
             for (int i = 0; i < 4; i++)
             {
@@ -496,7 +472,7 @@ namespace nlogic_sim
             //[1111 1111 11][00 0000 0000][0000 0000 0000]
             uint directory_number = (virtual_address & 0xFFC00000) >> 22;
 
-            //page directory entry address:
+            //page directory entry physical address:
             //[directory base address]  [directory #] [00]
             //[0000 0000 0000 0000 0000][00 0000 0000][00]
             return (page_directory_base_address << 12) | (directory_number << 2);
@@ -509,7 +485,7 @@ namespace nlogic_sim
             //[0000 0000 00][11 1111 1111][0000 0000 0000]
             uint page_number = (virtual_address & 0x003FF000) >> 12;
 
-            //page table entry address:
+            //page table entry physical address:
             //[table phsyical page #]   [page #]      [00]
             //[0000 0000 0000 0000 0000][00 0000 0000][00]
             return (page_table_physical_page_number << 12) | (page_number << 2);
@@ -534,13 +510,21 @@ namespace nlogic_sim
             return;
         }
 
+        public bool get_enabled()
+        {
+            return this.enabled;
+        }
+
+        public uint get_active_page_directory_base_address()
+        {
+            return this.active_page_directory_base_address;
+        }
+
         private struct PageTableEntry
         {
             //PTE protection bits
             public bool readable;
-            public bool writable;
-            public bool referenced;
-            public bool dirty;
+            public bool write_protected;
 
             //number represented by the lower 20 bits of the PTE
             //either a directory number or a physical page number
@@ -552,9 +536,7 @@ namespace nlogic_sim
             public PageTableEntry(uint data)
             {
                 this.readable = Utility.get_bit(data, (uint)PageTableEntryProtectionBits.READABLE);
-                this.writable = Utility.get_bit(data, (uint)PageTableEntryProtectionBits.WRITABLE);
-                this.referenced = Utility.get_bit(data, (uint)PageTableEntryProtectionBits.REFERENCED);
-                this.dirty = Utility.get_bit(data, (uint)PageTableEntryProtectionBits.DIRTY);
+                this.write_protected = Utility.get_bit(data, (uint)PageTableEntryProtectionBits.WRITE_PROTECTED);
 
                 //physical page number is held in the bottom 20 bits
                 this.number = data & 0x000FFFFF;
@@ -575,12 +557,8 @@ namespace nlogic_sim
                 uint result = this.number;
                 if (this.readable)
                     result = Utility.set_bit(result, (uint)PageTableEntryProtectionBits.READABLE);
-                if (this.writable)
-                    result = Utility.set_bit(result, (uint)PageTableEntryProtectionBits.WRITABLE);
-                if (this.referenced)
-                    result = Utility.set_bit(result, (uint)PageTableEntryProtectionBits.REFERENCED);
-                if (this.dirty)
-                    result = Utility.set_bit(result, (uint)PageTableEntryProtectionBits.DIRTY);
+                if (this.write_protected)
+                    result = Utility.set_bit(result, (uint)PageTableEntryProtectionBits.WRITE_PROTECTED);
                 return result;
             }
 
@@ -590,9 +568,7 @@ namespace nlogic_sim
         private enum PageTableEntryProtectionBits
         {
             READABLE = 0,
-            WRITABLE = 1,
-            REFERENCED = 2,
-            DIRTY = 3,
+            WRITE_PROTECTED = 1,
         }
 
         private enum ProtectionCheckResult
@@ -612,6 +588,22 @@ namespace nlogic_sim
             BREAKPOINT_ENABLED = 20,
             ENABLED = 24,
             BREAKPOINT_CYCLE_DELAY_COUNTER = 28,
+            FAULTED_OPERATION_REGISTER = 32,
+        }
+
+        uint MMIO.get_size()
+        {
+            //36 bytes for 9 uint registers:
+            //  active page directory base address
+            //  queued page directory base address
+            //  virtual address mmu breakpoint
+            //  faulted PTE
+            //  faulted address
+            //  breakpoint enabled
+            //  enabled
+            //  breakpoint cycle delay counter
+            //  faulted operation (write? == 1)
+            return 36; // TODO if this changes, the address of the virtual disk needs to be updated in boot and handler
         }
     }
 }

@@ -1,4 +1,11 @@
-﻿Change boot program to load page tables from disk instead of creating them with instructions
+﻿PTE rework
+	Change MMU to skip automatically marking read bits
+	Change MMU to fault (retryable) on unreferenced page, including page tables
+	Change page fault handler to mark unreferenced page as referenced
+	Remove all references to F and D bits
+
+
+Change boot program to load page tables from disk instead of creating them with instructions
 	this will make it easier to write test programs while working on page fault handlers
 
 (done?) Add cycle delay to MMU breakpoint to avoid returning early

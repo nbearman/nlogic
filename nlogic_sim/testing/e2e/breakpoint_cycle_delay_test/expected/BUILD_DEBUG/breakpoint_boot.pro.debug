@@ -60,7 +60,8 @@
 00 00 00 0E |	IADF WMEM
 00 00 00 10 |	SKIP PC
 -- -- -- -- |	// R !W physical page 2
-00 00 00 12 |	80 00 00 02
+-- -- -- -- |	// 80 00 00 02
+00 00 00 12 |	C0 00 00 02
 -- -- -- -- |	
 -- -- -- -- |	//create a PTE in program 1's page table for virtual page 0
 -- -- -- -- |	//the page table is at physical address 00 00 20 00, so write the PTE there
@@ -71,14 +72,16 @@
 00 00 00 1E |	IADF WMEM
 00 00 00 20 |	SKIP PC
 -- -- -- -- |	// R W physical page 3
-00 00 00 22 |	C0 00 00 03
+-- -- -- -- |	// C0 00 00 03
+00 00 00 22 |	80 00 00 03
 -- -- -- -- |	
 -- -- -- -- |	//add another PTE for virtual page 1
 -- -- -- -- |	//map it to the MMIO devices (physical address FF 00 00 00)
 00 00 00 26 |	04 WOFST //(each PTE is 4 bytes, so the next PTE is 00 00 20 04)
 00 00 00 28 |	IADF WMEM
 00 00 00 2A |	SKIP PC
-00 00 00 2C |	C0 0F F0 00
+-- -- -- -- |	// C0 0F F0 00
+00 00 00 2C |	80 0F F0 00
 -- -- -- -- |	
 -- -- -- -- |	
 -- -- -- -- |	//=========================================================================
@@ -94,7 +97,8 @@
 00 00 00 3A |	IADF WMEM
 00 00 00 3C |	SKIP PC
 -- -- -- -- |	// R !W physical page 6
-00 00 00 3E |	80 00 00 06
+-- -- -- -- |	// 80 00 00 06
+00 00 00 3E |	C0 00 00 06
 -- -- -- -- |	
 -- -- -- -- |	//create a PTE in program 2's page table for virtual page 0
 -- -- -- -- |	//the page table is at physical address 00 00 60 00, so write the PTE there
@@ -105,7 +109,8 @@
 00 00 00 4A |	IADF WMEM
 00 00 00 4C |	SKIP PC
 -- -- -- -- |	// R !W (resident, clean) physical page 7
-00 00 00 4E |	80 00 00 07
+-- -- -- -- |	// 80 00 00 07
+00 00 00 4E |	C0 00 00 07
 -- -- -- -- |	
 -- -- -- -- |	//=========================================================================
 -- -- -- -- |	// load program 1 into memory from disk
@@ -114,7 +119,7 @@
 -- -- -- -- |	//virtual disk is MMIO device; MMIO devices start at 0xFF 00 00 00
 00 00 00 52 |	IADF WBASE
 00 00 00 54 |	SKIP PC
-00 00 00 56 |	FF 00 00 20
+00 00 00 56 |	FF 00 00 24
 -- -- -- -- |	
 -- -- -- -- |	//load into physical page 3
 00 00 00 5A |	00 WOFST
@@ -139,7 +144,7 @@
 -- -- -- -- |	//virtual disk is MMIO device; MMIO devices start at 0xFF 00 00 00
 00 00 00 6A |	IADF WBASE
 00 00 00 6C |	SKIP PC
-00 00 00 6E |	FF 00 00 20
+00 00 00 6E |	FF 00 00 24
 -- -- -- -- |	
 -- -- -- -- |	//load into physical page 7
 00 00 00 72 |	00 WOFST
@@ -216,6 +221,7 @@
 -- -- -- -- |	//14 breakpoint enabled
 -- -- -- -- |	//18 enabled
 -- -- -- -- |	//1C breakpoint cycle delay counter
+-- -- -- -- |	//20 faulted operation register
 -- -- -- -- |	
 -- -- -- -- |	//=========================================================================
 -- -- -- -- |	//=========================================================================

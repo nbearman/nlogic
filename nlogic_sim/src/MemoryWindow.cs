@@ -35,6 +35,8 @@ namespace nlogic_sim
 
             // load the current state of memory so the user doesn't have to click refresh the first time
             this.refresh_display();
+
+            this.refresh_button.Select();
         }
 
         private Form initialize_form()

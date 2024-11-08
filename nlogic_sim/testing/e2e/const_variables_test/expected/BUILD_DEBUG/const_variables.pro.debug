@@ -1,7 +1,7 @@
-00 00 00 00 |	const ONE 1
-00 00 00 00 |	CONST two 02
+-- -- -- -- |	const ONE 1
+-- -- -- -- |	CONST two 02
 -- -- -- -- |	
-00 00 00 00 |	CONST GPA 34
+-- -- -- -- |	CONST GPA 34
 -- -- -- -- |	
 00 00 00 00 |	ICONST_GPA GPD
 -- -- -- -- |	
@@ -12,10 +12,10 @@
 -- -- -- -- |	
 00 00 00 08 |	IADF GPH
 00 00 00 0A |	SKIP PC
-00 00 00 0C |	CONST x EECCAA88
+-- -- -- -- |	CONST x EECCAA88
 00 00 00 0C |	CONST_x
 -- -- -- -- |	
-00 00 00 10 |	CONST tHrEe 003
+-- -- -- -- |	CONST tHrEe 003
 00 00 00 10 |	iconst_tHrEe ALUB
 00 00 00 12 |	ALUR GPG
 -- -- -- -- |	

@@ -7,6 +7,7 @@ namespace nlogic_sim
     class Assembler
     {
         private static bool output_to_file = false;
+        private static bool warnings_enabled = true;
 
         private static string assembler_output = "";
 
@@ -291,13 +292,15 @@ namespace nlogic_sim
             return successful;
         }
 
-        public static void assemble(string[] filepaths, string output_file_path = null)
+        public static void assemble(string[] filepaths, string output_file_path = null, bool suppress_warnings = false)
         {
 
             if (output_file_path != null)
             {
                 redirect_output(output_file_path);
             }
+
+            Assembler.warnings_enabled = !suppress_warnings;
 
             ConsoleColor original_color = Console.ForegroundColor;
             Console.ForegroundColor = ConsoleColor.Cyan;
@@ -372,6 +375,8 @@ namespace nlogic_sim
 
         private static void print_message(string message, MESSAGE_TYPE message_type = MESSAGE_TYPE.None)
         {
+            if (message_type == MESSAGE_TYPE.Warning && !Assembler.warnings_enabled)
+                return;
 
             ConsoleColor original_color = Console.ForegroundColor;
             Console.ForegroundColor = (ConsoleColor)message_type;

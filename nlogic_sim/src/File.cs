@@ -19,7 +19,7 @@ namespace nlogic_sim
         {
             FileInfo file = new FileInfo(file_path);
             file.Directory.Create();
-            StreamWriter w = new StreamWriter(file.OpenWrite());
+            StreamWriter w = new StreamWriter(file.FullName, false);
             w.Write(contents);
             w.Close();
         }

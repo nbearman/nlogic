@@ -7,7 +7,6 @@ namespace nlogic_sim
     {
         private enum READOUT
         {
-            Header = 0,
             FLAG = 1, FLAG_contents = 2,
             CurrentInstruction, CurrentInstruction_contents, CurrentInstruction_expansion,
             EXE, EXE_contents,
@@ -44,7 +43,8 @@ namespace nlogic_sim
             WMEM, WMEM_contents,
             MemoryContext1,
             MemoryContext2,
-            CycleCounter, CycleCounter_contents, CycleCounter_expansion
+            CycleCounter, CycleCounter_contents, CycleCounter_expansion,
+            MMUStatus, MMUStatus_contents,
         };
 
         /// <summary>
@@ -54,10 +54,11 @@ namespace nlogic_sim
         /// </summary>
         private static Dictionary<READOUT, Tuple<int, int, int>> readout_coordinates = new Dictionary<READOUT, Tuple<int, int, int>>
         {
-            { READOUT.Header, new Tuple<int, int, int>(1, 0, 40) },
-            { READOUT.CycleCounter, new Tuple<int, int, int>(33, 0, 21) },
-            { READOUT.CycleCounter_contents, new Tuple<int, int, int>(57, 0, 15) },
-            { READOUT.CycleCounter_expansion, new Tuple<int, int, int>(75, 0, 11) },
+            { READOUT.CycleCounter, new Tuple<int, int, int>(1, 0, 15) },
+            { READOUT.CycleCounter_contents, new Tuple<int, int, int>(25, 0, 15) },
+            { READOUT.CycleCounter_expansion, new Tuple<int, int, int>(43, 0, 11) },
+            { READOUT.MMUStatus, new Tuple<int, int, int>(57, 0, 10) },
+            { READOUT.MMUStatus_contents, new Tuple<int, int, int>(69, 0, 10) },
             ////////////////////////////////////////////////////////////////////////////
             { READOUT.FLAG, new Tuple<int, int, int>(4, 2, 7) },
             { READOUT.FLAG_contents, new Tuple<int, int, int>(12, 2, 15) },
@@ -197,8 +198,8 @@ namespace nlogic_sim
             {"WOFST", ConsoleColor.Yellow },
             {"WMEM", ConsoleColor.Green },
             {"CurrentInstruction", ConsoleColor.Cyan },
-            {"Header", ConsoleColor.DarkYellow },
             {"CycleCounter", ConsoleColor.Green },
+            {"MMUStatus", ConsoleColor.Blue },
         };
 
     }

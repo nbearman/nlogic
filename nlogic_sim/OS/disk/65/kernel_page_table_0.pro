@@ -30,8 +30,8 @@
 //
 
 
-C0  00  00  03 // R W (read and write) physical page 3 (kernel program page 0)
-C0  0F  F0  00 // R W (read and write) physical page 0xFF000 (MMIO devices)
+80  00  00  03 // R W (10) (read and write allowed) physical page 3 (kernel program page 0)
+80  0F  F0  00 // R W (10) (read and write allowed) physical page 0xFF000 (MMIO devices)
 00  00  00  00
 00  00  00  00
 00  00  00  00
@@ -1039,19 +1039,20 @@ C0  0F  F0  00 // R W (read and write) physical page 0xFF000 (MMIO devices)
 00  00  00  00
 00  00  00  00
 // Start of mapping phsyical RAM to kernel's VM
-C0  00  00  00
-C0  00  00  01
-C0  00  00  02
-C0  00  00  03
-C0  00  00  04
-C0  00  00  05
-C0  00  00  06
-C0  00  00  07
-C0  00  00  08
-C0  00  00  09
-C0  00  00  0A
-C0  00  00  0B
-C0  00  00  0C
-C0  00  00  0D
-C0  00  00  0E
-C0  00  00  0F
+// RW == 10, readable and not write protected
+80  00  00  00
+80  00  00  01
+80  00  00  02
+80  00  00  03
+80  00  00  04
+80  00  00  05
+80  00  00  06
+80  00  00  07
+80  00  00  08
+80  00  00  09
+80  00  00  0A
+80  00  00  0B
+80  00  00  0C
+80  00  00  0D
+80  00  00  0E
+80  00  00  0F
