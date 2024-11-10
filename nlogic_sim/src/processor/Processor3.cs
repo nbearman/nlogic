@@ -239,7 +239,7 @@ namespace nlogic_sim
                 //  UNLOCKED should not be writable because a user could use it to circumvent the lock
                 //  DISABLED should not be writable because a user could disable all interrupts, e.g. MMU
                 //  DELAY should not be writable because a user could set it to postpone all interrupts
-                //  RETRY (TODO does this need to locked? Probably, but describe situation)
+                //  RETRY should not be writable because only the MMU should send retryable interrupts
                 //  KERNEL should be writable so a user can initiate a kernel interrupt (syscall)
                 //      There is no risk of user overwriting K, because signals are processed after a cycle,
                 //      so user will never see FLAG when it is non-0 if K is set

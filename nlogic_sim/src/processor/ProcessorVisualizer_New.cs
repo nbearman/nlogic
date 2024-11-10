@@ -727,6 +727,8 @@ namespace nlogic_sim
             Console.WriteLine("  ||       |               ||                           ||       |               ||");
             Console.WriteLine("  ||       |               ||                           ||       |               ||");
             Console.WriteLine("  ||       |               ||                           ||       |               ||");
+            Console.WriteLine();
+            Console.WriteLine(" <Press 'C' to continue>");
         }
     }
 }
