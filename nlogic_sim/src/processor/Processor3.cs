@@ -711,7 +711,7 @@ namespace nlogic_sim
         /// handler. These offsets are determined by the interrupt handler code (1_handler.pro right now)
         /// If that code changes the order the registers are stored, this needs to be updated.
         /// 
-        /// TODO this is a convenient way to tell the interrupt handler where to write the store_register_contents
+        /// TODO this is a convenient way to tell the interrupt handler where to write the stored_register_contents
         /// from the last intstruction cache if we need to restore that register's contents during a retry interrupt.
         /// This offset will be stored with the last instruction cache, so to replace the destination register's dumped
         /// contents with its previous contents, the interrupt handler can use the offset provided from this map
@@ -750,6 +750,7 @@ namespace nlogic_sim
 
             { WBASE, 0x48 },
             { WOFST, 0x4C },
+            //{ LINK, 0x50 }, // TODO add this here and at the bottom of the kernel stack in 1_handler.pro
         };
     }
 }

@@ -266,6 +266,10 @@ namespace nlogic_sim
             Console.WriteLine("Update hardcoded references to above addresses!");
             Console.WriteLine();
 
+            Console.ForegroundColor = ConsoleColor.Yellow;
+            Console.WriteLine("Recommended terminal size: 120x30");
+            Console.WriteLine();
+
             Console.ForegroundColor = original_color;
             Console.WriteLine("Simulation ready; press any key to run...");
 
