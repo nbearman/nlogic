@@ -24,9 +24,13 @@ FILLFFC
 13 GPE
 
 BREAK
+01 GPA // syscall == map page
+IADF GPB
+SKIP PC
+00 00 00 02 // vpage number to map
 IADF FLAG
 SKIP PC
-08 00 00 00 // test kernal interrupt from user program
+08 00 00 00 // test kernel interrupt from user program
 
 // attempt to read an unmapped page
 IADF RBASE

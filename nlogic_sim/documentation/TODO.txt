@@ -1,5 +1,9 @@
 ﻿PTE rework
 	Change page fault handler to mark unreferenced page as referenced
+		test if this is done already
+	Change page fault handler to actual function call so that it can be reused by the "map page" syscall
+		Add "map missing table and page" as function argument
+			Instead of faulting when a page table or page is unmapped, create the mapping and continue
 
 
 Figure out what the interrupt handler should do with the interrupt channel bits

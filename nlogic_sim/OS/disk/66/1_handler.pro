@@ -1,6 +1,9 @@
 ﻿CONST physical_memory_pages 10
 CONST mmio_disk_base_address 1024
 
+CONST gpa_dump 00
+CONST gpb_dump 04
+
 //=========================================================================
 // kernel entry point
 //=========================================================================
@@ -418,7 +421,7 @@ ISIZE_FRAME WOFST //WOFST = SP == frame size
     IADF ALUB
     SKIP PC
     00 00 00 01 //mask for the first channel (MMU)
-    08 ALUM //AND mode
+    AAND ALUM //AND mode
     ALUR COMPA
     00 COMPB //if flag channel is 1, jump to mmu interrupt handler
     COMPR PC
@@ -427,8 +430,20 @@ ISIZE_FRAME WOFST //WOFST = SP == frame size
 
 @non_mmu_interrupt
 //if interrupt is not from MMU
-    //do nothing if the interrupt is from anywhere besides the MMU
-    7F FLAG
+    // determine if the interrupt is a system call by checking that all channels are 0
+    FLAG ALUA
+    IADF ALUB
+    SKIP PC
+    01 FF FF FF  //mask for all channels (first 7 bits are reserved for flags)
+    AAND ALUM
+    ALUR COMPA
+    00 COMPB
+    break
+    COMPR PC
+    :system_call
+    :non_system_call
+    @non_system_call
+    7F FLAG // TODO not implemented
 
 @mmu_interrupt
 //else interrupt is from MMU
@@ -611,7 +626,7 @@ ISIZE_FRAME WOFST //WOFST = SP == frame size
 
     @pde_not_mapped
     //RW == 00; page table is not mapped; access error
-    7F FLAG //halt here
+    7F FLAG //halt here (TODO: terminate user process)
 
     @pde_is_mapped
     //page table is mapped, continue
@@ -768,7 +783,7 @@ COMPR PC
     :pte_is_mapped
     @pte_not_mapped
     //RW == 00; page is not mapped; access error
-    7F FLAG //halt here
+    7F FLAG //halt here (TODO: terminate user process)
     @pte_is_mapped
     //page is mapped, continue
 
@@ -1678,6 +1693,76 @@ LINK PC
 //==========
 FRAME_END
 //=========================
+
+
+FRAME_START
+//=========================
+// syscall handler stack layout / local variables
+//==========
+    STACK flag_val 04           // FLAG contents
+    STACK syscall_number 04     // syscall function (mpa page, unmap page, etc.)
+    STACK syscall_arg1 04       // syscall argument 1
+//=========================
+
+//=========================
+// Users can make system calls by sending a kernel interrupt with all signal bits set to 0
+// The system call number should be stored in GPA
+//=========================
+
+@system_call
+    ISIZE_FRAME WOFST //when the interrupt handler begins, the stack is set up for the page fault handler
+        //but for syscalls, we jump here, and use a different stack frame layout, so replace the size
+        //that was set up for the page fault handler with the size needed for the syscall handler
+
+    // retrieve syscall number and arguments from the dumped processor state
+    // (user stores syscall num in GPA, args in other GP registers)
+    00 GPA
+    IADF RBASE
+    SKIP PC
+    ::KERNEL_STACK
+    iconst_gpa_dump ROFST
+    RMEM GPA
+    iconst_gpa_dump ROFST
+    RMEM GPB
+
+    // store syscall number in local variable
+    WBASE RBASE
+    ISTACK_syscall_number ROFST
+    GPA RMEM
+
+    // determine which syscall to execute
+    // (TODO: change this to a table with syscall addresses instead of if statements)
+    GPA COMPA
+    01 COMPB // allocate memory
+    COMPR PC
+    :syscall_map_page
+    :syscall_not_map_page
+    @syscall_not_map_page
+        // TODO not implemented
+        break
+        7f FLAG
+
+    @syscall_map_page
+        break
+        // check if desired page is already mapped
+        // update the page table and directory
+        // update process map
+        // TODO:
+        //      How to find an open disk block? Should OS keep track, or let the disk do it?
+        //      Change fetching nonresident pages to consider a disk block of 0 to be an empty page
+        //          which will avoid reading from disk for empty (just mapped) pages
+        //      MMU clear page: give the MMU a function to clear a page, which can be used when
+        //          paging a non-resident page in when it had no disk block
+        7f FLAG
+
+//=========================
+// system call handler stack frame end
+//==========
+FRAME_END
+//=========================
+
+//nothing left (this should never run)
+7F FLAG
 
 
 
