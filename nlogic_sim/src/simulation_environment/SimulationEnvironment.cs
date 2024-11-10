@@ -3,6 +3,7 @@ using System.Diagnostics;
 using System.Collections.Generic;
 using System.Threading;
 using System.Windows.Forms;
+using System.Runtime.ExceptionServices;
 
 namespace nlogic_sim
 {
@@ -165,7 +166,8 @@ namespace nlogic_sim
                     Console.Error.WriteLine("\tEXE:\t0x" + Utility.byte_array_string(this.processor.registers[Processor.EXE].data_array, "", false));
                     Console.Error.WriteLine("\tFLAG:\t0x" + Utility.byte_array_string(this.processor.registers[Processor.FLAG].data_array, "", false));
                     Console.Error.WriteLine("\tCycle count:\t" + this.processor.get_cycle_count());
-                    throw e;
+                    ExceptionDispatchInfo.Capture(e).Throw();
+                    throw;
                 }
             }
 
