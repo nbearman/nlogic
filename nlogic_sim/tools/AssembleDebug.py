@@ -660,11 +660,11 @@ class Program:
 
                 elif t is StackVariableReferenceImmediate:
                     if not within_stack_frame:
-                        raise Exception("stack variable cannot be used outside stack frame context; use FRAME_START first")
+                        raise Exception(f"stack variable '{item.name}' cannot be used outside stack frame context; use FRAME_START first")
                     # if there's an exception here, the variable referenced has not been declared
                     offset = stack_variables_to_offsets[item.name]
                     if offset > 0x7F:
-                        raise Exception("stack variable cannot be used; offset exceeds 0x7F; use STACK_ instead")
+                        raise Exception(f"stack variable '{item.name}' cannot be used; offset exceeds 0x7F; use STACK_ instead")
                     code.append(number_to_byte(offset))
                     # immediate will take one byte
                     pc += 1

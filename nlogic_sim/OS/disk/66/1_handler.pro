@@ -649,9 +649,11 @@ GPH RMEM
 //check if the table is resident
 ISTACK_faulted_va_table_num ROFST
 RMEM GPG
+ISTACK_active_process_id ROFST
+RMEM GPF
 RTRN LINK
 IADN PC
-:lite_check_ppage_matches_vpage //[GPG][GPH] -> [GPH]
+:lite_check_ppage_matches_vpage //[GPF][GPG][GPH] -> [GPH]
 //GPH holds 1 if table is resident
 GPH COMPA
 01 COMPB
@@ -792,9 +794,11 @@ GPA GPH //move PTE to GPH for lite func arg
 WBASE RBASE
 ISTACK_faulted_va_vpage_num ROFST
 RMEM GPG
+ISTACK_active_process_id ROFST
+RMEM GPF
 RTRN LINK
 IADN PC
-:lite_check_ppage_matches_vpage //[GPG][GPH] -> [GPH]
+:lite_check_ppage_matches_vpage //[GPF][GPG][GPH] -> [GPH]
 //GPH holds 1 if table is resident
 GPH COMPA
 01 COMPB
@@ -1114,15 +1118,21 @@ BREAK
 7F FLAG
 // end interrupt handler
 
+//=========================
+// interrupt handler stack frame end
+//==========
+FRAME_END
+//=========================
+
 
 //=========================
 // Interrupt handler lite functions
 //=============
-// These subroutines share a stack frame with the interrupt handler
-// (WBASE still holds frame pointer, stack variables still accessible)
+// These subroutines do not use the stack and can be called from different frames.
 // Lite functions:
 //  1. Must restore WBASE and RBASE before returning
 //  2. May overwrite all registers
+//  3. May not access local variables, since they are defined outside any frame
 //=========================
 
 //=========================
@@ -1440,6 +1450,7 @@ LINK PC
 // and matches the given virtual page
 // Returns 1 if the page does belong to the active process
 // Input
+//  [GPF] active process ID
 //  [GPG] virtual page number
 //  [GPH] physical page number
 // Returns: 0 or 1 in GPH
@@ -1474,9 +1485,7 @@ LINK PC //return false
 //check the ppage entry to see if the process owner
 //and vpage match
 
-WBASE RBASE
-ISTACK_active_process_id ROFST
-RMEM COMPA //active process ID to COMPA
+GPF COMPA //active process ID to COMPA
 
 IADF RBASE
 SKIP PC
@@ -1686,13 +1695,6 @@ LINK PC
 // End lite_get_open_ppage
 //=========================
 
-
-
-//=========================
-// interrupt handler stack frame end
-//==========
-FRAME_END
-//=========================
 
 
 FRAME_START
