@@ -1,5 +1,7 @@
 ﻿CONST physical_memory_pages 10
-CONST mmio_disk_base_address 1024
+CONST mmio_base_address 8000 // 
+CONST mmu_base_address 8000 // MMU address == MMIO base address because it is the first MMIO device
+CONST mmio_disk_base_address 8024 // disk address starts after all MMU register addresses
 
 CONST gpa_dump 00
 CONST gpb_dump 04
@@ -23,7 +25,7 @@ CONST gpb_dump 04
 //set the MMU VA break point
 IADF WBASE
 SKIP PC
-00 00 10 00 //MMIO base address (in VA)
+CONST_mmu_base_address //MMU base address (in VA)
 08 WOFST //breakpoint register
 00 WMEM //breakpoint at 0
 
@@ -324,32 +326,8 @@ FRAME_START
 
     STACK pc_val 04                 // PC contents
     STACK flag_val 04               // FLAG contents
-    STACK faulted_pte 04            // faulted PTE
-    STACK faulted_va 04             // faulted virtual address
-    STACK faulted_operation 04      // faulted operation (0 if read, 1 if write)
-    STACK faulted_pte_block 04      // disk block from faulted PTE
-    STACK faulted_va_vpage_num 04   // virtual page number from faulted virtual address
-    STACK faulted_va_table_num 04   // virtual table number from faulted virtual address
     STACK active_process_id 04      // process ID of the active process
     STACK active_process_page_directory_ppage 04    // physical page of the active process's page directory
-    STACK active_process_map_entry_index 04         // index of active process in the process map
-    STACK target_ppage 04           // physical page new page is moved into (TODO: unused)
-    STACK fetched_pde 04            // possibly different than faulted PTE if the leaf page faulted
-    STACK fetched_pte 04            // retrieved by following the PDE if leaf page faulted
-                                    //   should be the same as faulted PTE in that case
-    STACK fetched_pde_kpa 04        // VA in kernel space of fetched PDE's physical address
-    STACK fetched_pte_kpa 04        // VA in kernel space of fetched PTE's physical address
-
-    //lower 20 bits of fetched PDE and PTE; if the page it points
-    //to is resident, it's a physical page number, else it's a disk
-    //block number where the page was evicted to
-    STACK fetched_pde_number 04
-    STACK fetched_pte_number 04
-
-    STACK updated_pde 04            // PDE data after updating tables
-    STACK updated_pte 04            // PTE data after updating tables
-    STACK virtual_table_ppage 04    // physical page number of the VA's page table
-    STACK virtual_page_ppage 04     // physical page number of the VA's page
 
 //=========================
 
@@ -447,570 +425,29 @@ ISIZE_FRAME WOFST //WOFST = SP == frame size
     :system_call
     :non_system_call
     @non_system_call
+    break
     7F FLAG // TODO not implemented
 
 @mmu_interrupt
 //else interrupt is from MMU
-//retrieve the faulted PTE from the MMU
-    IADF RBASE
+
+    // TODO: call page fault handler function
+
+    //push target function address onto the stack
+    IADF WMEM
     SKIP PC
-    00 00 10 00 //MMU VA
-    0C ROFST //0x0C == faulted PTE register offset in MMU address range
-    RMEM GPA
+    :function_mmu_fault_handler
 
-//retrieve the faulted address from the MMU
-    10 ROFST //0x10 == faulted VA register offset in MMU address range
-    RMEM GPB
+    AADD ALUM
+    ISIZE_FRAME ALUA
+    04 ALUB //add 4 for room for the target function's address, which we just pushed to the stack
+    ALUR WOFST //SP = size of stack frame + 4
 
-//retrieve the faulted operation from the MMU
-    20 ROFST //0x20 == faulted operation register offset in MMU address range
-    RMEM GPC
-
-//store faulted PTE and faulted virtual address in local variables
-    WBASE RBASE
-    ISTACK_faulted_pte ROFST
-    GPA RMEM
-    ISTACK_faulted_va ROFST
-    GPB RMEM
-    ISTACK_faulted_operation ROFST
-    GPC RMEM
-
-//break the VA into its parts and store in local variables
-    GPB ALUA //faulted VA to ALU
-    IADF ALUB
-    SKIP PC
-    FF C0 00 00 //table number mask
-    AAND ALUM
-    ALUR ALUA
-    16 ALUB
-    ARSFT ALUM
-    ISTACK_faulted_va_table_num ROFST
-    ALUR RMEM
-
-    GPB ALUA
-    IADF ALUB
-    SKIP PC
-    00 3F F0 00 //virtual page number mask
-    AAND ALUM
-    ALUR ALUA
-    0C ALUB
-    ARSFT ALUM
-    ISTACK_faulted_va_vpage_num ROFST
-    ALUR RMEM
-
-
-//get the active process ID and page directory physical page from kernel memory
-    00 ROFST
-    IADF RBASE
-    SKIP PC
-    ::ACTIVE_PROCESS_ID
-    RMEM GPC
-    IADF RBASE
-    SKIP PC
-    ::ACTIVE_PROCESS_PAGE_DIRECTORY_PHYSICAL_PAGE
-    RMEM GPD
-
-//store active process ID and page directory physical page in local variables
-    WBASE RBASE
-    ISTACK_active_process_id ROFST
-    GPC RMEM
-    ISTACK_active_process_page_directory_ppage ROFST
-    GPD RMEM
-
-//store active process entry index in local variable
-    GPC GPH //active process ID to GPH
     RTRN LINK
     IADN PC
-    :lite_find_process_map_entry_index_by_id //[GPH] -> [GPG][GPH]
+    ::FUNC
 
-    GPG COMPA
-    00 COMPB
-    COMPR PC
-    :active_process_entry_not_found
-    :active_process_entry_is_found
-    @active_process_entry_not_found
-    7F FLAG //no process entry found for active process; halt
-    @active_process_entry_is_found
-    WBASE RBASE
-    ISTACK_active_process_map_entry_index ROFST
-    GPH RMEM //store the process map entry ID in local variable
-
-////////////////////////////////////
-////////////////// New new handler
-////////////////////////////////////
-
-////////////////////////////////////////////
-// fetch PDE
-//
-// check table is mapped
-//     halt if not
-// check table is resident
-//     retrieve from disk if not
-// mark table as referenced
-// update page directory
-//     set PDE R to 1
-//
-// fetch PTE
-//
-// check page is mapped
-//     halt if not
-// check page is resident
-//     retrieve from disk if not
-// mark page as referenced
-// if write
-//     check if page clean
-//         check if page shared
-//             split if so
-//     mark page as dirty
-// update page table
-//     if page table is write protected
-//         check if table clean
-//             check if table shared
-//                 split if so
-//         make table as dirty
-//         update page directory
-//             set PDE W to 0
-//     set PTE R to 1 (read allowed)
-//     set PTE W to == !clean && !shared
-////////////////////////////////////////////
-
-//get PDE
-    GPD GPH
-    ISTACK_faulted_va_table_num ROFST
-    RMEM GPG
-    RTRN LINK
-    IADN PC
-    :lite_get_pte_kpa //[GPG][GPH] -> [GPH]
-    //GPH holds kernel VA of PDE physical address
-
-    //save kernel's VA of the PDE in local variable; we'll need to write the updated PDE back later
-    WBASE RBASE
-    ISTACK_fetched_pde_kpa ROFST
-    GPH RMEM
-
-    //set RBASE to point to the PDE for the faulted address (may or may not be the PDE/PTE that faulted)
-    GPH RBASE
-    00 ROFST
-    RMEM GPE //PDE to GPE
-
-    //save the PDE in local variable
-    WBASE RBASE
-    ISTACK_fetched_pde ROFST
-    GPE RMEM
-    ISTACK_updated_pde ROFST
-    GPE RMEM
-
-    //save the ppage/disk block number from the PDE in a local variable
-    GPE ALUA
-    IADF ALUB
-    SKIP PC
-    00 0F FF FF //number mask
-    AAND ALUM
-    ISTACK_fetched_pde_number ROFST
-    ALUR RMEM
-
-//check PDE protection bits to see if page table is mapped
-    GPE ALUA //PDE to ALU
-    IADF ALUB //RW bit mask to ALU
-    SKIP PC
-    C0 00 00 00 //RW bit mask
-    AAND ALUM //AND mode
-
-    ALUR ALUA //masked RW bits to ALU
-    1E ALUB //30 bits right
-    ARSFT ALUM //right shift mode
-        //TODO don't need to shift to compare to 0
-
-    //if RW bits are 00, page table is not mapped
-    ALUR COMPA //RW bits to COMP
-    00 COMPB //0b00
-    COMPR PC
-    :pde_not_mapped //RW == 00
-    :pde_is_mapped
-
-    @pde_not_mapped
-    //RW == 00; page table is not mapped; access error
-    7F FLAG //halt here (TODO: terminate user process)
-
-    @pde_is_mapped
-    //page table is mapped, continue
-
-//check page table is resident
-WBASE RBASE
-ISTACK_fetched_pde ROFST
-RMEM GPH
-RTRN LINK
-IADN PC
-:lite_number_from_pte //[GPH] -> [GPH]
-//GPH holds number (ppage or disk block, not known yet)
-//store in local variable
-    //if it is the ppage, it's correct; if it's not the ppage,
-    //it's the disk block, but we'll update this variable when
-    //loading the table into memory
-ISTACK_virtual_table_ppage ROFST
-GPH RMEM
-
-//check if the table is resident
-ISTACK_faulted_va_table_num ROFST
-RMEM GPG
-ISTACK_active_process_id ROFST
-RMEM GPF
-RTRN LINK
-IADN PC
-:lite_check_ppage_matches_vpage //[GPF][GPG][GPH] -> [GPH]
-//GPH holds 1 if table is resident
-GPH COMPA
-01 COMPB
-COMPR PC
-:page_table_is_resident
-:page_table_not_resident
-
-@page_table_not_resident
-    //the page table is not resident, which means the number in the PDE
-    //actually represents the disk block where the table was evicted to
-    break //TODO not tested
-    RTRN LINK
-    IADN PC
-    :lite_get_open_ppage //() -> [GPH]
-    //GPH holds open ppage
-    //table will be stored in that ppage; store in local variable
-    ISTACK_virtual_table_ppage ROFST
-    GPH RMEM
-
-    //load variables needed for loading the page from disk
-    ISTACK_active_process_map_entry_index ROFST
-    RMEM GPC
-    ISTACK_faulted_va_table_num ROFST
-    RMEM GPD
-    ISTACK_active_process_page_directory_ppage ROFST
-    RMEM GPE
-    ISTACK_active_process_id ROFST
-    RMEM GPF
-    ISTACK_fetched_pde ROFST
-    RMEM GPG
-    RTRN LINK
-    IADN PC
-    :lite_load_pte_to_ppage //[GPC][GPD][GPE][GPF][GPG][GPH] -> [GPG]
-    //store modified PDE in local variable
-    ISTACK_updated_pde ROFST
-    GPG RMEM
-
-@page_table_is_resident
-    //update physical page map to show page is referenced
-        //because we're reading this table now
-    WBASE RBASE
-    ISTACK_virtual_table_ppage ROFST
-    RMEM GPH
-    14 GPG //offset to referenced field
-    01 GPF //referenced = true
-    RTRN LINK
-    IADN PC
-    :lite_set_ppage_field //[[GPF][GPG][GPH] -> ()
-
-    //set R to 1 on PDE since the table is loaded and referenced now
-    ISTACK_updated_pde ROFST
-    RMEM GPH
-    RTRN LINK
-    IADN PC
-    :lite_set_pte_readable //[GPH] -> [GPH]
-
-    ISTACK_updated_pde ROFST
-    //store newly updated PDE back into local variable
-    GPH RMEM
-    //also store updated PDE back into page directory
-    ISTACK_fetched_pde_kpa ROFST //load PDE physical address
-    RMEM RBASE //set RMEM to point to PDE physical address
-    00 ROFST
-    GPH RMEM //store PDE into page directory
-
-    //mark the directory ppage as dirty, since we updated the PDE
-    WBASE RBASE
-    ISTACK_active_process_page_directory_ppage ROFST
-    RMEM GPH
-    18 GPG //offset to dirty field
-    01 GPF //dirty = true
-    RTRN LINK
-    IADN PC
-    :lite_set_ppage_field //[GPF][GPG][GPH] -> ()
-
-//get PTE
-    //calculate PTE physical address
-    ISTACK_virtual_table_ppage ROFST
-    RMEM GPH
-    ISTACK_faulted_va_vpage_num ROFST
-    RMEM GPG
-    RTRN LINK
-    IADN PC
-    :lite_get_pte_kpa //[GPG][GPH] -> [GPH]
-    //GPH holds VA of PTE physical address
-    //store into local variable
-    ISTACK_fetched_pte_kpa ROFST
-    GPH RMEM
-
-    //read the PTE
-    GPH RBASE
-    00 ROFST
-    RMEM ALUA //hold in ALUA to extract the number later
-
-    //store PTE into local variable
-    WBASE RBASE
-    ISTACK_fetched_pte ROFST
-    ALUA RMEM
-    ISTACK_updated_pte ROFST
-    ALUA RMEM
-    ALUA GPA //also store in GPA; PTE will be processed next
-
-    //extract the ppage / disk block number (not known which yet)
-    IADF ALUB
-    SKIP PC
-    00 0F FF FF //PTE number mask
-    AAND ALUM
-    //store number in local variable
-    ISTACK_fetched_pte_number ROFST
-    ALUR RMEM
-    //also store as the ppage number
-        //we don't yet know if it's a ppage or disk block,
-        //but if it's not a ppage, this variable will be updated
-        //when pulling the page into memory
-    ISTACK_virtual_page_ppage ROFST
-    ALUR RMEM
-
-//check PTE protection bits to see if page is mapped
-    GPA ALUA //PTE to ALU
-    IADF ALUB
-    SKIP PC
-    C0 00 00 00 //RW bit mask
-    AAND ALUM
-    //if RW bits are 00, page is not mapped
-    ALUR COMPA
-    00 COMPB
-    COMPR PC
-    :pte_not_mapped
-    :pte_is_mapped
-    @pte_not_mapped
-    //RW == 00; page is not mapped; access error
-    7F FLAG //halt here (TODO: terminate user process)
-    @pte_is_mapped
-    //page is mapped, continue
-
-//check page is resident
-GPA GPH //move PTE to GPH for lite func arg
-WBASE RBASE
-ISTACK_faulted_va_vpage_num ROFST
-RMEM GPG
-ISTACK_active_process_id ROFST
-RMEM GPF
-RTRN LINK
-IADN PC
-:lite_check_ppage_matches_vpage //[GPF][GPG][GPH] -> [GPH]
-//GPH holds 1 if table is resident
-GPH COMPA
-01 COMPB
-COMPR PC
-:page_is_resident
-:page_not_resident
-
-@page_not_resident
-    //page is not resident, which means the number in the PTE
-    //actually represents the disk block where the page was evicted to
-    RTRN LINK
-    IADN PC
-    :lite_get_open_ppage //() -> [GPH]
-    //GPH holds open ppage
-    //vpage will be stored in that ppage; store in local variable
-    WBASE RBASE
-    ISTACK_virtual_page_ppage ROFST
-    GPH RMEM
-
-    //load variables needed for loading the page from disk
-    ISTACK_active_process_map_entry_index ROFST
-    RMEM GPC
-    ISTACK_faulted_va_vpage_num ROFST
-    RMEM GPD
-    ISTACK_active_process_page_directory_ppage ROFST
-    RMEM GPE
-    ISTACK_active_process_id ROFST
-    RMEM GPF
-    ISTACK_fetched_pte ROFST
-    RMEM GPG
-    RTRN LINK
-    IADN PC
-    :lite_load_pte_to_ppage //[GPC][GPD][GPE][GPF][GPG][GPH] -> [GPG]
-    //store modified PTE in local variable
-    ISTACK_updated_pte ROFST
-    GPG RMEM
-
-@page_is_resident
-    //update physical page map to show page is referenced
-        //because we're accessing this page now
-    WBASE RBASE
-    ISTACK_virtual_page_ppage ROFST
-    RMEM GPH
-    14 GPG //offset to referenced field
-    01 GPF //referenced = true
-    RTRN LINK
-    IADN PC
-    :lite_set_ppage_field //[GPF][GPG][GPH] -> ()
-
-    //set R to 1 on PTE since the page is loaded and referenced
-    ISTACK_updated_pte ROFST
-    RMEM GPH
-    RTRN LINK
-    IADN PC
-    :lite_set_pte_readable //[GPH] -> [GPH]
-    ISTACK_updated_pte ROFST
-    //store newly updated PTE back into local variable
-    GPH RMEM
-
-//if this was a write operation, make sure the page is writable
-WBASE RBASE
-ISTACK_faulted_operation ROFST
-RMEM COMPA
-00 COMPB
-COMPR PC //read operation == 0
-:faulted_read
-:faulted_write
-    @faulted_write
-    //the operation was a write operation, so make the page writable
-    WBASE RBASE
-    ISTACK_updated_pte ROFST
-    RMEM ALUA
-    IADF ALUB
-    SKIP PC
-    40 00 00 00 //W bit mask
-    AAND ALUM
-    ALUR COMPA
-    00 COMPB
-    COMPR PC
-    :page_not_write_protected
-    :page_is_write_protected
-    @page_is_write_protected
-    ISTACK_virtual_page_ppage ROFST
-    RMEM GPH
-    RTRN LINK
-    IADN PC
-    :lite_make_ppage_writable //[GPH] -> [GPH]
-    //GPH holds physical page for target page
-        //it may have changed because of page split
-
-    //set the PTE page number in case it changed
-    GPH GPG
-    ISTACK_updated_pte ROFST
-    RMEM GPH
-    RTRN LINK
-    IADN PC
-    :lite_set_pte_number //[GPG][GPH] -> [GPH]
-    //GPH holds updated PTE
-
-    //the virtual page is no longer write protected
-    RTRN LINK
-    IADN PC
-    :lite_set_pte_writable //[GPH] -> [GPH]
-    //GPH holds updated PTE
-
-    //store updated PTE back into local variable
-        //it will be written back into the page table later
-    ISTACK_updated_pte ROFST
-    GPH RMEM
-
-//possible conflicts from write protection have been resolved
-//continue
-@page_not_write_protected
-@faulted_read
-
-
-//check if the PTE needs to be written back
-    //(a read fault where the table was not LRU referenced, but
-    //  the virtual page was resident and LRU referenced would
-    //  not require writing to the page table, so avoid that if
-    //  we possibly can)
-    ISTACK_fetched_pte ROFST
-    RMEM COMPA
-    ISTACK_updated_pte ROFST
-    RMEM COMPB
-    COMPR PC
-    :pte_not_dirty
-    :pte_is_dirty
-
-@pte_is_dirty
-//PTE has been changed, so it will need to be written back
-    //the page table is definitely mapped, resident, and
-    //referenced, since we loaded and read it to get to
-    //this point; i.e. R on the PDE has been set to 1
-
-    //check if W is 0 or 1; if it's 1, the page table
-    //is clean, shared, or both
-    ISTACK_updated_pde ROFST
-    RMEM ALUA
-    IADF ALUB
-    SKIP PC
-    40 00 00 00 //W bit mask
-    AAND ALUM
-    ALUR COMPA
-    00 COMPB
-    COMPR PC
-    :page_table_not_write_protected
-    :page_table_write_protected
-    @page_table_write_protected
-    ISTACK_virtual_table_ppage ROFST
-    RMEM GPH
-    RTRN LINK
-    IADN PC
-    :lite_make_ppage_writable // [GPH] -> [GPH]
-    //GPH holds physical page for page table
-        //it may have changed because of page split
-
-    //update the virtual table ppage variable
-    ISTACK_virtual_table_ppage ROFST
-    GPH RMEM
-
-    //set updated PDE's number to new ppage
-    GPH GPG //move new number to GPG for func
-    ISTACK_updated_pde ROFST
-    RMEM GPH //pde to GPH
-    RTRN LINK
-    IADN PC
-    :lite_set_pte_number //[GPG][GPH] -> [GPH]
-    //GPH holds new PDE with changed number
-
-    //set PDE as not write protected
-    RTRN LINK
-    IADN PC
-    :lite_set_pte_writable //[GPH] -> [GPH]
-    //GPH holds updated PDE
-
-    //write PDE back to page directory
-    ISTACK_fetched_pde_kpa ROFST //get PDE KPA (never changes in page fault)
-    RMEM RBASE
-    00 ROFST
-    GPH RMEM //write PDE back into page directory
-
-    //recalculate PTE KPA
-    WBASE RBASE
-    ISTACK_faulted_va_vpage_num ROFST
-    RMEM GPG
-    RTRN LINK
-    IADN PC
-    :lite_get_pte_kpa //[GPG][GPH] -> [GPH]
-    //GPH holds KPA of PTE using new page table
-    //store back into local variable
-    ISTACK_fetched_pte_kpa ROFST
-    GPH RMEM
-
-    @page_table_not_write_protected
-    //store updated PTE into page table
-    WBASE RBASE
-    ISTACK_updated_pte ROFST //load updated PTE
-    RMEM GPA
-
-    ISTACK_fetched_pte_kpa ROFST //load PTE physical address
-    RMEM RBASE //set RMEM to point to PTE physical address
-    00 ROFST
-    GPA RMEM //store updated PTE into page table
-
-@pte_not_dirty
-
-
+    // MMU handler function is void, so don't need to pop any results from the stack
 
 @interrupt_return
 //return from interrupt
@@ -1029,7 +466,7 @@ COMPR PC //read operation == 0
 
     IADF RBASE
     SKIP PC
-    00 00 10 00 //MMU base address in kernel VA
+    CONST_mmu_base_address //MMU base address in kernel VA
     04 ROFST //MMU queued page directory base address register
     GPA RMEM
 
@@ -1592,6 +1029,7 @@ COMPR PC
 //the page is shared, so we need to split it
     //this process will get a new copy of the page while
     //existing processes will keep the same physical page
+    break
     7F FLAG //TODO not implemented
         //we might need a new datastructure to implement shared pages
         //1. when checking if a page is resident, we check that the process ID
@@ -1703,6 +1141,626 @@ LINK PC
 //=========================
 
 
+FRAME_START
+//=========================
+// page fault handler stack layout / local variables
+//==========
+
+    STACK return_location 04        // address to return to from function call (in LINK when called)
+    STACK pc_val 04                 // PC contents
+    STACK flag_val 04               // FLAG contents
+    STACK faulted_pte 04            // faulted PTE
+    STACK faulted_va 04             // faulted virtual address
+    STACK faulted_operation 04      // faulted operation (0 if read, 1 if write)
+    STACK faulted_pte_block 04      // disk block from faulted PTE
+    STACK faulted_va_vpage_num 04   // virtual page number from faulted virtual address
+    STACK faulted_va_table_num 04   // virtual table number from faulted virtual address
+    STACK active_process_id 04      // process ID of the active process
+    STACK active_process_page_directory_ppage 04    // physical page of the active process's page directory
+    STACK active_process_map_entry_index 04         // index of active process in the process map
+    STACK target_ppage 04           // physical page new page is moved into (TODO: unused)
+    STACK fetched_pde 04            // possibly different than faulted PTE if the leaf page faulted
+    STACK fetched_pte 04            // retrieved by following the PDE if leaf page faulted
+                                    //   should be the same as faulted PTE in that case
+    STACK fetched_pde_kpa 04        // VA in kernel space of fetched PDE's physical address
+    STACK fetched_pte_kpa 04        // VA in kernel space of fetched PTE's physical address
+
+    //lower 20 bits of fetched PDE and PTE; if the page it points
+    //to is resident, it's a physical page number, else it's a disk
+    //block number where the page was evicted to
+    STACK fetched_pde_number 04
+    STACK fetched_pte_number 04
+
+    STACK updated_pde 04            // PDE data after updating tables
+    STACK updated_pte 04            // PTE data after updating tables
+    STACK virtual_table_ppage 04    // physical page number of the VA's page table
+    STACK virtual_page_ppage 04     // physical page number of the VA's page
+
+//=========================
+@function_mmu_fault_handler
+
+//store the return address in local variable
+WBASE RBASE
+ISTACK_return_location ROFST
+LINK RMEM
+
+//retrieve the faulted PTE from the MMU
+    IADF RBASE
+    SKIP PC
+    CONST_mmu_base_address //MMU VA
+    0C ROFST //0x0C == faulted PTE register offset in MMU address range
+    RMEM GPA
+
+//retrieve the faulted address from the MMU
+    10 ROFST //0x10 == faulted VA register offset in MMU address range
+    RMEM GPB
+
+//retrieve the faulted operation from the MMU
+    20 ROFST //0x20 == faulted operation register offset in MMU address range
+    RMEM GPC
+
+//store faulted PTE and faulted virtual address in local variables
+    WBASE RBASE
+    ISTACK_faulted_pte ROFST
+    GPA RMEM
+    ISTACK_faulted_va ROFST
+    GPB RMEM
+    ISTACK_faulted_operation ROFST
+    GPC RMEM
+
+//break the VA into its parts and store in local variables
+    GPB ALUA //faulted VA to ALU
+    IADF ALUB
+    SKIP PC
+    FF C0 00 00 //table number mask
+    AAND ALUM
+    ALUR ALUA
+    16 ALUB
+    ARSFT ALUM
+    ISTACK_faulted_va_table_num ROFST
+    ALUR RMEM
+
+    GPB ALUA
+    IADF ALUB
+    SKIP PC
+    00 3F F0 00 //virtual page number mask
+    AAND ALUM
+    ALUR ALUA
+    0C ALUB
+    ARSFT ALUM
+    ISTACK_faulted_va_vpage_num ROFST
+    ALUR RMEM
+
+
+//get the active process ID and page directory physical page from kernel memory
+    00 ROFST
+    IADF RBASE
+    SKIP PC
+    ::ACTIVE_PROCESS_ID
+    RMEM GPC
+    IADF RBASE
+    SKIP PC
+    ::ACTIVE_PROCESS_PAGE_DIRECTORY_PHYSICAL_PAGE
+    RMEM GPD
+
+//store active process ID and page directory physical page in local variables
+    WBASE RBASE
+    ISTACK_active_process_id ROFST
+    GPC RMEM
+    ISTACK_active_process_page_directory_ppage ROFST
+    GPD RMEM
+
+//store active process entry index in local variable
+    GPC GPH //active process ID to GPH
+    RTRN LINK
+    IADN PC
+    :lite_find_process_map_entry_index_by_id //[GPH] -> [GPG][GPH]
+
+    GPG COMPA
+    00 COMPB
+    COMPR PC
+    :active_process_entry_not_found
+    :active_process_entry_is_found
+    @active_process_entry_not_found
+    break
+    7F FLAG //no process entry found for active process; halt
+    @active_process_entry_is_found
+    WBASE RBASE
+    ISTACK_active_process_map_entry_index ROFST
+    GPH RMEM //store the process map entry ID in local variable
+
+////////////////////////////////////
+////////////////// New new handler
+////////////////////////////////////
+
+////////////////////////////////////////////
+// fetch PDE
+//
+// check table is mapped
+//     halt if not
+// check table is resident
+//     retrieve from disk if not
+// mark table as referenced
+// update page directory
+//     set PDE R to 1
+//
+// fetch PTE
+//
+// check page is mapped
+//     halt if not
+// check page is resident
+//     retrieve from disk if not
+// mark page as referenced
+// if write
+//     check if page clean
+//         check if page shared
+//             split if so
+//     mark page as dirty
+// update page table
+//     if page table is write protected
+//         check if table clean
+//             check if table shared
+//                 split if so
+//         make table as dirty
+//         update page directory
+//             set PDE W to 0
+//     set PTE R to 1 (read allowed)
+//     set PTE W to == !clean && !shared
+////////////////////////////////////////////
+
+//get PDE
+    GPD GPH
+    ISTACK_faulted_va_table_num ROFST
+    RMEM GPG
+    RTRN LINK
+    IADN PC
+    :lite_get_pte_kpa //[GPG][GPH] -> [GPH]
+    //GPH holds kernel VA of PDE physical address
+
+    //save kernel's VA of the PDE in local variable; we'll need to write the updated PDE back later
+    WBASE RBASE
+    ISTACK_fetched_pde_kpa ROFST
+    GPH RMEM
+
+    //set RBASE to point to the PDE for the faulted address (may or may not be the PDE/PTE that faulted)
+    GPH RBASE
+    00 ROFST
+    RMEM GPE //PDE to GPE
+
+    //save the PDE in local variable
+    WBASE RBASE
+    ISTACK_fetched_pde ROFST
+    GPE RMEM
+    ISTACK_updated_pde ROFST
+    GPE RMEM
+
+    //save the ppage/disk block number from the PDE in a local variable
+    GPE ALUA
+    IADF ALUB
+    SKIP PC
+    00 0F FF FF //number mask
+    AAND ALUM
+    ISTACK_fetched_pde_number ROFST
+    ALUR RMEM
+
+//check PDE protection bits to see if page table is mapped
+    GPE ALUA //PDE to ALU
+    IADF ALUB //RW bit mask to ALU
+    SKIP PC
+    C0 00 00 00 //RW bit mask
+    AAND ALUM //AND mode
+
+    ALUR ALUA //masked RW bits to ALU
+    1E ALUB //30 bits right
+    ARSFT ALUM //right shift mode
+        //TODO don't need to shift to compare to 0
+
+    //if RW bits are 00, page table is not mapped
+    ALUR COMPA //RW bits to COMP
+    00 COMPB //0b00
+    COMPR PC
+    :pde_not_mapped //RW == 00
+    :pde_is_mapped
+
+    @pde_not_mapped
+    //RW == 00; page table is not mapped; access error
+    break
+    7F FLAG //halt here (TODO: terminate user process)
+
+    @pde_is_mapped
+    //page table is mapped, continue
+
+//check page table is resident
+WBASE RBASE
+ISTACK_fetched_pde ROFST
+RMEM GPH
+RTRN LINK
+IADN PC
+:lite_number_from_pte //[GPH] -> [GPH]
+//GPH holds number (ppage or disk block, not known yet)
+//store in local variable
+    //if it is the ppage, it's correct; if it's not the ppage,
+    //it's the disk block, but we'll update this variable when
+    //loading the table into memory
+ISTACK_virtual_table_ppage ROFST
+GPH RMEM
+
+//check if the table is resident
+ISTACK_faulted_va_table_num ROFST
+RMEM GPG
+ISTACK_active_process_id ROFST
+RMEM GPF
+RTRN LINK
+IADN PC
+:lite_check_ppage_matches_vpage //[GPF][GPG][GPH] -> [GPH]
+//GPH holds 1 if table is resident
+GPH COMPA
+01 COMPB
+COMPR PC
+:page_table_is_resident
+:page_table_not_resident
+
+@page_table_not_resident
+    //the page table is not resident, which means the number in the PDE
+    //actually represents the disk block where the table was evicted to
+    break //TODO not tested
+    RTRN LINK
+    IADN PC
+    :lite_get_open_ppage //() -> [GPH]
+    //GPH holds open ppage
+    //table will be stored in that ppage; store in local variable
+    ISTACK_virtual_table_ppage ROFST
+    GPH RMEM
+
+    //load variables needed for loading the page from disk
+    ISTACK_active_process_map_entry_index ROFST
+    RMEM GPC
+    ISTACK_faulted_va_table_num ROFST
+    RMEM GPD
+    ISTACK_active_process_page_directory_ppage ROFST
+    RMEM GPE
+    ISTACK_active_process_id ROFST
+    RMEM GPF
+    ISTACK_fetched_pde ROFST
+    RMEM GPG
+    RTRN LINK
+    IADN PC
+    :lite_load_pte_to_ppage //[GPC][GPD][GPE][GPF][GPG][GPH] -> [GPG]
+    //store modified PDE in local variable
+    ISTACK_updated_pde ROFST
+    GPG RMEM
+
+@page_table_is_resident
+    //update physical page map to show page is referenced
+        //because we're reading this table now
+    WBASE RBASE
+    ISTACK_virtual_table_ppage ROFST
+    RMEM GPH
+    14 GPG //offset to referenced field
+    01 GPF //referenced = true
+    RTRN LINK
+    IADN PC
+    :lite_set_ppage_field //[[GPF][GPG][GPH] -> ()
+
+    //set R to 1 on PDE since the table is loaded and referenced now
+    ISTACK_updated_pde ROFST
+    RMEM GPH
+    RTRN LINK
+    IADN PC
+    :lite_set_pte_readable //[GPH] -> [GPH]
+
+    ISTACK_updated_pde ROFST
+    //store newly updated PDE back into local variable
+    GPH RMEM
+    //also store updated PDE back into page directory
+    ISTACK_fetched_pde_kpa ROFST //load PDE physical address
+    RMEM RBASE //set RMEM to point to PDE physical address
+    00 ROFST
+    GPH RMEM //store PDE into page directory
+
+    //mark the directory ppage as dirty, since we updated the PDE
+    WBASE RBASE
+    ISTACK_active_process_page_directory_ppage ROFST
+    RMEM GPH
+    18 GPG //offset to dirty field
+    01 GPF //dirty = true
+    RTRN LINK
+    IADN PC
+    :lite_set_ppage_field //[GPF][GPG][GPH] -> ()
+
+//get PTE
+    //calculate PTE physical address
+    ISTACK_virtual_table_ppage ROFST
+    RMEM GPH
+    ISTACK_faulted_va_vpage_num ROFST
+    RMEM GPG
+    RTRN LINK
+    IADN PC
+    :lite_get_pte_kpa //[GPG][GPH] -> [GPH]
+    //GPH holds VA of PTE physical address
+    //store into local variable
+    ISTACK_fetched_pte_kpa ROFST
+    GPH RMEM
+
+    //read the PTE
+    GPH RBASE
+    00 ROFST
+    RMEM ALUA //hold in ALUA to extract the number later
+
+    //store PTE into local variable
+    WBASE RBASE
+    ISTACK_fetched_pte ROFST
+    ALUA RMEM
+    ISTACK_updated_pte ROFST
+    ALUA RMEM
+    ALUA GPA //also store in GPA; PTE will be processed next
+
+    //extract the ppage / disk block number (not known which yet)
+    IADF ALUB
+    SKIP PC
+    00 0F FF FF //PTE number mask
+    AAND ALUM
+    //store number in local variable
+    ISTACK_fetched_pte_number ROFST
+    ALUR RMEM
+    //also store as the ppage number
+        //we don't yet know if it's a ppage or disk block,
+        //but if it's not a ppage, this variable will be updated
+        //when pulling the page into memory
+    ISTACK_virtual_page_ppage ROFST
+    ALUR RMEM
+
+//check PTE protection bits to see if page is mapped
+    GPA ALUA //PTE to ALU
+    IADF ALUB
+    SKIP PC
+    C0 00 00 00 //RW bit mask
+    AAND ALUM
+    //if RW bits are 00, page is not mapped
+    ALUR COMPA
+    00 COMPB
+    COMPR PC
+    :pte_not_mapped
+    :pte_is_mapped
+    @pte_not_mapped
+    //RW == 00; page is not mapped; access error
+    break
+    7F FLAG //halt here (TODO: terminate user process)
+    @pte_is_mapped
+    //page is mapped, continue
+
+//check page is resident
+GPA GPH //move PTE to GPH for lite func arg
+WBASE RBASE
+ISTACK_faulted_va_vpage_num ROFST
+RMEM GPG
+ISTACK_active_process_id ROFST
+RMEM GPF
+RTRN LINK
+IADN PC
+:lite_check_ppage_matches_vpage //[GPF][GPG][GPH] -> [GPH]
+//GPH holds 1 if table is resident
+GPH COMPA
+01 COMPB
+COMPR PC
+:page_is_resident
+:page_not_resident
+
+@page_not_resident
+    //page is not resident, which means the number in the PTE
+    //actually represents the disk block where the page was evicted to
+    RTRN LINK
+    IADN PC
+    :lite_get_open_ppage //() -> [GPH]
+    //GPH holds open ppage
+    //vpage will be stored in that ppage; store in local variable
+    WBASE RBASE
+    ISTACK_virtual_page_ppage ROFST
+    GPH RMEM
+
+    //load variables needed for loading the page from disk
+    ISTACK_active_process_map_entry_index ROFST
+    RMEM GPC
+    ISTACK_faulted_va_vpage_num ROFST
+    RMEM GPD
+    ISTACK_active_process_page_directory_ppage ROFST
+    RMEM GPE
+    ISTACK_active_process_id ROFST
+    RMEM GPF
+    ISTACK_fetched_pte ROFST
+    RMEM GPG
+    RTRN LINK
+    IADN PC
+    :lite_load_pte_to_ppage //[GPC][GPD][GPE][GPF][GPG][GPH] -> [GPG]
+    //store modified PTE in local variable
+    ISTACK_updated_pte ROFST
+    GPG RMEM
+
+@page_is_resident
+    //update physical page map to show page is referenced
+        //because we're accessing this page now
+    WBASE RBASE
+    ISTACK_virtual_page_ppage ROFST
+    RMEM GPH
+    14 GPG //offset to referenced field
+    01 GPF //referenced = true
+    RTRN LINK
+    IADN PC
+    :lite_set_ppage_field //[GPF][GPG][GPH] -> ()
+
+    //set R to 1 on PTE since the page is loaded and referenced
+    ISTACK_updated_pte ROFST
+    RMEM GPH
+    RTRN LINK
+    IADN PC
+    :lite_set_pte_readable //[GPH] -> [GPH]
+    ISTACK_updated_pte ROFST
+    //store newly updated PTE back into local variable
+    GPH RMEM
+
+//if this was a write operation, make sure the page is writable
+WBASE RBASE
+ISTACK_faulted_operation ROFST
+RMEM COMPA
+00 COMPB
+COMPR PC //read operation == 0
+:faulted_read
+:faulted_write
+    @faulted_write
+    //the operation was a write operation, so make the page writable
+    WBASE RBASE
+    ISTACK_updated_pte ROFST
+    RMEM ALUA
+    IADF ALUB
+    SKIP PC
+    40 00 00 00 //W bit mask
+    AAND ALUM
+    ALUR COMPA
+    00 COMPB
+    COMPR PC
+    :page_not_write_protected
+    :page_is_write_protected
+    @page_is_write_protected
+    ISTACK_virtual_page_ppage ROFST
+    RMEM GPH
+    RTRN LINK
+    IADN PC
+    :lite_make_ppage_writable //[GPH] -> [GPH]
+    //GPH holds physical page for target page
+        //it may have changed because of page split
+
+    //set the PTE page number in case it changed
+    GPH GPG
+    ISTACK_updated_pte ROFST
+    RMEM GPH
+    RTRN LINK
+    IADN PC
+    :lite_set_pte_number //[GPG][GPH] -> [GPH]
+    //GPH holds updated PTE
+
+    //the virtual page is no longer write protected
+    RTRN LINK
+    IADN PC
+    :lite_set_pte_writable //[GPH] -> [GPH]
+    //GPH holds updated PTE
+
+    //store updated PTE back into local variable
+        //it will be written back into the page table later
+    ISTACK_updated_pte ROFST
+    GPH RMEM
+
+//possible conflicts from write protection have been resolved
+//continue
+@page_not_write_protected
+@faulted_read
+
+
+//check if the PTE needs to be written back
+    //(a read fault where the table was not LRU referenced, but
+    //  the virtual page was resident and LRU referenced would
+    //  not require writing to the page table, so avoid that if
+    //  we possibly can)
+    ISTACK_fetched_pte ROFST
+    RMEM COMPA
+    ISTACK_updated_pte ROFST
+    RMEM COMPB
+    COMPR PC
+    :pte_not_dirty
+    :pte_is_dirty
+
+@pte_is_dirty
+//PTE has been changed, so it will need to be written back
+    //the page table is definitely mapped, resident, and
+    //referenced, since we loaded and read it to get to
+    //this point; i.e. R on the PDE has been set to 1
+
+    //check if W is 0 or 1; if it's 1, the page table
+    //is clean, shared, or both
+    ISTACK_updated_pde ROFST
+    RMEM ALUA
+    IADF ALUB
+    SKIP PC
+    40 00 00 00 //W bit mask
+    AAND ALUM
+    ALUR COMPA
+    00 COMPB
+    COMPR PC
+    :page_table_not_write_protected
+    :page_table_write_protected
+    @page_table_write_protected
+    ISTACK_virtual_table_ppage ROFST
+    RMEM GPH
+    RTRN LINK
+    IADN PC
+    :lite_make_ppage_writable // [GPH] -> [GPH]
+    //GPH holds physical page for page table
+        //it may have changed because of page split
+
+    //update the virtual table ppage variable
+    ISTACK_virtual_table_ppage ROFST
+    GPH RMEM
+
+    //set updated PDE's number to new ppage
+    GPH GPG //move new number to GPG for func
+    ISTACK_updated_pde ROFST
+    RMEM GPH //pde to GPH
+    RTRN LINK
+    IADN PC
+    :lite_set_pte_number //[GPG][GPH] -> [GPH]
+    //GPH holds new PDE with changed number
+
+    //set PDE as not write protected
+    RTRN LINK
+    IADN PC
+    :lite_set_pte_writable //[GPH] -> [GPH]
+    //GPH holds updated PDE
+
+    //write PDE back to page directory
+    ISTACK_fetched_pde_kpa ROFST //get PDE KPA (never changes in page fault)
+    RMEM RBASE
+    00 ROFST
+    GPH RMEM //write PDE back into page directory
+
+    //recalculate PTE KPA
+    WBASE RBASE
+    ISTACK_faulted_va_vpage_num ROFST
+    RMEM GPG
+    RTRN LINK
+    IADN PC
+    :lite_get_pte_kpa //[GPG][GPH] -> [GPH]
+    //GPH holds KPA of PTE using new page table
+    //store back into local variable
+    ISTACK_fetched_pte_kpa ROFST
+    GPH RMEM
+
+    @page_table_not_write_protected
+    //store updated PTE into page table
+    WBASE RBASE
+    ISTACK_updated_pte ROFST //load updated PTE
+    RMEM GPA
+
+    ISTACK_fetched_pte_kpa ROFST //load PTE physical address
+    RMEM RBASE //set RMEM to point to PTE physical address
+    00 ROFST
+    GPA RMEM //store updated PTE into page table
+
+@pte_not_dirty
+
+
+// return from function
+WBASE RBASE
+ISTACK_return_location ROFST
+RMEM PC
+BREAK // should not reach here
+7F FLAG
+
+//=========================
+// page fault handler stack frame end
+//==========
+FRAME_END
+//=========================
+
+
 
 FRAME_START
 //=========================
@@ -1722,6 +1780,8 @@ FRAME_START
     ISIZE_FRAME WOFST //when the interrupt handler begins, the stack is set up for the page fault handler
         //but for syscalls, we jump here, and use a different stack frame layout, so replace the size
         //that was set up for the page fault handler with the size needed for the syscall handler
+
+    BREAK
 
     // retrieve syscall number and arguments from the dumped processor state
     // (user stores syscall num in GPA, args in other GP registers)

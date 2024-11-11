@@ -31,14 +31,14 @@
 
 
 80  00  00  03 // R W (10) (read and write allowed) physical page 3 (kernel program page 0)
+80  00  00  04 // R W (10) (read and write allowed) physical page 4 (kernel program page 1)
+00  00  00  00
+00  00  00  00
+00  00  00  00
+00  00  00  00
+00  00  00  00
+00  00  00  00
 80  0F  F0  00 // R W (10) (read and write allowed) physical page 0xFF000 (MMIO devices)
-00  00  00  00
-00  00  00  00
-00  00  00  00
-00  00  00  00
-00  00  00  00
-00  00  00  00
-00  00  00  00
 00  00  00  00
 00  00  00  00
 00  00  00  00

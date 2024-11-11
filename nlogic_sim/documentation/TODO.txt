@@ -1,4 +1,6 @@
-﻿PTE rework
+﻿Currently, page fault is not correctly loading in non-resident page
+
+PTE rework
 	Change page fault handler to mark unreferenced page as referenced
 		test if this is done already
 	Change page fault handler to actual function call so that it can be reused by the "map page" syscall
