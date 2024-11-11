@@ -322,6 +322,7 @@ FRAME_START
 // interrupt handler stack layout / local variables
 //==========
 
+    STACK pc_val 04                 // PC contents
     STACK flag_val 04               // FLAG contents
     STACK faulted_pte 04            // faulted PTE
     STACK faulted_va 04             // faulted virtual address
@@ -366,6 +367,9 @@ ISIZE_FRAME WOFST //WOFST = SP == frame size
     WBASE RBASE
     ISTACK_flag_val ROFST
     FLAG RMEM
+//store PC from last instruction cache in local variable
+    ISTACK_pc_val ROFST
+    DMEM30 RMEM
 
 //if RETRY interrupt, we need to restore the destination's contents from the last instruction cache
 //since a faulted read may have wrongfully clobbered that register
@@ -1014,9 +1018,12 @@ COMPR PC //read operation == 0
 //TODO to ensure the MMU breakpoint isn't triggered by any reads from DMEM,
 //  need to add delay to MMU breakpoint (2024: pretty sure this is done)
 
+//load the user PC to return to
+    WBASE RBASE
+    ISTACK_pc_val ROFST
+    RMEM GPB
 
 //set the queued page directory to the active process
-    WBASE RBASE
     ISTACK_active_process_page_directory_ppage ROFST
     RMEM GPA
 
@@ -1028,7 +1035,7 @@ COMPR PC //read operation == 0
 
 //set the MMU breakpoint
     08 ROFST //MMU breakpoint address register
-    DMEM30 RMEM //PC from last instruction cache
+    GPB RMEM //PC from last instruction cache
         // breakpoint will be triggered when the instruction at <user PC> is fetched
 
     //set the breakpoint delay so it doesn't activate until the first cycle in user space
