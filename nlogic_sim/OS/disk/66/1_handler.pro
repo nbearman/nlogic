@@ -1,5 +1,5 @@
-﻿CONST physical_memory_pages 10
-CONST mmio_base_address 8000 // 
+﻿CONST physical_memory_pages 10 // TODO there's 32 (0x20) pages of physical memory
+CONST mmio_base_address 8000 //
 CONST mmu_base_address 8000 // MMU address == MMIO base address because it is the first MMIO device
 CONST mmio_disk_base_address 8024 // disk address starts after all MMU register addresses
 
@@ -101,6 +101,7 @@ CONST ppage_map_entry_size 1C
 00 00 00 00
 
 //empty (no owner)
+// TODO this is owned by kernel program page 2 now
 00 00 00 00
 00 00 00 00
 00 00 00 00
@@ -348,6 +349,16 @@ ISIZE_FRAME WOFST //WOFST = SP == frame size
 //store PC from last instruction cache in local variable
     ISTACK_pc_val ROFST
     DMEM30 RMEM
+
+//get the active process ID and page directory physical page from kernel memory
+    00 ROFST
+    IADF RBASE
+    SKIP PC
+    ::ACTIVE_PROCESS_PAGE_DIRECTORY_PHYSICAL_PAGE
+    RMEM GPA
+    WBASE RBASE
+    ISTACK_active_process_page_directory_ppage ROFST
+    GPA RMEM
 
 //if RETRY interrupt, we need to restore the destination's contents from the last instruction cache
 //since a faulted read may have wrongfully clobbered that register
@@ -776,7 +787,7 @@ LINK PC
 //  [GPF]: process ID
 //  [GPG]: PTE (or PDE)
 //  [GPH]: physical page index
-// Returns nothing
+// Returns updated PTE in GPG
 //=========================
 // load from disk block in PTE to physical page
 // update physical page map
@@ -1459,6 +1470,7 @@ COMPR PC
     GPH RMEM //store PDE into page directory
 
     //mark the directory ppage as dirty, since we updated the PDE
+    // TODO only if the PDE was actually updated
     WBASE RBASE
     ISTACK_active_process_page_directory_ppage ROFST
     RMEM GPH
@@ -1725,6 +1737,9 @@ COMPR PC //read operation == 0
     WBASE RBASE
     ISTACK_faulted_va_vpage_num ROFST
     RMEM GPG
+    // TODO load the page table ppage number into GPH
+    //  (currently GPH holds the PDE entry, has the table ppage at the end, and
+    //      so it happens to work when we shift the PDE left)
     RTRN LINK
     IADN PC
     :lite_get_pte_kpa //[GPG][GPH] -> [GPH]

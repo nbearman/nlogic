@@ -1,4 +1,4 @@
-﻿Currently, page fault is not correctly loading in non-resident page
+﻿Next step: parameterize MMU fault handler to reuse it in page mapping syscall
 
 PTE rework
 	Change page fault handler to mark unreferenced page as referenced
