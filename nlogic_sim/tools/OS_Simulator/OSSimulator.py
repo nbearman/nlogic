@@ -3,7 +3,7 @@ from enum import Enum, auto
 ACTIVE_PROCESS_ID_ADDR = 0xAAAA0000
 ACTIVE_PROCESS_PAGE_DIRECTORY_PHYSICAL_PAGE_ADDR = 0xBBBB0000
 PROCESS_MAP_ENTRY_SIZE = 0x10
-PRCOESS_MAP_ENTRY_LENGTH = 0x10
+PROCESS_MAP_LENGTH = 0x10
 PROCESS_MAP_ADDR = 0xCCCC0000
 PHYSICAL_MEMORY_PAGES = 0x10
 PHYSICAL_PAGE_MAP_ADDR = 0xDDDD0000
@@ -38,7 +38,7 @@ def read_mmu_register(mmu_register):
     pass
 
 def lite_find_process_map_entry_index_by_id(process_id):
-    tmp_stop_offset = PROCESS_MAP_ENTRY_SIZE * PRCOESS_MAP_ENTRY_LENGTH
+    tmp_stop_offset = PROCESS_MAP_ENTRY_SIZE * PROCESS_MAP_LENGTH
     tmp_offset = 0x00
     while tmp_offset != tmp_stop_offset:
         tmp_read_process_id = read_memory(PROCESS_MAP_ADDR + tmp_offset)
