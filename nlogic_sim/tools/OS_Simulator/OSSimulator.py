@@ -97,12 +97,17 @@ def lite_load_pte_to_ppage(process_map_entry_index, virtual_page_number, process
     write_memory(MMIO_DISK_BASE_ADDR + 0x04, tmp_disk_block_number)
     write_memory(MMIO_DISK_BASE_ADDR + 0x08, 0x00)
     write_memory(MMIO_DISK_BASE_ADDR + 0x0C, 0x01)
-    tmp_process_map_entry_offset = process_map_entry_index * PROCESS_MAP_ENTRY_SIZE
+    tmp_process_map_entry_offset = PROCESS_MAP_ADDR + process_map_entry_index * PROCESS_MAP_ENTRY_SIZE
     tmp_process_previous_resident_pages = read_memory(tmp_process_map_entry_offset + 0x08)
     write_memory(tmp_process_map_entry_offset + 0x08, tmp_process_previous_resident_pages + 0x01)
     tmp_pte_unset_number = pte & 0xFFF00000
+
+    #TODO appears to be unused, looks like the new page number is not written to the PTE
     tmp_pte_new_number = tmp_pte_unset_number | ppage_index
     tmp_pte_unset_protection_bits = pte & 0x3FFFFFFF
+    # likely fix
+    # tmp_pte_unset_protection_bits = tmp_pte_new_number & 0x3FFFFFFF
+
     tmp_pte_rw_set = tmp_pte_unset_protection_bits | 0xC0000000
     return tmp_pte_rw_set
 
