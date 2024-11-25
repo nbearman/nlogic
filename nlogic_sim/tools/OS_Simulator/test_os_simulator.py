@@ -5,6 +5,7 @@ from OSSimulator import (
     lite_check_ppage_matches_vpage,
     lite_find_process_map_entry_index_by_id,
     lite_get_pte_kpa,
+    lite_load_pte_to_ppage,
     lite_number_from_pte,
     lite_get_open_ppage,
     PHYSICAL_MEMORY_PAGES,
@@ -14,11 +15,11 @@ from OSSimulator import (
 )
 
 class ProcessMapTestCase(unittest.TestCase):
-    fake_process_map_entry_addr = 0x0000A000
+    fake_process_map_addr = 0x0000A000
 
     def set_process_ids(self, process_ids_list):
         for i, process_id in enumerate(process_ids_list):
-            self.write_memory(self.fake_process_map_entry_addr + (i * PROCESS_MAP_ENTRY_SIZE), process_id)
+            self.write_memory(self.fake_process_map_addr + (i * PROCESS_MAP_ENTRY_SIZE), process_id)
 
     def setUp(self):
         self.memory = bytearray(PHYSICAL_MEMORY_PAGES * 0x1000)
@@ -28,7 +29,7 @@ class ProcessMapTestCase(unittest.TestCase):
         self.write_memory = write_memory
 
     def ProcessMapTest(F):
-        @patch("OSSimulator.PROCESS_MAP_ADDR", new=ProcessMapTestCase.fake_process_map_entry_addr)
+        @patch("OSSimulator.PROCESS_MAP_ADDR", new=ProcessMapTestCase.fake_process_map_addr)
         @patch("OSSimulator.read_memory")
         def wrapper(self, mock_read_memory):
             mock_read_memory.side_effect = self.read_memory
@@ -36,11 +37,11 @@ class ProcessMapTestCase(unittest.TestCase):
         return wrapper
 
 class PhysicalPageMapTestCase(unittest.TestCase):
-    fake_ppage_map_entry_addr = 0x0000A000
+    fake_ppage_map_addr = 0x0000A000
 
     def set_process_ids(self, process_ids_list):
         for i, process_id in enumerate(process_ids_list):
-            self.write_memory(self.fake_ppage_map_entry_addr + (i * PHYSICAL_PAGE_MAP_ENTRY_SIZE), process_id)
+            self.write_memory(self.fake_ppage_map_addr + (i * PHYSICAL_PAGE_MAP_ENTRY_SIZE), process_id)
 
     def setUp(self):
         self.memory = bytearray(PHYSICAL_MEMORY_PAGES * 0x1000)
@@ -50,7 +51,7 @@ class PhysicalPageMapTestCase(unittest.TestCase):
         self.write_memory = write_memory
 
     def ProcessMapTest(F):
-        @patch("OSSimulator.PHYSICAL_PAGE_MAP_ADDR", new=PhysicalPageMapTestCase.fake_ppage_map_entry_addr)
+        @patch("OSSimulator.PHYSICAL_PAGE_MAP_ADDR", new=PhysicalPageMapTestCase.fake_ppage_map_addr)
         @patch("OSSimulator.read_memory")
         def wrapper(self, mock_read_memory):
             mock_read_memory.side_effect = self.read_memory
@@ -192,6 +193,133 @@ class TestGetOpenPpage(PhysicalPageMapTestCase):
 
         result = lite_get_open_ppage()
         assert result == target_ppage, f"0x{result:08X}, expected 0x{target_ppage:08X}"
+
+class TestLoadLitePteToPpage(unittest.TestCase):
+    fake_ppage_map_addr = 0x0000A000
+    fake_mmio_disk_addr = 0x0000B000
+    fake_process_map_addr = 0x0000C000
+
+    def setUp(self):
+        self.memory = bytearray(PHYSICAL_MEMORY_PAGES * 0x1000)
+        self.read_memory = lambda addr: int.from_bytes(self.memory[addr:addr + 4], "big")
+        def write_memory(addr, data):
+            self.memory[addr:addr + 4] = data.to_bytes(4, "big")
+        self.write_memory = write_memory
+
+    @unittest.skip("BUG: the PTE's page number is not updated with the new ppage")
+    @patch("OSSimulator.write_memory")
+    @patch("OSSimulator.read_memory")
+    def test_returns_new_pte(self, mock_read_memory, mock_write_memory):
+        process_map_entry_index = 0x01
+        virtual_page_number = 0x0123
+        process_page_directory_physical_ppage = 0x02
+        process_id = 0x0A
+        pte = 0x11AAAAAAA
+        ppage_index = 0xEDCBA
+        expected_updated_pte = 0x00000000
+        result = lite_load_pte_to_ppage(
+            process_map_entry_index,
+            virtual_page_number,
+            process_page_directory_physical_ppage,
+            process_id,
+            pte,
+            ppage_index
+        )
+        expected_updated_pte = 0xDAAEDCBA
+        assert result == expected_updated_pte, f"0x{result:08X}, expected 0x{expected_updated_pte:08X}"
+
+    @patch("OSSimulator.PHYSICAL_PAGE_MAP_ADDR", new=fake_ppage_map_addr)
+    @patch("OSSimulator.write_memory")
+    @patch("OSSimulator.read_memory")
+    def test_updates_ppage_map(self, mock_read_memory, mock_write_memory):
+        mock_write_memory.side_effect = self.write_memory
+        mock_read_memory.side_effect = self.read_memory
+
+        process_map_entry_index = 0x01
+        virtual_page_number = 0x0123
+        process_page_directory_physical_ppage = 0x02
+        process_id = 0x0A
+        pte = 0x87654321
+        ppage_index = 0x0E
+        lite_load_pte_to_ppage(
+            process_map_entry_index,
+            virtual_page_number,
+            process_page_directory_physical_ppage,
+            process_id,
+            pte,
+            ppage_index
+        )
+
+        ppage_entry_offset = self.fake_ppage_map_addr + (ppage_index * PHYSICAL_PAGE_MAP_ENTRY_SIZE)
+        assert self.read_memory(ppage_entry_offset + 0x00) == process_id
+        assert self.read_memory(ppage_entry_offset + 0x04) == process_page_directory_physical_ppage
+        assert self.read_memory(ppage_entry_offset + 0x08) == virtual_page_number
+        assert self.read_memory(ppage_entry_offset + 0x0C) == 0x01
+        assert self.read_memory(ppage_entry_offset + 0x10) == 0x00054321
+        assert self.read_memory(ppage_entry_offset + 0x14) == 0x01
+
+    @patch("OSSimulator.MMIO_DISK_BASE_ADDR", new=fake_mmio_disk_addr)
+    @patch("OSSimulator.write_memory")
+    @patch("OSSimulator.read_memory")
+    def test_updates_ppage_map(self, mock_read_memory, mock_write_memory):
+        mock_write_memory.side_effect = self.write_memory
+        mock_read_memory.side_effect = self.read_memory
+
+        process_map_entry_index = 0x01
+        virtual_page_number = 0x0123
+        process_page_directory_physical_ppage = 0x02
+        process_id = 0x0A
+        pte = 0x87654321
+        ppage_index = 0x0E
+        lite_load_pte_to_ppage(
+            process_map_entry_index,
+            virtual_page_number,
+            process_page_directory_physical_ppage,
+            process_id,
+            pte,
+            ppage_index
+        )
+
+        assert self.read_memory(self.fake_mmio_disk_addr + 0x00) == ppage_index
+        assert self.read_memory(self.fake_mmio_disk_addr + 0x04) == 0x00054321
+        assert self.read_memory(self.fake_mmio_disk_addr + 0x08) == 0x00
+        assert self.read_memory(self.fake_mmio_disk_addr + 0x0C) == 0x01
+
+    @patch("OSSimulator.PROCESS_MAP_ADDR", new=fake_process_map_addr)
+    @patch("OSSimulator.write_memory")
+    @patch("OSSimulator.read_memory")
+    def test_updates_ppage_map(self, mock_read_memory, mock_write_memory):
+        mock_write_memory.side_effect = self.write_memory
+        mock_read_memory.side_effect = self.read_memory
+
+        process_map_entry_index = 0x01
+        virtual_page_number = 0x0123
+        process_page_directory_physical_ppage = 0x02
+        process_id = 0x0A
+        pte = 0x87654321
+        ppage_index = 0x0E
+
+        # set a fake resident page number
+        process_map_offset = (
+            self.fake_process_map_addr
+            + (process_map_entry_index * PROCESS_MAP_ENTRY_SIZE)
+            + 0x08
+        )
+        existing_resident_pages = 0x00001111
+        self.write_memory(process_map_offset, existing_resident_pages)
+
+        lite_load_pte_to_ppage(
+            process_map_entry_index,
+            virtual_page_number,
+            process_page_directory_physical_ppage,
+            process_id,
+            pte,
+            ppage_index
+        )
+
+        expected_resident_pages = existing_resident_pages + 1
+        new_resident_pages = self.read_memory(process_map_offset)
+        assert new_resident_pages == expected_resident_pages, f"{new_resident_pages:08X}, expected 0x{expected_resident_pages:08X}"
 
 
 if __name__ == '__main__':
