@@ -402,7 +402,6 @@ class TestLiteMakePpageWritable(PhysicalPageMapTestCase):
         kwargs["mock_write_memory"].assert_called_once()
         new_dirty = self.get_ppage_entry_field(ppage_index, 0x18)
         expected_dirty = 0x01
-        # TODO not sure why this isn't passing
         assert new_dirty == expected_dirty, f"0x{new_dirty:08X}, expected 0x{expected_dirty:08X}"
 
 
