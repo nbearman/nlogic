@@ -9,6 +9,7 @@ PHYSICAL_MEMORY_PAGES = 0x10
 PHYSICAL_PAGE_MAP_ADDR = 0xDDDD0000
 PHYSICAL_PAGE_MAP_ENTRY_SIZE = 0x1C
 MMIO_DISK_BASE_ADDR = 0xEEEE0000
+PAGE_SIZE = 0x1000
 
 MEMORY = {
     ACTIVE_PROCESS_ID_ADDR: 0x02,
@@ -25,11 +26,24 @@ class MMURegister(Enum):
     FAULTED_VA = auto()
     FAULTED_OPERATION = auto()
 
+class Memory:
+    def __init__(self):
+        self.memory = bytearray(PHYSICAL_MEMORY_PAGES * PAGE_SIZE)
+
+    def read_memory(self, addr):
+        return int.from_bytes(self.memory[addr:addr + 4], "big")
+    
+    def write_memory(self, addr, data):
+        self.memory[addr:addr + 4] = data.to_bytes(4, "big")
+
+MEMORY = Memory()
+
+
 def write_memory(address, value):
-    pass
+    MEMORY.write_memory(address, value)
 
 def read_memory(address):
-    pass
+    return MEMORY.read_memory(address)
 
 def read_register(register):
     pass
@@ -120,7 +134,7 @@ def lite_set_pte_readable(pte):
     return pte | 0x80000000
 
 def lite_make_ppage_writable(ppage_index):
-    tmp_ppage_map_offset = ppage_index * PHYSICAL_PAGE_MAP_ENTRY_SIZE
+    tmp_ppage_map_offset = PHYSICAL_PAGE_MAP_ADDR + (ppage_index * PHYSICAL_PAGE_MAP_ENTRY_SIZE)
     tmp_ppage_dirty_field = read_memory(tmp_ppage_map_offset + 0x18)
     tmp_ppage_num_references = read_memory(tmp_ppage_map_offset + 0x0C)
     if tmp_ppage_dirty_field == 0x01:

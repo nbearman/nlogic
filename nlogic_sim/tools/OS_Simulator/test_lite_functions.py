@@ -6,8 +6,13 @@ from OSSimulator import (
     lite_find_process_map_entry_index_by_id,
     lite_get_pte_kpa,
     lite_load_pte_to_ppage,
+    lite_make_ppage_writable,
     lite_number_from_pte,
     lite_get_open_ppage,
+    lite_set_ppage_field,
+    lite_set_pte_number,
+    lite_set_pte_readable,
+    lite_set_pte_writable,
     PHYSICAL_MEMORY_PAGES,
     PROCESS_MAP_ENTRY_SIZE,
     PROCESS_MAP_LENGTH,
@@ -39,9 +44,26 @@ class ProcessMapTestCase(unittest.TestCase):
 class PhysicalPageMapTestCase(unittest.TestCase):
     fake_ppage_map_addr = 0x0000A000
 
+    def get_ppage_entry_field(self, index, offset):
+        return self.read_memory(
+            self.fake_ppage_map_addr + (index * PHYSICAL_PAGE_MAP_ENTRY_SIZE) + offset
+        )
+
+    def set_ppage_entry_field(self, index, offset, value):
+        self.write_memory(
+            self.fake_ppage_map_addr + (index * PHYSICAL_PAGE_MAP_ENTRY_SIZE) + offset,
+            value
+        )
+
     def set_process_ids(self, process_ids_list):
         for i, process_id in enumerate(process_ids_list):
-            self.write_memory(self.fake_ppage_map_addr + (i * PHYSICAL_PAGE_MAP_ENTRY_SIZE), process_id)
+            self.set_ppage_entry_field(i, 0, process_id)
+
+    def set_dirty_field(self, index, value):
+        self.set_ppage_entry_field(index, 0x18, value)
+
+    def set_num_references_field(self, index, value):
+        self.set_ppage_entry_field(index, 0x0C, value)
 
     def setUp(self):
         self.memory = bytearray(PHYSICAL_MEMORY_PAGES * 0x1000)
@@ -50,12 +72,14 @@ class PhysicalPageMapTestCase(unittest.TestCase):
             self.memory[addr:addr + 4] = data.to_bytes(4, "big")
         self.write_memory = write_memory
 
-    def ProcessMapTest(F):
+    def PhysicalPageMapTest(F):
         @patch("OSSimulator.PHYSICAL_PAGE_MAP_ADDR", new=PhysicalPageMapTestCase.fake_ppage_map_addr)
+        @patch("OSSimulator.write_memory")
         @patch("OSSimulator.read_memory")
-        def wrapper(self, mock_read_memory):
+        def wrapper(self, mock_read_memory, mock_write_memory):
             mock_read_memory.side_effect = self.read_memory
-            F(self)
+            mock_write_memory.side_effect = self.write_memory
+            F(self, mock_write_memory=mock_write_memory)
         return wrapper
 
 class ProcessMapTestCase(unittest.TestCase):
@@ -177,14 +201,14 @@ class TestLiteNumberFromPte(unittest.TestCase):
             assert result == expected, f"0x{pte:08X} -> 0x{result:08X}, expected 0x{expected:08X}"
 
 class TestGetOpenPpage(PhysicalPageMapTestCase):
-    @PhysicalPageMapTestCase.ProcessMapTest
-    def test_no_open_ppage_raises_exception(self):
+    @PhysicalPageMapTestCase.PhysicalPageMapTest
+    def test_no_open_ppage_raises_exception(self, **kwargs):
         self.set_process_ids([0x01] * PHYSICAL_MEMORY_PAGES)
         with self.assertRaises(Exception):
             lite_get_open_ppage()
 
-    @PhysicalPageMapTestCase.ProcessMapTest
-    def test_returns_first_open_ppage(self):
+    @PhysicalPageMapTestCase.PhysicalPageMapTest
+    def test_returns_first_open_ppage(self, **kwargs):
         process_ids = [0x01] * PHYSICAL_MEMORY_PAGES
         target_ppage = 0x03
         process_ids[target_ppage] = 0x00
@@ -320,6 +344,66 @@ class TestLoadLitePteToPpage(unittest.TestCase):
         expected_resident_pages = existing_resident_pages + 1
         new_resident_pages = self.read_memory(process_map_offset)
         assert new_resident_pages == expected_resident_pages, f"{new_resident_pages:08X}, expected 0x{expected_resident_pages:08X}"
+
+class TestLiteSetPpageField(unittest.TestCase):
+    fake_ppage_map_addr = 0x0000A000
+
+    @patch("OSSimulator.PHYSICAL_PAGE_MAP_ADDR", new=fake_ppage_map_addr)
+    @patch("OSSimulator.write_memory")
+    def test_sets_value_in_ppage_map(self, mock_write_memory):
+        value = 0x12345678
+        offset = 0x0C
+        index = 0x321
+        lite_set_ppage_field(value, offset, index)
+        expected_addr = (index * PHYSICAL_PAGE_MAP_ENTRY_SIZE) + offset + self.fake_ppage_map_addr
+        mock_write_memory.assert_called_once_with(expected_addr, value)
+
+class TestLiteSetPteReadable(unittest.TestCase):
+    def test_sets_first_bit(self):
+        pte = 0b0100_0000_0000_0000_0000_0000_0000_0000
+        result = lite_set_pte_readable(pte)
+        expected = 0b1100_0000_0000_0000_0000_0000_0000_0000
+        assert result == expected, f"0x{result:08X}, expected 0x{expected:08X}"
+
+class TestLiteSetPteWritable(unittest.TestCase):
+    def test_unsets_second_bit(self):
+        pte = 0b1110_0000_0000_0000_0000_0000_0000_0000
+        result = lite_set_pte_writable(pte)
+        expected = 0b1010_0000_0000_0000_0000_0000_0000_0000
+        assert result == expected, f"0x{result:08X}, expected 0x{expected:08X}"
+
+class TestLiteSetPteNumber(unittest.TestCase):
+    def test_sets_last_twenty_bits(self):
+        pte = 0b0100_0000_0000_0000_0010_1111_1010_0110
+        number = 0b1110_0010_0110_0101_1011
+        result = lite_set_pte_number(number, pte)
+        expected = 0b0100_0000_0000_1110_0010_0110_0101_1011
+        assert result == expected, f"0x{result:08X}, expected 0x{expected:08X}"
+
+class TestLiteMakePpageWritable(PhysicalPageMapTestCase):
+    @PhysicalPageMapTestCase.PhysicalPageMapTest
+    def test_returns_index_if_page_already_dirty(self, **kwargs):
+        ppage_index = 0x03
+        num_references = 0x01
+        self.set_dirty_field(ppage_index, 0x01)
+        self.set_num_references_field(ppage_index, num_references)
+        result = lite_make_ppage_writable(ppage_index)
+        assert result == ppage_index
+        kwargs["mock_write_memory"].assert_not_called()
+
+    @PhysicalPageMapTestCase.PhysicalPageMapTest
+    def test_sets_dirty_field_when_page_is_clean(self, **kwargs):
+        ppage_index = 0x03
+        num_references = 0x01
+        self.set_dirty_field(ppage_index, 0x00)
+        self.set_num_references_field(ppage_index, num_references)
+        result = lite_make_ppage_writable(ppage_index)
+        assert result == ppage_index
+        kwargs["mock_write_memory"].assert_called_once()
+        new_dirty = self.get_ppage_entry_field(ppage_index, 0x18)
+        expected_dirty = 0x01
+        # TODO not sure why this isn't passing
+        assert new_dirty == expected_dirty, f"0x{new_dirty:08X}, expected 0x{expected_dirty:08X}"
 
 
 if __name__ == '__main__':
