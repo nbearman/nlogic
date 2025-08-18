@@ -1,3 +1,5 @@
+import os
+
 from dataclasses import dataclass
 from enum import Enum, auto
 
@@ -9,8 +11,11 @@ PROCESS_MAP_ADDR = 0x0480
 PHYSICAL_MEMORY_PAGES = 0x10
 PHYSICAL_PAGE_MAP_ADDR = 0x0100
 PHYSICAL_PAGE_MAP_ENTRY_SIZE = 0x1C
-MMIO_DISK_BASE_ADDR = 0xEEEE0000
+MMIO_DISK_BASE_ADDR = 0x8000 # base addr of disk mapped in kernel VA
 PAGE_SIZE = 0x1000
+MMIO_BASE_PHYSICAL_ADDR = 0xFF000000
+MMIO_DISK_BASE_PHYSICAL_ADDR = MMIO_BASE_PHYSICAL_ADDR # these are the same because the disk is the first MMIO device
+VALID_DISK_BLOCKS = (64, 65, 66, 100, 101, 102, 103) # files that are available in the OS simulators disk_blocks/ directory
 
 MEMORY = {
     ACTIVE_PROCESS_ID_ADDR: 0x02,
@@ -137,19 +142,90 @@ class MMU:
         return translation
 
 
+class Disk:
+    class Mode(Enum):
+        READ = 0
+        WRITE = 1
+
+    def __init__(self, environment_memory: list[int] | bytearray, disk_blocks_to_cache: list[int]):
+        self.environment_memory = environment_memory
+        self.physical_page: int = None
+        self.disk_block: int = None
+        self.mode: Disk.Mode = None
+        self.disk_block_map = {}
+        for block in disk_blocks_to_cache:
+            file_name = f"{block:05}.txt"
+            file_path = os.path.join("disk_blocks", file_name)
+            with open(file_path, "r") as file:
+                contents = file.read().strip()
+            block_data = [0] * PAGE_SIZE
+            copied_bytes = [int(x, 16) for x in contents.split(" ")]
+            block_data[:len(copied_bytes)] = copied_bytes
+            self.disk_block_map[block] = block_data
+
+    def write_memory(self, address: int, value: int):
+        if address == 0x00:
+            self.physical_page = value
+        elif address == 0x04:
+            self.disk_block = value
+        elif address == 0x08:
+            self.mode = Disk.Mode.WRITE if value else Disk.Mode.READ
+        elif address == 0x0C:
+            self.initiate()
+        else:
+            raise ValueError(f"Write to unknown disk register: 0x{address:08X}")
+
+    def read_memory(self, address: int):
+        raise NotImplementedError()
+
+    def initiate(self):
+        target_physical_page_addr = PAGE_SIZE * self.physical_page
+        # if write, store the contents of the physical page on disk
+        if self.mode is Disk.Mode.WRITE:
+            self.disk_block_map[self.disk_block] = self.environment_memory[target_physical_page_addr:target_physical_page_addr + PAGE_SIZE]
+        # if read, copy the contents of the disk block into the physical page
+        elif self.mode is Disk.Mode.READ:
+            self.environment_memory[target_physical_page_addr:target_physical_page_addr + PAGE_SIZE] = self.disk_block_map[self.disk_block]
+        else:
+            raise NotImplementedError()
+
+
 class Environment:
     def __init__(self, size_in_bytes: int = 2**16):
         self.memory = [0] * size_in_bytes
         # self.memory = bytearray(size_in_bytes) # both bytearray and list work, but list is easier to read in the debugger
         self.mmu = MMU(self.memory, 0, 0, 0, 0, 0, 0, 0, 0, 0)
+        self.disk = Disk(self.memory, VALID_DISK_BLOCKS)
 
-    def write_memory(self, address: int, value: int):
+    def mmio_write_memory(self, address: int, value: int) -> None:
+        if address >= MMIO_DISK_BASE_PHYSICAL_ADDR and address <= MMIO_DISK_BASE_PHYSICAL_ADDR + 0x10:
+            self.disk.write_memory(address - MMIO_BASE_PHYSICAL_ADDR, value)
+        else:
+            raise NotImplementedError()
+
+
+    def mmio_read_memory(self, address: int) -> int:
+        raise NotImplementedError()
+
+    def write_memory(self, address: int, value: int) -> None:
         address = self.mmu.translate_address(address, True)
-        self.memory[address:address + 0x04] = value.to_bytes(0x04, "big")
-        # TODO implement disk MMIO
 
-    def read_memory(self, address: int):
+        if address >= MMIO_BASE_PHYSICAL_ADDR:
+            self.mmio_write_memory(address, value)
+            return
+
+        if address < 0 or (address + 4) > len(self.memory):
+            raise ValueError(f"Memory write at 0x{address:08X} out of bounds.")
+        self.memory[address:address + 0x04] = value.to_bytes(0x04, "big")
+
+    def read_memory(self, address: int) -> int:
         address = self.mmu.translate_address(address, False)
+
+        if address >= MMIO_BASE_PHYSICAL_ADDR:
+            return self.mmio_read_memory(address)
+
+        if address < 0 or (address + 4) > len(self.memory):
+            raise ValueError(f"Memory read at 0x{address:08X} out of bounds.")
         return int.from_bytes(self.memory[address:address + 0x04], "big")
 
     def read_register(self, register):
@@ -526,3 +602,4 @@ if __name__ == "__main__":
     environment.mmu.ACTIVE_PAGE_DIRECTORY_BASE_ADDRESS = 0x01 # kernel page directory physical page number
     environment.mmu.ENABLED = 0x01
     environment.page_fault_handler()
+    print(environment)
