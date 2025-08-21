@@ -33,6 +33,19 @@ class MMURegister(Enum):
     FAULTED_OPERATION = auto()
 
 
+def dump_memory(memory: list[int], name: str = None):
+    file_name = "memory_dump.txt"
+    if name:
+        file_name = f"memory_dump_{name}.txt"
+    with open(file_name, "w") as f:
+        lines = []
+        for i in range(0, len(memory), 0x04):
+            value = memory[i:i+4]
+            str_value = " ".join([f"{x:02X}" for x in value])
+            lines.append(f"{i:04X}\t{str_value}\n")
+        f.writelines(lines)
+
+
 @dataclass
 class MMU:
     environment_memory: list[int] | bytearray
@@ -191,11 +204,11 @@ class Disk:
 
 
 class Environment:
-    def __init__(self, size_in_bytes: int = 2**16):
+    def __init__(self, size_in_bytes: int = 2**16, valid_disk_blocks: list[int] = None):
         self.memory = [0] * size_in_bytes
         # self.memory = bytearray(size_in_bytes) # both bytearray and list work, but list is easier to read in the debugger
         self.mmu = MMU(self.memory, 0, 0, 0, 0, 0, 0, 0, 0, 0)
-        self.disk = Disk(self.memory, VALID_DISK_BLOCKS)
+        self.disk = Disk(self.memory, valid_disk_blocks)
 
     def mmio_write_memory(self, address: int, value: int) -> None:
         if address >= MMIO_DISK_BASE_PHYSICAL_ADDR and address <= MMIO_DISK_BASE_PHYSICAL_ADDR + 0x10:
@@ -533,7 +546,7 @@ if __name__ == "__main__":
     # ...   empty
     # 15
 
-    environment = Environment(PHYSICAL_MEMORY_PAGES * 0x1000)
+    environment = Environment(PHYSICAL_MEMORY_PAGES * 0x1000, VALID_DISK_BLOCKS)
 
     # set up kernel page directory
     kernel_page_directory_base_addr = 0x01 * 0x1000
@@ -589,8 +602,6 @@ if __name__ == "__main__":
     user_page_table_base_addr = 0x06 * 0x1000
     environment.write_memory(user_page_table_base_addr + 0x00, 0xC0000007) # R !W (11) (resident, referenced, clean) physical page 7 (user program page 0)
     environment.write_memory(user_page_table_base_addr + 0x04, 0x40000067) # !R W (01) (mapped, evicted) disk block 103 (user program page 1)
-
-    # TODO implement MMIO read/write
 
 
     ########################################

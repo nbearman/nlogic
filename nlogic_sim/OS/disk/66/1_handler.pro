@@ -115,7 +115,7 @@ CONST ppage_map_entry_size 1C
 00 00 00 05 //owning page directory is this directory, user's page directory
 00 00 00 00 //this is a directory
 00 00 00 01 //user process references this physical page
-00 00 00 00 //no disk block number yet
+00 00 00 00 //no disk block number yet TODO: should this be the block it was originally loaded from?
 00 00 00 00
 00 00 00 00
 
@@ -124,7 +124,7 @@ CONST ppage_map_entry_size 1C
 00 00 00 05 //owning page directory is user page directory
 00 00 00 00 //virtual table 0
 00 00 00 01 //user process references this physical page
-00 00 00 00 //no disk block number yet
+00 00 00 00 //no disk block number yet TODO: should this be the block it was originally loaded from?
 00 00 00 00
 00 00 00 00
 
