@@ -211,6 +211,7 @@ namespace nlogic_sim
 
                 this.faulted_operation_was_write = write;
                 // TODO do we need to set this.faulted to true?
+                this.faulted = true;
                 return false;
             }
 
@@ -234,6 +235,7 @@ namespace nlogic_sim
 
                 this.faulted_operation_was_write = write;
                 // TODO do we need to set this.faulted to true?
+                this.faulted = true;
                 return false;
             }
 
