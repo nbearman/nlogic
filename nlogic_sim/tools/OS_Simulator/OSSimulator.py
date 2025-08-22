@@ -160,7 +160,9 @@ class Disk:
         READ = 0
         WRITE = 1
 
-    def __init__(self, environment_memory: list[int] | bytearray, disk_blocks_to_cache: list[int]):
+    def __init__(self, environment_memory: list[int] | bytearray, disk_blocks_to_cache: list[int] = None):
+        if not disk_blocks_to_cache:
+            disk_blocks_to_cache = []
         self.environment_memory = environment_memory
         self.physical_page: int = None
         self.disk_block: int = None

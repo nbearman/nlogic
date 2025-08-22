@@ -24,6 +24,9 @@ Kernel should not map all of physical memory in its VA space
 		MMU could have special physical target address register and physical memory access register
 			Kernel can specify an address in the target register and then read or write to the access register to access that physical address
 		For larger amounts of memory, the MMU could possibly implement range-based DMA transfer (either PA -> PA or kernel VA -> PA)
+	Alternatively, the kernel can update its own page table to map one of its virtual pages to a specific physical page
+		The kernel needs to reserve only a few virtual pages for this: 1 for its own page table's physical page, and one for the target physical page
+		Whenever the kernel wants to access a different physical page, it can change the mapping in its own page table to point to a different physical page
 
 Move MMU mapping in kernel VA to much higher address
 	MMU is mapped to 0x1000 in kernel VA; interrupt handler is going to overrun this
