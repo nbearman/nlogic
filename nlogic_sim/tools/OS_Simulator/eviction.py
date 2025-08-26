@@ -137,8 +137,11 @@ class Kernel:
     def find_evictable_page(self):
         searching = True
         target_ppage = None
-        while searching:
-            self.clock_hand = (self.clock_hand + 1) % len(self.physical_page_map)
+        count = 0
+        num_pages = len(self.physical_page_map)
+        while searching and count < (2 * num_pages):
+            count += 1
+            self.clock_hand = (self.clock_hand + 1) % num_pages
             if self.check_if_page_is_evictable(self.clock_hand):
                 target_ppage = self.clock_hand
                 searching = False
@@ -170,6 +173,10 @@ class Kernel:
                     refd_ppage = self.physical_page_map[pte.number]
                     if refd_ppage.share_count <= 1:
                         raise Exception("Attempted to evict a page table before all (non-shared) referenced pages have been paged out")
+
+                    refd_ppage.share_count -= 1 # cannot be more than one, because
+                    # page tables aren't shared, so this mapping that we're removing is valid for this single process only
+
                     pte.set_readable(False)
                     pte.set_write_protected(True)
                     self.write_memory(pte_addr, pte.to_int())
@@ -283,6 +290,7 @@ During any read fault, bringing in any page:
 
 During eviction:
 - If page is a page table, mark any PTEs still pointing to shared ppages as non-resident
+    - Decrement the share count of those ppages by 1
     - Mark page table as dirty if there are changes from this
     - This prevents needing to update non-resident page tables when a shared page gets evicted
 - If page is clean, discard page and update PTE to be non-resident (leave disk block if present)
@@ -305,7 +313,7 @@ During write fault on any page:
 - If owning entry (PTE or PDE) is marked copy-on-write, find a free page to allocate a new copy
 - Copy this page to the new page
 - Mark the new page as dirty
-- Remove matching references to the old page, and new references to the new page
+- Remove matching references to the old page, and add new references to the new page
 - Update the owning entry (PTE or PDE) to mark this page as not copy-on-write, nor write protected
 - When updating the PTE, if the table's own PDE is marked copy-on-write, the same process will need to be followed for that table
 - Therefore, resolving a write fault may need as many as two open or evictable pages
