@@ -47,7 +47,7 @@ class ProcessMapEntry:
 @dataclass
 class PhysicalPageMapEntry:
     # which page type resides in this physical page
-    page_type: PageType = PageType.LeafPage
+    page_type: PageType = 0
 
     # which disk block number backs this page; 0 if there is no disk block
     disk_block_number: int = 0
@@ -61,6 +61,8 @@ class PhysicalPageMapEntry:
     # True if this page should be ignored when finding a page to evict
     wired: bool = False
 
+    # True if this page is backed by a file on disk (so the disk block should never change)
+    file_backed: bool = False
 
 @dataclass
 class PhysicalPageReference:
@@ -133,6 +135,9 @@ class Environment:
         self.memory = [0] * size_in_bytes
         self.mmu = MMU(self.memory)
         self.disk = Disk(self.memory)
+        self.page_reference_hash_table = {} # TODO replace this with a custom hash table
+            # (collision resolution: k-step, linked list, linear probing?)
+            # (probably linear probing to leverage cache the best)
 
     def read_memory(self, addr: int) -> int:
         pass
@@ -144,8 +149,11 @@ class Environment:
         # return from active process ID variable
         pass
 
-    def get_directory_ppage(self) -> int:
-        # return from active process dir ppage variable
+    def get_directory_ppage(self, pid: int) -> int:
+        """
+        if PID is 0, return from active process dir ppage variable
+        otherwise, get directory ppage from process map
+        """
         pass
 
     def access_page_through_table(self, parent_table_ppage: int, entry_number: int) -> tuple[int, bool]:
@@ -184,6 +192,11 @@ class Environment:
     def set_entry_readable(self, entry: int, new_value: bool) -> int:
         pass
 
+    def set_entry_non_resident(self, entry: int) -> int:
+        entry = self.set_entry_readable(entry, False)
+        entry = self.set_entry_write_protected(entry, True)
+        return entry
+
     def set_entry_cow(self, entry: int, new_value: bool) -> int:
         pass
 
@@ -205,13 +218,28 @@ class Environment:
     def get_ppage_is_table(self, ppage: int) -> bool:
         pass
 
+    def get_ppage_is_leaf(self, ppage: int) -> bool:
+        pass
+
+    def get_ppage_is_file_backed(self, ppage: int) -> bool:
+        pass
+
+    def get_ppage_is_directory(self, ppage: int) -> bool:
+        pass
+
     def get_ppage_backing_block(self, ppage: int) -> int:
+        pass
+
+    def get_ppage_share_count(self, ppage: int) -> int:
         pass
 
     def set_ppage_clean(self, ppage: int):
         pass
 
     def set_ppage_dirty(self, ppage: int):
+        pass
+
+    def set_ppage_backing_block(self, ppage: int, new_value: int):
         pass
 
     def set_ppage_share_count(self, ppage: int, new_value: int):
@@ -221,6 +249,19 @@ class Environment:
         pass
 
     def clear_ppage_map_slot(self, ppage: int):
+        pass
+
+    def get_disk_block_share_count(self, disk_block: int) -> int:
+        pass
+
+    def decrement_disk_block_share_count(self, disk_block: int):
+        pass
+
+    def increment_disk_block_share_count(self, disk_block: int):
+        pass
+
+    def remove_reference_to_disk_block(self, disk_block: int, pid: int):
+        # TODO what is this supposed to do? What do the disk block references track?
         pass
 
     def remove_page_reference(self, process_id: int, parent_table_ppage: int, vpage: int):
@@ -233,6 +274,20 @@ class Environment:
         """
         Add a reference to the reference list.
         """
+        pass
+
+    def get_all_page_references(self, ppage: int) -> list[PhysicalPageReference]:
+        pass
+
+    def get_single_page_reference(self, ppage: int) -> PhysicalPageReference:
+        pass
+
+    def get_open_disk_block(self) -> int:
+        """
+        Returns 0 if there are no open blocks
+        """
+
+    def copy_ppage_to_disk(self, ppage: int, disk_block: int):
         pass
 
     def copy_ppage_contents(self, source_ppage: int, dest_ppage: int):
@@ -259,13 +314,24 @@ class Environment:
         """
         pass
 
-    def update_entry_in_table(self, directory_ppage: int|None, table_ppage: int, new_entry: int) -> int:
+    def update_entry_in_table(self, directory_ppage: int, table_ppage: int, entry_number: int, new_entry: int) -> int:
         """
-        If directory_ppage is None, this is a PTE; otherwise, it is a PDE.
+        If directory_ppage == table_ppage, this is a PDE; otherwise, it is a PTE.
         """
+        # TODO do we need to set tables to accessed when updating entries? probably not, since
+        # accessed should generally refer to access via user process? or should writing to the
+        # table count as recent access?
+
+        # whenever this function is used, the parent tables should be guaranteed to be in resident
+        # because this function does not use access_page_through_table (which is generally used for
+        # paging in non-resident pages and updating the accessed bit
         pass
 
     def evict_page(self, ppage: int):
+        if self.get_ppage_is_directory(ppage):
+            # evicting directory
+            raise NotImplementedError("TODO haven't planned out directory eviction yet")
+
         is_table = self.get_ppage_is_table(ppage)
         if is_table:
             # when evicting a table, we need to mark any shared pages it has mapped as non-resident, in case they get paged out
@@ -286,25 +352,56 @@ class Environment:
                     backing_block = self.get_ppage_backing_block(ppage)
 
                     # update the PTE to be non-resident and point to the backing block of the ppage
-                    pte = self.set_entry_readable(pte, False)
-                    pte = self.set_entry_write_protected(pte, True) # non-resident pages have RW01
+                    pte = self.set_entry_non_resident(pte)
                     pte = self.set_entry_number(pte, backing_block)
                     self.write_memory(pte_addr, pte)
             if table_was_updated:
                 self.set_ppage_dirty(ppage)
 
+        backing_block = self.get_ppage_backing_block(ppage)
         is_dirty = self.get_ppage_is_dirty(ppage)
+        is_file_backed = self.get_ppage_is_file_backed(ppage)
         if is_dirty:
-            raise NotImplementedError("TODO")
+            block_share_count = self.get_disk_block_share_count(backing_block)
+            if not is_file_backed:
+                if block_share_count > 1:
+                    if is_table:
+                        raise Exception("Tables cannot be shared.")
+                    # split into new backing block
+                self.decrement_disk_block_share_count(backing_block)
+                new_block = self.get_open_disk_block()
+                if not new_block:
+                    raise Exception("No open disk blocks; out of swap space.")
+                self.increment_disk_block_share_count(new_block)
+                self.set_ppage_backing_block(new_block)
+
+                # to find which process is getting a new disk block, look in the reference list
+                refs = self.get_all_page_references(ppage)
+                if len(refs) > 1:
+                    # this was a dirty page, and not file backed, so there should be exactly 1 ref
+                    raise Exception("Dirty, non-file-backed page cannot be shared.")
+                self.remove_reference_to_disk_block(backing_block, refs[0].pid)
+                backing_block = new_block
+            self.copy_ppage_to_disk(ppage, new_block)
 
         self.clear_ppage_contents(ppage)
         self.clear_ppage_map_slot(ppage)
 
+        refs_to_update = self.get_all_page_references(ppage)
+        if is_table:
+            # for leaf pages, there may be multiple references to update
+            # for tables, there should be exactly one
+            if len(refs_to_update) > 0:
+                raise Exception("Table page should not have multiple references because tables cannot be shared.")
 
-
-        raise NotImplementedError("TODO")
-        for entry in entries_to_update:
-            self.update_entry_in_table(entry)
+        for ref in refs_to_update:
+            # get the PTE from its table
+            pte_addr = (ref.table_ppage * 0x1000) + (ref.vpage * 0x04)
+            pte = self.read_memory(pte_addr)
+            # update the PTE with the new block number and mark it as non-resident
+            pte = self.set_entry_number(backing_block)
+            pte = self.set_entry_non_resident(pte)
+            self.update_entry_in_table(self.get_directory_ppage(ref.pid), ref.table_ppage, ref.vpage, pte)
 
 
     def handle_leaf_page_cow(self, table_ppage: int, vpage: int, pte: int) -> int:
@@ -344,7 +441,7 @@ class Environment:
                 self.write_memory(pte_addr, pte)
 
         updated_pde = self.set_entry_cow(pde, False)
-        self.update_entry_in_table(None, directory_ppage, updated_pde)
+        self.update_entry_in_table(directory_ppage, directory_ppage, updated_pde)
         return updated_pde
 
     def handle_page_fault(self, faulted_addr: int, is_write: bool):

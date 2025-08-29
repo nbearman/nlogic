@@ -17,11 +17,6 @@ MMIO_BASE_PHYSICAL_ADDR = 0xFF000000
 MMIO_DISK_BASE_PHYSICAL_ADDR = MMIO_BASE_PHYSICAL_ADDR # these are the same because the disk is the first MMIO device
 VALID_DISK_BLOCKS = (64, 65, 66, 100, 101, 102, 103) # files that are available in the OS simulators disk_blocks/ directory
 
-MEMORY = {
-    ACTIVE_PROCESS_ID_ADDR: 0x02,
-    ACTIVE_PROCESS_PAGE_DIRECTORY_PHYSICAL_PAGE_ADDR: 0x00005000,
-}
-
 class Register(Enum):
     LINK = auto()
     PC = auto()
