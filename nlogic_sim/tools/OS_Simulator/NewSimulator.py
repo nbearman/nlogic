@@ -33,10 +33,16 @@ class KernelVariable(Enum):
     ActiveProcessId = "ACTIVE_PROCESS_ID"
     ActiveProcessPageDirectoryPhysicalPage = "ACTIVE_PROCESS_PAGE_DIRECTORY_PHYSICAL_PAGE"
 
+
 class PageType(Enum):
     LeafPage = 1
     PageTable = 2
     PageDirectory = 3
+
+
+class TableEntryType(Enum):
+    PDE = 1
+    PTE = 2
 
 @dataclass
 class ProcessMapEntry:
@@ -320,51 +326,59 @@ class Environment:
         """
         pass
 
+    def update_pde_in_directory(self, directory_ppage, pde_number, new_pde) -> bool:
+        pass
+
+
     def update_entry_in_table(
         self,
-        directory_ppage: int,
-        table_ppage: int,
-        entry_number: int,
+        directory_ppage: int, # ppage of the grand parent table
+        pde_number: int,
+        table_ppage: int, # ppage of the parent table
+        pte_number: int, #
         new_entry: int,
-        table_entry_number: int, # TODO update call sites to pass this parameter
+        entry_type: TableEntryType,
     ) -> int:
         """
-        If directory_ppage == table_ppage, this is a PDE; otherwise, it is a PTE.
+        This function will update a PDE or PTE. If a PTE is updated, its PDE might need to be updated, too.
+
+        When updating a PDE, the PTE parameters will be ignored.
         """
         # TODO do we need to set tables to accessed when updating entries? probably not, since
         # accessed should generally refer to access via user process? or should writing to the
         # table count as recent access?
 
-        # whenever this function is used, the parent tables should be guaranteed to be in resident
-        # because this function does not use access_page_through_table (which is generally used for
-        # paging in non-resident pages and updating the accessed bit
+        # if we're updating a PTE, fetch the previous version and compare it
+        if entry_type is TableEntryType.PTE:
+            pte_addr = (table_ppage * 0x1000) + (pte_number * 0x04)
+            pte = self.read_memory(pte_addr)
+            if new_entry == pte:
+                # the existing entry matches, so no changes are needed
+                return
+            # else the entry has changed; update the table and its ppage entry
+            self.set_ppage_dirty(table_ppage)
+            self.set_ppage_accessed(table_ppage, True)
+            self.write_memory(pte_addr, new_entry)
 
-        # get existing entry
-        entry_address = (table_ppage * 0x1000) + (entry_number * 0x04)
-        entry = self.read_memory(entry_address)
-        if entry == new_entry:
-            # the new entry matches the existing entry, so no change is needed
-            return
+        # whether this was a PTE update that caused a table change or a PDE update,
+        # get the existing PDE
+        pde_addr = (directory_ppage * 0x1000) + (pde_number * 0x04)
+        pde = self.read_memory(pde_addr)
 
-        self.write_memory(entry_address, new_entry)
+        if entry_type is TableEntryType.PTE:
+            # if this was a PTE update, the updated PDE is the one from the table with W set to 0
+            updated_pde = self.set_entry_write_protected(pde, False)
+        else:
+            # if this was a PDE update, the updated PDE was passed as new_entry
+            updated_pde = new_entry
 
-        if directory_ppage == table_ppage:
-            # we just updated a PDE, so we only need to update the directory
-            self.set_ppage_dirty(directory_ppage)
-            self.set_ppage_accessed(directory_ppage)
-            return
-
-        # if we didn't update a directory, we are updating a table, and then we might also have to update the directory
-        pde_address = (directory_ppage * 0x1000) + (table_entry_number * 0x04)
-        pde = self.read_memory(pde_address)
-
-        # mark the page table as not write protected because it only could have been write protected if it was clean
-        updated_pde = self.set_entry_write_protected(pde, False)
         if updated_pde == pde:
-            # no change
+            # if the existing entry matches, no changes are needed
             return
-        
-        # mark table ppage as dirty, etc
+
+        self.set_ppage_dirty(directory_ppage)
+        self.set_ppage_accessed(directory_ppage, True)
+        self.write_memory(pde_addr, updated_pde)
 
 
     def evict_page(self, ppage: int):
@@ -441,7 +455,14 @@ class Environment:
             # update the PTE with the new block number and mark it as non-resident
             pte = self.set_entry_number(backing_block)
             pte = self.set_entry_non_resident(pte)
-            self.update_entry_in_table(self.get_directory_ppage(ref.pid), ref.table_ppage, ref.vpage, pte)
+            self.update_entry_in_table(
+                self.get_directory_ppage(ref.pid),
+                None, # PDE number; where to get this? probably store it on the ref
+                ref.table_ppage,
+                ref.vpage,
+                pte,
+                None, # entry type, where to get this? probably store it on the ref
+            )
 
 
     def handle_leaf_page_cow(self, table_ppage: int, vpage: int, pte: int) -> int:
