@@ -64,6 +64,9 @@ class PhysicalPageMapEntry:
     # True if this page is backed by a file on disk (so the disk block should never change)
     file_backed: bool = False
 
+    # True if this page has been accessed recently, for use by eviction algorithm
+    accessed: bool = False
+
 @dataclass
 class PhysicalPageReference:
     # process whose reference this is; 0 if this is an empty reference
@@ -245,6 +248,9 @@ class Environment:
     def set_ppage_share_count(self, ppage: int, new_value: int):
         pass
 
+    def set_ppage_accessed(self, ppage: int, new_value: bool):
+        pass
+
     def decrement_ppage_share_count(self, ppage: int):
         pass
 
@@ -314,7 +320,14 @@ class Environment:
         """
         pass
 
-    def update_entry_in_table(self, directory_ppage: int, table_ppage: int, entry_number: int, new_entry: int) -> int:
+    def update_entry_in_table(
+        self,
+        directory_ppage: int,
+        table_ppage: int,
+        entry_number: int,
+        new_entry: int,
+        table_entry_number: int, # TODO update call sites to pass this parameter
+    ) -> int:
         """
         If directory_ppage == table_ppage, this is a PDE; otherwise, it is a PTE.
         """
@@ -325,7 +338,34 @@ class Environment:
         # whenever this function is used, the parent tables should be guaranteed to be in resident
         # because this function does not use access_page_through_table (which is generally used for
         # paging in non-resident pages and updating the accessed bit
-        pass
+
+        # get existing entry
+        entry_address = (table_ppage * 0x1000) + (entry_number * 0x04)
+        entry = self.read_memory(entry_address)
+        if entry == new_entry:
+            # the new entry matches the existing entry, so no change is needed
+            return
+
+        self.write_memory(entry_address, new_entry)
+
+        if directory_ppage == table_ppage:
+            # we just updated a PDE, so we only need to update the directory
+            self.set_ppage_dirty(directory_ppage)
+            self.set_ppage_accessed(directory_ppage)
+            return
+
+        # if we didn't update a directory, we are updating a table, and then we might also have to update the directory
+        pde_address = (directory_ppage * 0x1000) + (table_entry_number * 0x04)
+        pde = self.read_memory(pde_address)
+
+        # mark the page table as not write protected because it only could have been write protected if it was clean
+        updated_pde = self.set_entry_write_protected(pde, False)
+        if updated_pde == pde:
+            # no change
+            return
+        
+        # mark table ppage as dirty, etc
+
 
     def evict_page(self, ppage: int):
         if self.get_ppage_is_directory(ppage):
