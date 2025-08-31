@@ -53,7 +53,7 @@ class ProcessMapEntry:
 @dataclass
 class PhysicalPageMapEntry:
     # which page type resides in this physical page
-    page_type: PageType = 0
+    page_type: PageType = PageType.LeafPage
 
     # which disk block number backs this page; 0 if there is no disk block
     disk_block_number: int = 0
@@ -75,17 +75,21 @@ class PhysicalPageMapEntry:
 
 @dataclass
 class PhysicalPageReference:
-    # process whose reference this is; 0 if this is an empty reference
-    pid: int = 0
-
     # physical page being referenced
     ppage: int = 0
 
+    # process whose reference this is; 0 if this is an empty reference
+    pid: int = 0
+
     # the virtual page this process maps to this physical page
+    # unused if the physical page holds a page table or directory
     vpage: int = 0
 
     # the physical page where the table that holds this mapping resides
     table_ppage: int = 0
+
+    # PDE number of the table that holds this mapping
+    table_number: int = 0
 
 @dataclass
 class DiskBlockReference:
@@ -154,8 +158,27 @@ class Environment:
     def write_memory(self, addr: int, value: int):
         pass
 
+    def read_physical_memory(self, addr: int) -> int:
+        """
+        Reads the given address in physical address space by adjusting
+        it to the kernel's virtual address space.
+        """
+        # TODO replace appropriate read_memory() calls with this
+        pass
+
+    def write_memory(self, addr: int, value: int):
+        """
+        Writes to the given address in physical address space by adjusting
+        it to the kernel's virtual address space.
+        """
+        # TODO replace appropriate write_memory() calls with this
+        pass
+
     def get_active_process_id(self) -> int:
         # return from active process ID variable
+        pass
+
+    def get_process_page_count(self, process_id: int) -> int:
         pass
 
     def get_directory_ppage(self, pid: int) -> int:
@@ -169,6 +192,12 @@ class Environment:
         """
         Returns tuple of PDE/PTE and True if the page was paged in from disk, False if the page was already present
         """
+        pass
+
+    def get_clock_hand(self) -> int:
+        pass
+
+    def increment_clock_hand(self):
         pass
 
     def get_table_number_from_addr(self, addr: int) -> int:
@@ -223,6 +252,9 @@ class Environment:
 
     def get_ppage_is_dirty(self, ppage: int) -> bool:
         return not self.get_ppage_is_clean(ppage)
+    
+    def get_ppage_is_wired(self, ppage: int) -> bool:
+        pass
 
     def get_ppage_is_table(self, ppage: int) -> bool:
         pass
@@ -276,13 +308,13 @@ class Environment:
         # TODO what is this supposed to do? What do the disk block references track?
         pass
 
-    def remove_page_reference(self, process_id: int, parent_table_ppage: int, vpage: int):
+    def remove_page_reference(self, ppage: int, process_id: int, vpage: int, table_ppage: int, table_number: int):
         """
         Remove the given reference from the reference list.
         """
         pass
 
-    def add_page_reference(self, process_id: int, parent_table_ppage: int, vpage: int):
+    def add_page_reference(self, ppage: int, process_id: int, vpage: int, table_ppage: int, table_number: int):
         """
         Add a reference to the reference list.
         """
@@ -312,12 +344,6 @@ class Environment:
     def clear_ppage_contents(self, ppage: int):
         pass
 
-    def get_evictable_ppage(self) -> tuple[int, bool]:
-        """
-        Returns (evictable ppage, success)
-        Success will be false if there are no open ppages, in which case, the open ppage result should be ignored.
-        """
-        pass
 
     def get_open_ppage(self) -> tuple[int, bool]:
         """
@@ -326,8 +352,30 @@ class Environment:
         """
         pass
 
-    def update_pde_in_directory(self, directory_ppage, pde_number, new_pde) -> bool:
-        pass
+
+    def get_evictable_ppage(self) -> tuple[int, bool]:
+        """
+        Returns (evictable ppage, success)
+        Success will be false if there are no open ppages, in which case, the open ppage result should be ignored.
+        """
+        clock_ticks = PHYSICAL_MEMORY_PAGES * 0x02
+
+        for i in range(clock_ticks):
+            ppage = self.get_clock_hand()
+
+            check_access = False
+            if not self.get_ppage_is_wired(ppage):
+                if self.get_ppage_is_directory(ppage):
+                    ref = self.get_all_page_references(ppage)[0]
+                    resident_page_count = self.get_process_page_count(ref.pid)
+                    if resident_page_count <= 1:
+                        check_access = True
+                elif self.get_ppage_is_table(ppage):
+                    # if any non-shared children, skip
+                    raise NotImplementedError("TODO")
+                else:
+                    check_access = True
+                
 
 
     def update_entry_in_table(
@@ -335,10 +383,10 @@ class Environment:
         directory_ppage: int, # ppage of the grand parent table
         pde_number: int,
         table_ppage: int, # ppage of the parent table
-        pte_number: int, #
+        pte_number: int,
         new_entry: int,
         entry_type: TableEntryType,
-    ) -> int:
+    ):
         """
         This function will update a PDE or PTE. If a PTE is updated, its PDE might need to be updated, too.
 
@@ -427,7 +475,7 @@ class Environment:
                 if not new_block:
                     raise Exception("No open disk blocks; out of swap space.")
                 self.increment_disk_block_share_count(new_block)
-                self.set_ppage_backing_block(new_block)
+                self.set_ppage_backing_block(ppage, new_block)
 
                 # to find which process is getting a new disk block, look in the reference list
                 refs = self.get_all_page_references(ppage)
@@ -436,7 +484,7 @@ class Environment:
                     raise Exception("Dirty, non-file-backed page cannot be shared.")
                 self.remove_reference_to_disk_block(backing_block, refs[0].pid)
                 backing_block = new_block
-            self.copy_ppage_to_disk(ppage, new_block)
+            self.copy_ppage_to_disk(ppage, backing_block)
 
         self.clear_ppage_contents(ppage)
         self.clear_ppage_map_slot(ppage)
@@ -453,19 +501,24 @@ class Environment:
             pte_addr = (ref.table_ppage * 0x1000) + (ref.vpage * 0x04)
             pte = self.read_memory(pte_addr)
             # update the PTE with the new block number and mark it as non-resident
-            pte = self.set_entry_number(backing_block)
+            pte = self.set_entry_number(pte, backing_block)
             pte = self.set_entry_non_resident(pte)
+            entry_type = TableEntryType.PTE
+            if self.get_ppage_is_table(ppage):
+                # if we're evicting a table, then the ref we're updating is a PDE
+                entry_type = TableEntryType.PDE
+
             self.update_entry_in_table(
                 self.get_directory_ppage(ref.pid),
-                None, # PDE number; where to get this? probably store it on the ref
+                ref.table_number,
                 ref.table_ppage,
                 ref.vpage,
                 pte,
-                None, # entry type, where to get this? probably store it on the ref
+                entry_type,
             )
 
 
-    def handle_leaf_page_cow(self, table_ppage: int, vpage: int, pte: int) -> int:
+    def handle_leaf_page_cow(self, table_ppage: int, table_number: int, vpage: int, pte: int) -> int:
         """
         Returns the updated PTE.
         """
@@ -482,14 +535,21 @@ class Environment:
 
         self.copy_ppage_contents(source_ppage, new_ppage)
         self.decrement_ppage_share_count(new_ppage)
-        self.add_page_reference(self.get_active_process_id(), table_ppage, vpage)
-        self.remove_page_reference()
+        pid = self.get_active_process_id()
+        self.add_page_reference(new_ppage, pid, vpage, table_ppage, table_number)
+        self.remove_page_reference(
+            source_ppage,
+            pid,
+            vpage,
+            table_ppage,
+            table_number,
+        )
         self.set_ppage_share_count(new_ppage, 1)
         self.set_ppage_clean(new_ppage)
         updated_pte = self.set_entry_cow(pte, False)
         return updated_pte
 
-    def handle_table_cow(self, directory_ppage: int, pde: int) -> int:
+    def handle_table_cow(self, directory_ppage: int, pde_number: int, pde: int) -> int:
         """
         Returns the updated PDE.
         """
@@ -502,17 +562,24 @@ class Environment:
                 self.write_memory(pte_addr, pte)
 
         updated_pde = self.set_entry_cow(pde, False)
-        self.update_entry_in_table(directory_ppage, directory_ppage, updated_pde)
+        self.update_entry_in_table(
+            directory_ppage,
+            pde_number,
+            0,
+            0,
+            updated_pde,
+            TableEntryType.PDE,
+        )
         return updated_pde
 
     def handle_page_fault(self, faulted_addr: int, is_write: bool):
-        active_process_directory_ppage = self.get_directory_ppage()
+        active_process_directory_ppage = self.get_directory_ppage(0)
         pde_number = self.get_table_number_from_addr(faulted_addr)
         (pde, table_is_newly_resident) = self.access_page_through_table(active_process_directory_ppage, pde_number)
         if table_is_newly_resident:
             if self.get_entry_is_cow(pde):
                 # handle newly resident page table c-o-w
-                pde = self.handle_table_cow(active_process_directory_ppage, pde)
+                pde = self.handle_table_cow(active_process_directory_ppage, pde_number, pde)
 
         table_ppage = self.get_entry_ppage(pde)
         pte_number = self.get_page_number_from_addr(faulted_addr)
@@ -530,7 +597,7 @@ class Environment:
 
         if self.get_entry_is_cow(pte):
             # handle page is c-o-w
-            pte = self.handle_leaf_page_cow(table_ppage, pte_number, pte)
+            pte = self.handle_leaf_page_cow(table_ppage, pde_number, pte_number, pte)
 
         if self.get_ppage_is_clean(target_ppage):
             raise Exception("Physical page cannot be write protected and dirty.")
@@ -538,10 +605,15 @@ class Environment:
         self.set_ppage_dirty(target_ppage)
 
         pte = self.set_entry_write_protected(pte, False)
-        self.update_entry_in_table(active_process_directory_ppage, table_ppage, pte)
+        self.update_entry_in_table(
+            active_process_directory_ppage,
+            pde_number,
+            table_ppage,
+            pte_number,
+            pte,
+            TableEntryType.PTE,
+        )
 
         # jump back to program
         return
-
-
 
