@@ -73,6 +73,12 @@ class PhysicalPageMapEntry:
     # True if this page has been accessed recently, for use by eviction algorithm
     accessed: bool = False
 
+    # number of pages that point to this as their owning table/directory
+    # and number of those pages that are shared (point to this as well as other owners)
+    # these counts are only updated on demand (by calling update_page_child_counts)
+    child_count: int = 0
+    shared_child_count: int = 0
+
 @dataclass
 class PhysicalPageReference:
     # physical page being referenced
@@ -188,11 +194,6 @@ class Environment:
         """
         pass
 
-    def access_page_through_table(self, parent_table_ppage: int, entry_number: int) -> tuple[int, bool]:
-        """
-        Returns tuple of PDE/PTE and True if the page was paged in from disk, False if the page was already present
-        """
-        pass
 
     def get_clock_hand(self) -> int:
         pass
@@ -252,7 +253,7 @@ class Environment:
 
     def get_ppage_is_dirty(self, ppage: int) -> bool:
         return not self.get_ppage_is_clean(ppage)
-    
+
     def get_ppage_is_wired(self, ppage: int) -> bool:
         pass
 
@@ -274,6 +275,9 @@ class Environment:
     def get_ppage_share_count(self, ppage: int) -> int:
         pass
 
+    def get_ppage_accessed(self, ppage: int) -> bool:
+        pass
+
     def set_ppage_clean(self, ppage: int):
         pass
 
@@ -287,6 +291,24 @@ class Environment:
         pass
 
     def set_ppage_accessed(self, ppage: int, new_value: bool):
+        pass
+
+    def set_ppage_child_count(self, ppage: int, new_value: int):
+        pass
+
+    def set_ppage_shared_child_count(self, ppage: int):
+        pass
+
+    def increment_ppage_child_count(self, ppage: int, new_value: int):
+        pass
+
+    def increment_ppage_shared_child_count(self, ppage: int):
+        pass
+
+    def get_ppage_child_count(self, ppage: int) -> int:
+        pass
+
+    def get_ppage_shared_child_count(self, ppage: int):
         pass
 
     def decrement_ppage_share_count(self, ppage: int):
@@ -306,6 +328,8 @@ class Environment:
 
     def remove_reference_to_disk_block(self, disk_block: int, pid: int):
         # TODO what is this supposed to do? What do the disk block references track?
+        # we need to know if a disk block is shared before writing a dirty page back to disk
+        # and we also need to know which disk blocks are available
         pass
 
     def remove_page_reference(self, ppage: int, process_id: int, vpage: int, table_ppage: int, table_number: int):
@@ -320,10 +344,20 @@ class Environment:
         """
         pass
 
+    def get_all_references(self) -> list[PhysicalPageReference]:
+        """
+        Get all the page references to all pages in a single list
+        """
+        pass
+
     def get_all_page_references(self, ppage: int) -> list[PhysicalPageReference]:
+        """
+        Get all the page references to a single page
+        """
         pass
 
     def get_single_page_reference(self, ppage: int) -> PhysicalPageReference:
+        # TODO probably not going to be used
         pass
 
     def get_open_disk_block(self) -> int:
@@ -352,30 +386,231 @@ class Environment:
         """
         pass
 
+    def load_page_from_disk(self, disk_block: int, target_ppage: int):
+        pass
+
+    def check_if_page_is_present(
+        self,
+        ppage: int, # ppage to check
+        process_id: int, # process who we are checking for
+        entry_number: int, # number (page table or vpage) from the PDE/PTE
+        entry_type: TableEntryType, # the type of entry whose child we're checking (PTE > leaf, PDE > table)
+    ) -> bool:
+        """
+        Return true if the given table or virtual page is present in the given physical page.
+
+        A virtual page is present in the given ppage if there is a reference to that ppage with:
+            - matching process ID
+            - matching virtual page number
+        A page table is present in the given ppage if there is a reference to that ppage with:
+            - matching process ID
+            - matching table number
+        """
+        if ppage >= PHYSICAL_MEMORY_PAGES:
+            # the given ppage is outside the range of physical memory; it cannot be present
+            return False
+
+        refs = self.get_all_page_references(ppage)
+        for ref in refs:
+            pid_matches = ref.pid == process_id
+            if entry_type == TableEntryType.PTE:
+                number_matches = ref.vpage == entry_number
+                page_type_matches = self.get_ppage_is_leaf(ppage)
+            elif entry_type == TableEntryType.PDE:
+                number_matches = ref.table_number == entry_number
+                page_type_matches = self.get_ppage_is_table(ppage)
+            if pid_matches and number_matches and page_type_matches:
+                return True
+        return False
+
+    def update_page_child_counts(self):
+        # reset the counts for all ppages (they are stale)
+        for ppage in range(PHYSICAL_MEMORY_PAGES):
+            self.set_ppage_child_count(ppage, 0)
+            self.set_ppage_shared_child_count(ppage, 0)
+
+        # iterate over all the references (
+        for ppage in range(PHYSICAL_MEMORY_PAGES):
+            # get all references to this ppage
+            refs = self.get_all_page_references(0)
+            num_sharers = len(refs)
+
+            # for each table that owns a reference to this page, update its counts
+            for ref in refs:
+                self.increment_ppage_child_count(ref.table_ppage)
+                # if there is more than one ref to this ppage, its a shared page
+                # and so its owning tables all increment their shared child counts
+                if num_sharers > 1:
+                    self.increment_ppage_shared_child_count(ref.table_ppage)
+
+
+    def access_page_through_table(
+            self,
+            pid: int,
+            directory_ppage: int, # ppage of the grand parent table
+            pde_number: int,
+            table_ppage: int, # ppage of the parent table
+            pte_number: int,
+            entry_type: TableEntryType,
+        ) -> tuple[int, bool]:
+        """
+        Returns tuple of PDE/PTE and True if the page was paged in from disk, False if the page was already present
+
+        When accessing a PDE, the PTE parameters will be ignored.
+        """
+        entry_number = pte_number
+        parent_table_ppage = table_ppage
+        if entry_type is TableEntryType.PDE:
+            entry_number = pde_number
+            parent_table_ppage = directory_ppage
+
+        entry_addr = (parent_table_ppage * 0x1000) + (entry_number * 0x04)
+        entry = self.read_memory(entry_addr)
+
+        if self.get_entry_is_readable(entry):
+            return (entry, False)
+        if not self.get_entry_is_write_protected():
+            raise Exception("Access to unmapped page.")
+
+        potential_ppage = self.get_entry_ppage(entry)
+
+        page_is_resident = self.check_if_page_is_present(
+            potential_ppage,
+            pid,
+            entry_number,
+            entry_type
+        )
+
+        if page_is_resident:
+            entry = self.set_entry_readable(entry, True)
+            actual_ppage = potential_ppage
+            page_newly_resident = False
+        else:
+            # the number in the entry is actually a disk block
+            # find an empty physical page and load the page from disk
+            (open_ppage, open_ppage_success) = self.get_open_ppage()
+            if not open_ppage_success:
+                (evictable_ppage, evictable_ppage_success) = self.get_evictable_ppage()
+                if not evictable_ppage_success:
+                    raise Exception("Out of memory: could not find open or evictable page while handling page access.")
+                self.evict_page(evictable_ppage)
+                open_ppage = evictable_ppage
+            # bring page into memory
+            disk_block = potential_ppage
+            self.load_page_from_disk(disk_block, open_ppage)
+            self.set_ppage_backing_block(open_ppage, disk_block)
+            self.set_ppage_clean(open_ppage)
+            self.set_ppage_share_count(open_ppage, 1)
+            entry = self.set_entry_number(open_ppage)
+            entry = self.set_entry_readable(entry, True)
+            entry = self.set_entry_write_protected(entry, False)
+            actual_ppage = open_ppage
+            page_newly_resident = True
+
+        self.update_entry_in_table(
+            directory_ppage,
+            pde_number,
+            table_ppage,
+            pte_number,
+            entry,
+            entry_type
+        )
+
+        self.set_ppage_accessed(actual_ppage, True)
+        return (entry, page_newly_resident)
+
+
+    def check_if_page_is_evictable(self, ppage: int) -> bool:
+        if self.get_ppage_is_wired(ppage):
+            return False
+
+        if self.get_ppage_is_directory(ppage):
+            # a directory can only be evicted if it has no resident children
+            ref = self.get_all_page_references(ppage)[0]
+            resident_page_count = self.get_process_page_count(ref.pid)
+            if resident_page_count <= 1: # TODO this isn't updated anywhere, but it should be (during access and eviction?)
+                return True
+
+        elif self.get_ppage_is_table(ppage):
+            # a table can only be evicted if all its children pages have already been evicted, unless
+            # those pages are shared by another process
+            child_count = self.get_ppage_child_count(ppage)
+            if child_count == 0:
+                return True
+            if child_count > 0:
+                shared_child_count = self.get_ppage_shared_child_count(ppage)
+                if shared_child_count == child_count:
+                    # all child pages are also shared, so we can evict this table
+                    return True
+
+        else:
+            # a leaf page is always a candidate for eviction
+            return True
+
+        return False
+
 
     def get_evictable_ppage(self) -> tuple[int, bool]:
         """
         Returns (evictable ppage, success)
         Success will be false if there are no open ppages, in which case, the open ppage result should be ignored.
         """
+        # make up to two full sweeps with the clock hand
+        # during each tick, set each encountered page to "not accessed"
+        # if the clock makes a full sweep, each page encountered for the second
+        # time will be "not accessed," and therefore might be evictable
         clock_ticks = PHYSICAL_MEMORY_PAGES * 0x02
+
+        # first update child counts on ppages, since they may be stale
+        # it is faster to update them all in a batch since it requires
+        # iterating over all references
+        self.update_page_child_counts()
+
 
         for i in range(clock_ticks):
             ppage = self.get_clock_hand()
+            # check access first because it is cheaper than checking if the table is
+            # actually evictable
+            if not self.get_ppage_accessed(ppage):
+                if self.check_if_page_is_evictable(ppage):
+                    # if the page is evictable (not wired, no children, etc.) and has not
+                    # been accessed recently, choose the page for eviction
+                    return (ppage, True)
 
-            check_access = False
-            if not self.get_ppage_is_wired(ppage):
-                if self.get_ppage_is_directory(ppage):
-                    ref = self.get_all_page_references(ppage)[0]
-                    resident_page_count = self.get_process_page_count(ref.pid)
-                    if resident_page_count <= 1:
-                        check_access = True
-                elif self.get_ppage_is_table(ppage):
-                    # if any non-shared children, skip
-                    raise NotImplementedError("TODO")
-                else:
-                    check_access = True
-                
+            else: # page was recently accessed; clear the access and protect PTEs
+                # clear access on the ppage
+                self.set_ppage_accessed(ppage, False)
+
+                # mark all PTEs that references this page / table as RW01 so we fault on access
+                # to give us an opportunity to mark the page as accessed again
+                refs_to_update = self.get_all_page_references(ppage)
+                for ref in refs_to_update:
+                    entry_type = TableEntryType.PTE
+                    entry_number = ref.vpage
+                    if self.get_ppage_is_table(ppage):
+                        # if we're looking at a table, then the ref we're updating is a PDE
+                        entry_type = TableEntryType.PDE
+                        entry_number = ref.table_number
+
+                    # get the PTE from its table
+                    pte_addr = (ref.table_ppage * 0x1000) + (entry_number * 0x04)
+                    pte = self.read_memory(pte_addr)
+                    # update the PTE as not readble and write protected (so the page can be marked
+                    # as accessed next time the page is read or written)
+                    pte = self.set_entry_readable(pte, False)
+                    pte = self.set_entry_write_protected(pte, True)
+
+                    self.update_entry_in_table(
+                        self.get_directory_ppage(ref.pid),
+                        ref.table_number,
+                        ref.table_ppage,
+                        ref.vpage,
+                        pte,
+                        entry_type,
+                    )
+            # advance the clock hand
+        # there are no evictable pages
+        return (0, False)
 
 
     def update_entry_in_table(
@@ -497,16 +732,19 @@ class Environment:
                 raise Exception("Table page should not have multiple references because tables cannot be shared.")
 
         for ref in refs_to_update:
+            entry_type = TableEntryType.PTE
+            entry_number = ref.vpage
+            if self.get_ppage_is_table(ppage):
+                # if we're evicting a table, then the ref we're updating is a PDE
+                entry_type = TableEntryType.PDE
+                entry_number = ref.table_number
+
             # get the PTE from its table
-            pte_addr = (ref.table_ppage * 0x1000) + (ref.vpage * 0x04)
+            pte_addr = (ref.table_ppage * 0x1000) + (entry_number * 0x04)
             pte = self.read_memory(pte_addr)
             # update the PTE with the new block number and mark it as non-resident
             pte = self.set_entry_number(pte, backing_block)
             pte = self.set_entry_non_resident(pte)
-            entry_type = TableEntryType.PTE
-            if self.get_ppage_is_table(ppage):
-                # if we're evicting a table, then the ref we're updating is a PDE
-                entry_type = TableEntryType.PDE
 
             self.update_entry_in_table(
                 self.get_directory_ppage(ref.pid),
@@ -574,8 +812,16 @@ class Environment:
 
     def handle_page_fault(self, faulted_addr: int, is_write: bool):
         active_process_directory_ppage = self.get_directory_ppage(0)
+        active_process_id = self.get_active_process_id()
         pde_number = self.get_table_number_from_addr(faulted_addr)
-        (pde, table_is_newly_resident) = self.access_page_through_table(active_process_directory_ppage, pde_number)
+        (pde, table_is_newly_resident) = self.access_page_through_table(
+            active_process_id,
+            active_process_directory_ppage,
+            pde_number,
+            0,
+            0,
+            TableEntryType.PDE,
+        )
         if table_is_newly_resident:
             if self.get_entry_is_cow(pde):
                 # handle newly resident page table c-o-w
@@ -583,7 +829,14 @@ class Environment:
 
         table_ppage = self.get_entry_ppage(pde)
         pte_number = self.get_page_number_from_addr(faulted_addr)
-        (pte, page_is_newly_resident) = self.access_page_through_table(table_ppage, pte_number)
+        (pte, page_is_newly_resident) = self.access_page_through_table(
+            active_process_id,
+            active_process_directory_ppage,
+            pde_number,
+            table_ppage,
+            pte_number,
+            TableEntryType.PTE,
+        )
 
         if not is_write:
             # jump back to program
