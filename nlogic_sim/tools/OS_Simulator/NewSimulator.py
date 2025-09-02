@@ -32,7 +32,9 @@ class KernelVariable(Enum):
     DiskBlockReferenceList = "DISK_BLOCK_REFERENCE_LIST"
     ActiveProcessId = "ACTIVE_PROCESS_ID"
     ActiveProcessPageDirectoryPhysicalPage = "ACTIVE_PROCESS_PAGE_DIRECTORY_PHYSICAL_PAGE"
+    ClockHand = "CLOCK_HAND"
 
+# TODO write out struct definitions in json and write a program to parse them into Python class defs
 
 class PageType(Enum):
     LeafPage = 1
@@ -105,17 +107,16 @@ class DiskBlockReference:
     # disk block number
     disk_block: int = 0
 
+PROCESS_MAP_ENTRY_SIZE = 0x04 * len(asdict(ProcessMapEntry()))
+PPAGE_MAP_ENTRY_SIZE = 0x04 * len(asdict(PhysicalPageMapEntry()))
+PPAGE_REFERENCE_SIZE = 0x04 * len(asdict(PhysicalPageReference()))
+DISK_BLOCK_REFERENCE_SIZE = 0x04  * len(asdict(DiskBlockReference()))
 
 def generate_kernel_arrays(base_virtual_address: int):
-    process_map_entry_size = 0x04 * len(asdict(ProcessMapEntry()))
-    ppage_map_entry_size = 0x04 * len(asdict(PhysicalPageMapEntry()))
-    ppage_reference_size = 0x04 * len(asdict(PhysicalPageReference()))
-    disk_block_reference_size = 0x04  * len(asdict(DiskBlockReference()))
-
-    process_map_size = process_map_entry_size * PROCESS_MAP_LENGTH
-    ppage_map_size = ppage_map_entry_size * PHYSICAL_MEMORY_PAGES
-    ppage_reference_list_size = ppage_reference_size * PHYSICAL_MEMORY_PAGES
-    disk_block_reference_list_size = disk_block_reference_size * DISK_BLOCK_REFERENCE_LIST_LENGTH
+    process_map_size = PROCESS_MAP_ENTRY_SIZE * PROCESS_MAP_LENGTH
+    ppage_map_size = PPAGE_MAP_ENTRY_SIZE * PHYSICAL_MEMORY_PAGES
+    ppage_reference_list_size = PPAGE_REFERENCE_SIZE * PHYSICAL_MEMORY_PAGES
+    disk_block_reference_list_size = DISK_BLOCK_REFERENCE_SIZE * DISK_BLOCK_REFERENCE_LIST_LENGTH
 
     variables_and_sizes = [
         (KernelVariable.ProcessMap, process_map_size),
@@ -123,7 +124,8 @@ def generate_kernel_arrays(base_virtual_address: int):
         (KernelVariable.PhysicalPageReferenceList, ppage_reference_list_size),
         (KernelVariable.DiskBlockReferenceList, disk_block_reference_list_size),
         (KernelVariable.ActiveProcessId, 0x04),
-        (KernelVariable.ActiveProcessPageDirectoryPhysicalPage, 0x04)
+        (KernelVariable.ActiveProcessPageDirectoryPhysicalPage, 0x04),
+        (KernelVariable.ClockHand, 0x04),
     ]
     addr = base_virtual_address
     kernel_addresses = {}
@@ -147,6 +149,7 @@ PHYSICAL_PAGE_REFERENCE_LIST_ADDR = variable_offsets[KernelVariable.PhysicalPage
 DISK_BLOCK_REFERENCE_LIST_ADDR = variable_offsets[KernelVariable.DiskBlockReferenceList]
 ACTIVE_PROCESS_ID_ADDR = variable_offsets[KernelVariable.ActiveProcessId]
 ACTIVE_PROCESS_PAGE_DIRECTORY_PHYSICAL_PAGE_ADDR = variable_offsets[KernelVariable.ActiveProcessPageDirectoryPhysicalPage]
+CLOCK_HAND_ADDR = variable_offsets[KernelVariable.ClockHand]
 
 
 class Environment:
@@ -159,88 +162,97 @@ class Environment:
             # (probably linear probing to leverage cache the best)
 
     def read_memory(self, addr: int) -> int:
-        pass
+        raise NotImplementedError("TODO")
 
     def write_memory(self, addr: int, value: int):
-        pass
+        raise NotImplementedError("TODO")
 
     def read_physical_memory(self, addr: int) -> int:
         """
         Reads the given address in physical address space by adjusting
         it to the kernel's virtual address space.
         """
-        # TODO replace appropriate read_memory() calls with this
-        pass
+        raise NotImplementedError("TODO")
 
-    def write_memory(self, addr: int, value: int):
+    def write_physical_memory(self, addr: int, value: int):
         """
         Writes to the given address in physical address space by adjusting
         it to the kernel's virtual address space.
         """
-        # TODO replace appropriate write_memory() calls with this
-        pass
+        raise NotImplementedError("TODO")
 
     def get_active_process_id(self) -> int:
         # return from active process ID variable
-        pass
+        return self.read_memory(ACTIVE_PROCESS_ID_ADDR)
 
     def get_process_page_count(self, process_id: int) -> int:
-        pass
+        raise NotImplementedError("TODO")
 
     def get_directory_ppage(self, pid: int) -> int:
         """
         if PID is 0, return from active process dir ppage variable
         otherwise, get directory ppage from process map
         """
-        pass
+        raise NotImplementedError("TODO")
 
 
-    def get_clock_hand(self) -> int:
-        pass
-
-    def increment_clock_hand(self):
-        pass
+    def get_and_increment_clock_hand(self) -> int:
+        """
+        Get the current value
+        """
+        current_value = self.read_memory(CLOCK_HAND_ADDR)
+        new_value = (current_value + 1) % PHYSICAL_MEMORY_PAGES
+        self.write_memory(CLOCK_HAND_ADDR, new_value)
+        return current_value
 
     def get_table_number_from_addr(self, addr: int) -> int:
-        pass
+        table_number_mask = 0xFFC00000
+        return (addr & table_number_mask) >> 0x16
 
     def get_page_number_from_addr(self, addr: int) -> int:
-        pass
+        page_number_mask = 0x003FF000
+        return (addr & page_number_mask) >> 0x0C
 
     def get_offset_from_addr(self, addr: int) -> int:
-        pass
+        offset_mask = 0x00000FFF
+        return (addr & offset_mask)
 
     def get_entry_is_cow(self, entry: int) -> bool:
-        pass
+        return (entry & 0x00200000) > 0
 
     def get_entry_is_readable(self, entry: int) -> bool:
-        pass
+        return (entry & 0x80000000) > 0
 
     def get_entry_is_write_protected(self, entry: int) -> bool:
-        pass
+        return (entry & 0x40000000) > 0
 
     def get_entry_number(self, entry: int) -> int:
-        pass
+        return (entry & 0x000FFFFF)
 
     def get_entry_is_mapped(self, entry: int) -> bool:
-        pass
+        return (entry & 0xE0000000) == 0x00
 
     def set_entry_write_protected(self, entry: int, new_value: bool) -> int:
-        pass
+        write_protected_bit = int(new_value) << 0x1E
+        return (entry | write_protected_bit)
 
     def set_entry_readable(self, entry: int, new_value: bool) -> int:
-        pass
+        readable_bit = int(new_value) << 0x1F
+        return (entry | readable_bit)
 
     def set_entry_non_resident(self, entry: int) -> int:
+        # non-resident mapped pages have RW01; do not alter the c-o-w bit
         entry = self.set_entry_readable(entry, False)
         entry = self.set_entry_write_protected(entry, True)
         return entry
 
     def set_entry_cow(self, entry: int, new_value: bool) -> int:
-        pass
+        cow_bit = int(new_value) << 0x1D
+        return (entry | cow_bit)
 
     def set_entry_number(self, entry: int, new_value: int) -> int:
-        pass
+        new_value = min(0x000FFFFF, new_value)
+        return (entry | new_value)
 
     def get_entry_disk_block(self, entry: int) -> int:
         return self.get_entry_number(entry)
@@ -249,7 +261,7 @@ class Environment:
         return self.get_entry_number(entry)
 
     def get_ppage_is_clean(self, ppage: int) -> bool:
-        pass
+        raise NotImplementedError("TODO")
 
     def get_ppage_is_dirty(self, ppage: int) -> bool:
         return not self.get_ppage_is_clean(ppage)
@@ -465,7 +477,7 @@ class Environment:
             parent_table_ppage = directory_ppage
 
         entry_addr = (parent_table_ppage * 0x1000) + (entry_number * 0x04)
-        entry = self.read_memory(entry_addr)
+        entry = self.read_physical_memory(entry_addr)
 
         if self.get_entry_is_readable(entry):
             return (entry, False)
@@ -568,7 +580,7 @@ class Environment:
 
 
         for i in range(clock_ticks):
-            ppage = self.get_clock_hand()
+            ppage = self.get_and_increment_clock_hand()
             # check access first because it is cheaper than checking if the table is
             # actually evictable
             if not self.get_ppage_accessed(ppage):
@@ -594,7 +606,7 @@ class Environment:
 
                     # get the PTE from its table
                     pte_addr = (ref.table_ppage * 0x1000) + (entry_number * 0x04)
-                    pte = self.read_memory(pte_addr)
+                    pte = self.read_physical_memory(pte_addr)
                     # update the PTE as not readble and write protected (so the page can be marked
                     # as accessed next time the page is read or written)
                     pte = self.set_entry_readable(pte, False)
@@ -634,19 +646,19 @@ class Environment:
         # if we're updating a PTE, fetch the previous version and compare it
         if entry_type is TableEntryType.PTE:
             pte_addr = (table_ppage * 0x1000) + (pte_number * 0x04)
-            pte = self.read_memory(pte_addr)
+            pte = self.read_physical_memory(pte_addr)
             if new_entry == pte:
                 # the existing entry matches, so no changes are needed
                 return
             # else the entry has changed; update the table and its ppage entry
             self.set_ppage_dirty(table_ppage)
             self.set_ppage_accessed(table_ppage, True)
-            self.write_memory(pte_addr, new_entry)
+            self.write_physical_memory(pte_addr, new_entry)
 
         # whether this was a PTE update that caused a table change or a PDE update,
         # get the existing PDE
         pde_addr = (directory_ppage * 0x1000) + (pde_number * 0x04)
-        pde = self.read_memory(pde_addr)
+        pde = self.read_physical_memory(pde_addr)
 
         if entry_type is TableEntryType.PTE:
             # if this was a PTE update, the updated PDE is the one from the table with W set to 0
@@ -661,7 +673,7 @@ class Environment:
 
         self.set_ppage_dirty(directory_ppage)
         self.set_ppage_accessed(directory_ppage, True)
-        self.write_memory(pde_addr, updated_pde)
+        self.write_physical_memory(pde_addr, updated_pde)
 
 
     def evict_page(self, ppage: int):
@@ -677,7 +689,7 @@ class Environment:
             table_was_updated = False
             for pte_offset in range(0x00, 0x1000, 0x04):
                 pte_addr = page_table_base_addr + pte_offset
-                pte = self.read_memory(pte_addr)
+                pte = self.read_physical_memory(pte_addr)
                 # a table should only be evicted if all its mapped pages are non-resident already EXCEPT for shared pages
                 # therefore, any remaining readable page must be shared; mark only those as non-resident now and decerement
                 # the share count of the ppages they point to
@@ -691,7 +703,7 @@ class Environment:
                     # update the PTE to be non-resident and point to the backing block of the ppage
                     pte = self.set_entry_non_resident(pte)
                     pte = self.set_entry_number(pte, backing_block)
-                    self.write_memory(pte_addr, pte)
+                    self.write_physical_memory(pte_addr, pte)
             if table_was_updated:
                 self.set_ppage_dirty(ppage)
 
@@ -741,7 +753,7 @@ class Environment:
 
             # get the PTE from its table
             pte_addr = (ref.table_ppage * 0x1000) + (entry_number * 0x04)
-            pte = self.read_memory(pte_addr)
+            pte = self.read_physical_memory(pte_addr)
             # update the PTE with the new block number and mark it as non-resident
             pte = self.set_entry_number(pte, backing_block)
             pte = self.set_entry_non_resident(pte)
@@ -794,10 +806,10 @@ class Environment:
         page_table_base_addr = (self.get_entry_ppage(pde) * 0x1000)
         for pte_offset in range(0x00, 0x1000, 0x04):
             pte_addr = page_table_base_addr + pte_offset
-            pte = self.read_memory(pte_addr)
+            pte = self.read_physical_memory(pte_addr)
             if self.get_entry_is_mapped(pte):
                 pte = self.set_entry_cow(pte, True)
-                self.write_memory(pte_addr, pte)
+                self.write_physical_memory(pte_addr, pte)
 
         updated_pde = self.set_entry_cow(pde, False)
         self.update_entry_in_table(
