@@ -3,6 +3,14 @@ from enum import Enum
 
 from mmu import MMU
 from disk import Disk
+from nlogic_sim.tools.OS_Simulator.kernel_structs import (
+    DiskBlockReference,
+    PageType,
+    PhysicalPageMapEntry,
+    PhysicalPageReference,
+    ProcessMapEntry,
+    TableEntryType
+)
 
 PAGE_SIZE = 0x1000
 PROCESS_MAP_LENGTH = 0x10
@@ -12,7 +20,7 @@ DISK_BLOCK_REFERENCE_LIST_LENGTH = 0x20 # arbitrary for now
 KERNEL_VARIABLE_BASE_ADDR = 0x6000
 
 
-def dump_memory(memory: list[int], name: str = None):
+def dump_memory(memory: list[int], name: str|None = None):
     file_name = "memory_dump.txt"
     if name:
         file_name = f"memory_dump_{name}.txt"
@@ -33,79 +41,6 @@ class KernelVariable(Enum):
     ActiveProcessId = "ACTIVE_PROCESS_ID"
     ActiveProcessPageDirectoryPhysicalPage = "ACTIVE_PROCESS_PAGE_DIRECTORY_PHYSICAL_PAGE"
     ClockHand = "CLOCK_HAND"
-
-# TODO write out struct definitions in json and write a program to parse them into Python class defs
-
-class PageType(Enum):
-    LeafPage = 1
-    PageTable = 2
-    PageDirectory = 3
-
-
-class TableEntryType(Enum):
-    PDE = 1
-    PTE = 2
-
-@dataclass
-class ProcessMapEntry:
-    pid: int = 0
-    page_directory_block: int = 0
-    page_directory_ppage: int = 0
-
-@dataclass
-class PhysicalPageMapEntry:
-    # which page type resides in this physical page
-    page_type: PageType = PageType.LeafPage
-
-    # which disk block number backs this page; 0 if there is no disk block
-    disk_block_number: int = 0
-
-    # number of processes that map a virtual page to this physical page
-    share_count: int = 0
-
-    # True if this page was modified since it was brought into memory
-    dirty: bool = False
-
-    # True if this page should be ignored when finding a page to evict
-    wired: bool = False
-
-    # True if this page is backed by a file on disk (so the disk block should never change)
-    file_backed: bool = False
-
-    # True if this page has been accessed recently, for use by eviction algorithm
-    accessed: bool = False
-
-    # number of pages that point to this as their owning table/directory
-    # and number of those pages that are shared (point to this as well as other owners)
-    # these counts are only updated on demand (by calling update_page_child_counts)
-    child_count: int = 0
-    shared_child_count: int = 0
-
-@dataclass
-class PhysicalPageReference:
-    # physical page being referenced
-    ppage: int = 0
-
-    # process whose reference this is; 0 if this is an empty reference
-    pid: int = 0
-
-    # the virtual page this process maps to this physical page
-    # unused if the physical page holds a page table or directory
-    vpage: int = 0
-
-    # the physical page where the table that holds this mapping resides
-    table_ppage: int = 0
-
-    # PDE number of the table that holds this mapping
-    table_number: int = 0
-
-@dataclass
-class DiskBlockReference:
-    # process with a page backed by this disk block; 0 if this is an empty reference
-    pid: int = 0
-
-    # disk block number
-    disk_block: int = 0
 
 PROCESS_MAP_ENTRY_SIZE = 0x04 * len(asdict(ProcessMapEntry()))
 PPAGE_MAP_ENTRY_SIZE = 0x04 * len(asdict(PhysicalPageMapEntry()))
@@ -259,72 +194,111 @@ class Environment:
 
     def get_entry_ppage(self, entry: int) -> int:
         return self.get_entry_number(entry)
-
-    def get_ppage_is_clean(self, ppage: int) -> bool:
-        raise NotImplementedError("TODO")
+    
+    def get_ppage_entry_field_by_offset(self, ppage: int, field_offset: int) -> int:
+        entry_offset = ppage * PhysicalPageMapEntry.length()
+        field_addr = PHYSICAL_PAGE_MAP_ADDR + entry_offset + field_offset
+        return self.read_physical_memory(field_addr)
 
     def get_ppage_is_dirty(self, ppage: int) -> bool:
-        return not self.get_ppage_is_clean(ppage)
+        return bool(self.get_ppage_entry_field_by_offset(
+            ppage, PhysicalPageMapEntry.Offsets.dirty
+        ))
+    
+    def get_ppage_is_clean(self, ppage: int) -> bool:
+        return not self.get_ppage_is_dirty(ppage)
 
     def get_ppage_is_wired(self, ppage: int) -> bool:
-        pass
+        return bool(self.get_ppage_entry_field_by_offset(
+            ppage, PhysicalPageMapEntry.Offsets.wired
+        ))
 
     def get_ppage_is_table(self, ppage: int) -> bool:
-        pass
+        return self.get_ppage_entry_field_by_offset(
+            ppage, PhysicalPageMapEntry.Offsets.page_type
+        ) == PageType.PageTable.value
 
     def get_ppage_is_leaf(self, ppage: int) -> bool:
-        pass
+        return self.get_ppage_entry_field_by_offset(
+            ppage, PhysicalPageMapEntry.Offsets.page_type
+        ) == PageType.LeafPage.value
+    
+    def get_ppage_is_directory(self, ppage: int) -> bool:
+        return self.get_ppage_entry_field_by_offset(
+            ppage, PhysicalPageMapEntry.Offsets.page_type
+        ) == PageType.PageDirectory.value
 
     def get_ppage_is_file_backed(self, ppage: int) -> bool:
-        pass
-
-    def get_ppage_is_directory(self, ppage: int) -> bool:
-        pass
+        return bool(self.get_ppage_entry_field_by_offset(
+            ppage, PhysicalPageMapEntry.Offsets.file_backed
+        ))
 
     def get_ppage_backing_block(self, ppage: int) -> int:
-        pass
+        return self.get_ppage_entry_field_by_offset(
+            ppage, PhysicalPageMapEntry.Offsets.disk_block_number
+        )
 
     def get_ppage_share_count(self, ppage: int) -> int:
-        pass
+        return self.get_ppage_entry_field_by_offset(
+            ppage, PhysicalPageMapEntry.Offsets.share_count
+        )
 
     def get_ppage_accessed(self, ppage: int) -> bool:
-        pass
+        return bool(self.get_ppage_entry_field_by_offset(
+            ppage, PhysicalPageMapEntry.Offsets.accessed
+        ))
 
-    def set_ppage_clean(self, ppage: int):
-        pass
-
-    def set_ppage_dirty(self, ppage: int):
-        pass
-
-    def set_ppage_backing_block(self, ppage: int, new_value: int):
-        pass
-
-    def set_ppage_share_count(self, ppage: int, new_value: int):
-        pass
-
-    def set_ppage_accessed(self, ppage: int, new_value: bool):
-        pass
-
-    def set_ppage_child_count(self, ppage: int, new_value: int):
-        pass
-
-    def set_ppage_shared_child_count(self, ppage: int):
-        pass
-
-    def increment_ppage_child_count(self, ppage: int, new_value: int):
-        pass
-
-    def increment_ppage_shared_child_count(self, ppage: int):
-        pass
 
     def get_ppage_child_count(self, ppage: int) -> int:
-        pass
+        return self.get_ppage_entry_field_by_offset(
+            ppage, PhysicalPageMapEntry.Offsets.child_count
+        )
 
     def get_ppage_shared_child_count(self, ppage: int):
-        pass
+        return self.get_ppage_entry_field_by_offset(
+            ppage, PhysicalPageMapEntry.Offsets.shared_child_count
+        )
+    
+    def set_ppage_entry_field_by_offset(self, ppage: int, field_offset: int, new_value: int):
+        entry_offset = ppage * PhysicalPageMapEntry.length()
+        field_addr = PHYSICAL_PAGE_MAP_ADDR + entry_offset + field_offset
+        self.write_physical_memory(field_addr, new_value)
+
+    def set_ppage_clean(self, ppage: int):
+        self.set_ppage_entry_field_by_offset(ppage, PhysicalPageMapEntry.Offsets.dirty, 0)
+
+    def set_ppage_dirty(self, ppage: int):
+        self.set_ppage_entry_field_by_offset(ppage, PhysicalPageMapEntry.Offsets.dirty, 1)
+
+    def set_ppage_backing_block(self, ppage: int, new_value: int):
+        self.set_ppage_entry_field_by_offset(ppage, PhysicalPageMapEntry.Offsets.disk_block_number, new_value)
+
+    def set_ppage_share_count(self, ppage: int, new_value: int):
+        self.set_ppage_entry_field_by_offset(ppage, PhysicalPageMapEntry.Offsets.share_count, new_value)
+
+    def set_ppage_accessed(self, ppage: int, new_value: bool):
+        self.set_ppage_entry_field_by_offset(ppage, PhysicalPageMapEntry.Offsets.accessed, int(new_value))
+
+    def set_ppage_child_count(self, ppage: int, new_value: int):
+        self.set_ppage_entry_field_by_offset(ppage, PhysicalPageMapEntry.Offsets.child_count, new_value)
+
+    def set_ppage_shared_child_count(self, ppage: int, new_value: int):
+        self.set_ppage_entry_field_by_offset(ppage, PhysicalPageMapEntry.Offsets.shared_child_count, new_value)
+
+    def increment_ppage_child_count(self, ppage: int):
+        offset = PhysicalPageMapEntry.Offsets.child_count
+        old_value = self.get_ppage_entry_field_by_offset(ppage, offset)
+        self.set_ppage_entry_field_by_offset(ppage, offset, old_value + 1)
+
+    def increment_ppage_shared_child_count(self, ppage: int):
+        offset = PhysicalPageMapEntry.Offsets.shared_child_count
+        old_value = self.get_ppage_entry_field_by_offset(ppage, offset)
+        self.set_ppage_entry_field_by_offset(ppage, offset, old_value + 1)
 
     def decrement_ppage_share_count(self, ppage: int):
-        pass
+        offset = PhysicalPageMapEntry.Offsets.share_count
+        old_value = self.get_ppage_entry_field_by_offset(ppage, offset)
+        self.set_ppage_entry_field_by_offset(ppage, offset, old_value - 1)
 
     def clear_ppage_map_slot(self, ppage: int):
         pass
@@ -481,7 +455,7 @@ class Environment:
 
         if self.get_entry_is_readable(entry):
             return (entry, False)
-        if not self.get_entry_is_write_protected():
+        if not self.get_entry_is_write_protected(entry):
             raise Exception("Access to unmapped page.")
 
         potential_ppage = self.get_entry_ppage(entry)
@@ -513,7 +487,7 @@ class Environment:
             self.set_ppage_backing_block(open_ppage, disk_block)
             self.set_ppage_clean(open_ppage)
             self.set_ppage_share_count(open_ppage, 1)
-            entry = self.set_entry_number(open_ppage)
+            entry = self.set_entry_number(entry, open_ppage)
             entry = self.set_entry_readable(entry, True)
             entry = self.set_entry_write_protected(entry, False)
             actual_ppage = open_ppage
