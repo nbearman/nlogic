@@ -3,7 +3,7 @@ from enum import Enum
 
 from mmu import MMU
 from disk import Disk
-from nlogic_sim.tools.OS_Simulator.kernel_structs import (
+from kernel_structs import (
     DiskBlockReference,
     PageType,
     PhysicalPageMapEntry,
@@ -42,10 +42,10 @@ class KernelVariable(Enum):
     ActiveProcessPageDirectoryPhysicalPage = "ACTIVE_PROCESS_PAGE_DIRECTORY_PHYSICAL_PAGE"
     ClockHand = "CLOCK_HAND"
 
-PROCESS_MAP_ENTRY_SIZE = 0x04 * len(asdict(ProcessMapEntry()))
-PPAGE_MAP_ENTRY_SIZE = 0x04 * len(asdict(PhysicalPageMapEntry()))
-PPAGE_REFERENCE_SIZE = 0x04 * len(asdict(PhysicalPageReference()))
-DISK_BLOCK_REFERENCE_SIZE = 0x04  * len(asdict(DiskBlockReference()))
+PROCESS_MAP_ENTRY_SIZE = ProcessMapEntry.length()
+PPAGE_MAP_ENTRY_SIZE = PhysicalPageMapEntry.length()
+PPAGE_REFERENCE_SIZE = PhysicalPageReference.length()
+DISK_BLOCK_REFERENCE_SIZE = DiskBlockReference.length()
 
 def generate_kernel_arrays(base_virtual_address: int):
     process_map_size = PROCESS_MAP_ENTRY_SIZE * PROCESS_MAP_LENGTH
@@ -97,7 +97,7 @@ class Environment:
             # (probably linear probing to leverage cache the best)
 
     def read_memory(self, addr: int) -> int:
-        raise NotImplementedError("TODO")
+        return self.mmu.read_environment_memory(addr)
 
     def write_memory(self, addr: int, value: int):
         raise NotImplementedError("TODO")
@@ -107,7 +107,10 @@ class Environment:
         Reads the given address in physical address space by adjusting
         it to the kernel's virtual address space.
         """
-        raise NotImplementedError("TODO")
+        # add 0x 00 3F 00 00 to any physical address to get its address in kernel VA
+        # because kernel maps physical pages into its VA starting a vpage 0x3F0
+        kernel_va = addr + 0x003F0000
+        return self.mmu.read_environment_memory(kernel_va)
 
     def write_physical_memory(self, addr: int, value: int):
         """
@@ -128,7 +131,16 @@ class Environment:
         if PID is 0, return from active process dir ppage variable
         otherwise, get directory ppage from process map
         """
-        raise NotImplementedError("TODO")
+        if pid == 0:
+            return self.read_memory(ACTIVE_PROCESS_PAGE_DIRECTORY_PHYSICAL_PAGE_ADDR)
+        for process_map_entry_offset in range(0x00, PROCESS_MAP_LENGTH, PROCESS_MAP_ENTRY_SIZE):
+            entry_addr = PROCESS_MAP_ADDR + process_map_entry_offset
+            entry_pid_addr = entry_addr + ProcessMapEntry.Offsets.pid
+            entry_directory_addr = entry_addr + ProcessMapEntry.Offsets.page_directory_ppage
+            entry_pid = self.read_memory(entry_pid_addr)
+            if entry_pid == pid:
+                return self.read_memory(entry_directory_addr)
+        raise Exception("PID not found in process map.")
 
 
     def get_and_increment_clock_hand(self) -> int:
@@ -194,7 +206,7 @@ class Environment:
 
     def get_entry_ppage(self, entry: int) -> int:
         return self.get_entry_number(entry)
-    
+
     def get_ppage_entry_field_by_offset(self, ppage: int, field_offset: int) -> int:
         entry_offset = ppage * PhysicalPageMapEntry.length()
         field_addr = PHYSICAL_PAGE_MAP_ADDR + entry_offset + field_offset
@@ -204,7 +216,7 @@ class Environment:
         return bool(self.get_ppage_entry_field_by_offset(
             ppage, PhysicalPageMapEntry.Offsets.dirty
         ))
-    
+
     def get_ppage_is_clean(self, ppage: int) -> bool:
         return not self.get_ppage_is_dirty(ppage)
 
@@ -222,7 +234,7 @@ class Environment:
         return self.get_ppage_entry_field_by_offset(
             ppage, PhysicalPageMapEntry.Offsets.page_type
         ) == PageType.LeafPage.value
-    
+
     def get_ppage_is_directory(self, ppage: int) -> bool:
         return self.get_ppage_entry_field_by_offset(
             ppage, PhysicalPageMapEntry.Offsets.page_type
@@ -258,7 +270,7 @@ class Environment:
         return self.get_ppage_entry_field_by_offset(
             ppage, PhysicalPageMapEntry.Offsets.shared_child_count
         )
-    
+
     def set_ppage_entry_field_by_offset(self, ppage: int, field_offset: int, new_value: int):
         entry_offset = ppage * PhysicalPageMapEntry.length()
         field_addr = PHYSICAL_PAGE_MAP_ADDR + entry_offset + field_offset
@@ -350,6 +362,7 @@ class Environment:
         """
         Returns 0 if there are no open blocks
         """
+        pass
 
     def copy_ppage_to_disk(self, ppage: int, disk_block: int):
         pass
@@ -856,3 +869,12 @@ class Environment:
         # jump back to program
         return
 
+
+# =================================================
+# Test code below
+# =================================================
+
+# TODO move this into test script
+# kernel page tables, etc. need to be set up before running
+env = Environment()
+env.handle_page_fault(0x1000, False)
